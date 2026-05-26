@@ -1,0 +1,71 @@
+- key: ping
+  kind: Behavior
+  expect:
+    http:
+      method: GET
+      path: /ping
+  actions:
+    - reply_http:
+        status_code: 200
+        body: OK
+        headers:
+          Content-Type: text/plain
+
+- key: header-token-200
+  kind: Behavior
+  expect:
+    condition: '{{.HTTPHeader.Get "X-Token" | eq "t1234"}}'
+    http:
+      method: GET
+      path: /token
+  actions:
+    - reply_http:
+        status_code: 200
+        body: OK
+
+- key: header-token-401
+  kind: Behavior
+  expect:
+    condition: '{{.HTTPHeader.Get "X-Token" | ne "t1234"}}'
+    http:
+      method: GET
+      path: /token
+  actions:
+    - reply_http:
+        status_code: 401
+        body: unauthorized
+
+- key: echo-body
+  kind: Behavior
+  expect:
+    http:
+      method: POST
+      path: /echo
+  actions:
+    - reply_http:
+        status_code: 200
+        body: '{{.HTTPBody | upper}}'
+
+- key: user-by-id
+  kind: Behavior
+  expect:
+    http:
+      method: GET
+      path: /users/:id
+  actions:
+    - reply_http:
+        status_code: 200
+        body: '{"id": "{{.HTTPPath}}"}'
+
+- key: delayed
+  kind: Behavior
+  expect:
+    http:
+      method: GET
+      path: /slow
+  actions:
+    - sleep:
+        duration: 200ms
+    - reply_http:
+        status_code: 200
+        body: done
