@@ -2,6 +2,9 @@
 """YAML-driven HTTP mock server."""
 
 import base64
+import hashlib
+import hmac as _hmac
+import html
 import json
 import logging
 import os
@@ -67,11 +70,124 @@ class HeaderMap:
         return self._h.get(name.lower(), "")
 
 # ---------------------------------------------------------------------------
+# gJsonPath helper
+# ---------------------------------------------------------------------------
+
+def _gjson_path(expr: str, data: str) -> str:
+    if not data:
+        return ""
+    parsed = json.loads(data)  # raises on invalid JSON
+    parts = expr.split(".")
+    node = parsed
+    i = 0
+    while i < len(parts):
+        part = parts[i]
+        if part == "#":
+            # count
+            if isinstance(node, list):
+                return str(len(node))
+            return ""
+        if i + 1 < len(parts) and part == "#":
+            pass  # handled above
+        # array wildcard: current part is "#" already handled; check next is a field
+        if part == "#" and i + 1 < len(parts):
+            field = parts[i + 1]
+            if isinstance(node, list):
+                return "\n".join(str(item.get(field, "")) if isinstance(item, dict) else "" for item in node)
+            return ""
+        if isinstance(node, list):
+            if part.isdigit():
+                idx = int(part)
+                if idx >= len(node):
+                    return ""
+                node = node[idx]
+            else:
+                return ""
+        elif isinstance(node, dict):
+            node = node.get(part)
+            if node is None:
+                return ""
+        else:
+            return ""
+        i += 1
+    if isinstance(node, (dict, list)):
+        return json.dumps(node)
+    return str(node) if node is not None else ""
+
+
+def _gjson_path_safe(expr: str, data: str) -> str:
+    """Wrapper that handles the '#.field' wildcard split across two parts."""
+    if not data:
+        return ""
+    parts = expr.split(".")
+    # detect wildcard pattern: <prefix>.#.<field> or just #.<field>
+    for i, part in enumerate(parts):
+        if part == "#" and i + 1 < len(parts):
+            # navigate to the list at parts[:i], then collect fields
+            parsed = json.loads(data)
+            node = parsed
+            for p in parts[:i]:
+                if isinstance(node, list):
+                    node = node[int(p)] if p.isdigit() else None
+                elif isinstance(node, dict):
+                    node = node.get(p)
+                if node is None:
+                    return ""
+            field = parts[i + 1]
+            if isinstance(node, list):
+                vals = []
+                for item in node:
+                    if isinstance(item, dict) and field in item:
+                        vals.append(str(item[field]))
+                    elif isinstance(item, dict):
+                        vals.append("")
+                return "\n".join(vals)
+            return ""
+    return _gjson_path(expr, data)
+
+# ---------------------------------------------------------------------------
 # Template Engine
 # ---------------------------------------------------------------------------
 
 def _make_jinja_env() -> Environment:
+    from jsonpath_ng import parse as _jp_parse
+    from lxml import etree as _etree
+
     env = Environment(undefined=StrictUndefined, keep_trailing_newline=True)
+
+    def _json_path(expr: str, data: str) -> str:
+        if not data:
+            return ""
+        parsed = json.loads(data)
+        matches = _jp_parse(expr).find(parsed)
+        if not matches:
+            return ""
+        v = matches[0].value
+        return json.dumps(v) if isinstance(v, (dict, list)) else str(v)
+
+    def _xml_path(expr: str, data: str) -> str:
+        if not data:
+            return ""
+        root = _etree.fromstring(data.encode())
+        results = root.xpath(expr)
+        if not results:
+            return ""
+        node = results[0]
+        if isinstance(node, str):
+            return node
+        return node.text or ""
+
+    def _regex_find_all_submatch(pattern: str, s: str) -> list:
+        m = re.search(pattern, s)
+        if not m:
+            return []
+        return [m.group(0)] + list(m.groups(""))
+
+    def _regex_find_first_submatch(pattern: str, s: str) -> str:
+        m = re.search(pattern, s)
+        if not m or not m.lastindex:
+            return ""
+        return m.group(1)
 
     extras = {
         # Comparison
@@ -132,6 +248,21 @@ def _make_jinja_env() -> Environment:
         "min": min,
         # UUID
         "uuidv4": lambda: str(uuid.uuid4()),
+        "uuidv5": lambda data: str(uuid.uuid5(uuid.NAMESPACE_OID, str(data))),
+        # JSON / XML querying
+        "jsonPath":  _json_path,
+        "gJsonPath": _gjson_path_safe,
+        "xmlPath":   _xml_path,
+        # Regex
+        "regexFindAllSubmatch":   _regex_find_all_submatch,
+        "regexFindFirstSubmatch": _regex_find_first_submatch,
+        # Crypto
+        "hmacSHA256": lambda secret, data: _hmac.new(
+            str(secret).encode(), str(data).encode(), hashlib.sha256
+        ).hexdigest(),
+        # Misc
+        "isLastIndex":     lambda index, array: int(index) == len(array) - 1,
+        "htmlEscapeString": lambda s: html.escape(str(s), quote=True),
     }
     env.globals.update(extras)
     env.filters.update(extras)
@@ -218,7 +349,7 @@ def parse_duration(s: str) -> float:
 # YAML Loading & Validation
 # ---------------------------------------------------------------------------
 
-def _validate_behavior(b: object, source: str) -> dict:
+def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
     if not isinstance(b, dict):
         raise ValueError(f"{source}: expected a mapping, got {type(b).__name__}")
     key = b.get("key")
@@ -232,6 +363,22 @@ def _validate_behavior(b: object, source: str) -> dict:
     for action in actions:
         if isinstance(action, dict) and "sleep" in action:
             parse_duration(str(action["sleep"].get("duration", "")))
+        if isinstance(action, dict) and "reply_http" in action:
+            cfg = action["reply_http"]
+            bff = str(cfg.get("body_from_file") or "").strip()
+            if bff and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved = os.path.realpath(os.path.join(templates_dir, bff))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} body_from_file {bff!r} escapes templates dir"
+                    )
+                with open(resolved) as fh:
+                    cfg["_body_snapshot"] = fh.read()
+            elif bff and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} body_from_file requires templates_dir to be set"
+                )
     return b
 
 
@@ -250,7 +397,7 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             if not isinstance(data, list):
                 raise ValueError(f"{fpath}: top-level must be a list")
             for item in data:
-                all_items.append(_validate_behavior(item, fpath))
+                all_items.append(_validate_behavior(item, fpath, templates_dir))
 
     # Merge with last-key-wins
     key_index: dict[str, int] = {}
@@ -350,8 +497,10 @@ def execute_reply_http(cfg: dict, context: dict, handler: "MockRequestHandler") 
     status = int(cfg["status_code"])
     raw_headers: dict = dict(cfg.get("headers") or {})
     raw_body: str     = str(cfg.get("body") or "")
+    snapshot: str     = str(cfg.get("_body_snapshot") or "")
+    effective_body    = snapshot if (snapshot and not raw_body) else raw_body
 
-    body_str, err = render(raw_body, context)
+    body_str, err = render(effective_body, context)
     if err:
         handler.send_error(500, f"body render error: {err}")
         return 500

@@ -4,6 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "jinja2>=3.1",
+    "jsonpath-ng>=1.6",
+    "lxml>=5.0",
     "pyyaml>=6.0",
 ]
 
