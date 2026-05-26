@@ -29,7 +29,7 @@ The server SHALL recursively scan `HM_TEMPLATES_DIR` for `.yaml` and `.yml` file
 - **THEN** their behaviors are merged into a single list in file-sorted order
 
 ### Requirement: Mock behavior validation
-Each loaded behavior SHALL be validated: `key` is required and must be a non-empty string; `kind` defaults to `"Behavior"` when omitted; a behavior with more than one `reply_http` action SHALL be rejected.
+Each loaded behavior SHALL be validated: `key` is required and must be a non-empty string; `kind` defaults to `"Behavior"` when omitted; a behavior with more than one `reply_http` action SHALL be rejected. Valid action types are `sleep`, `reply_http`, `redis`, and `send_http`.
 
 #### Scenario: Missing key rejected
 - **WHEN** a behavior definition omits `key`
@@ -42,6 +42,14 @@ Each loaded behavior SHALL be validated: `key` is required and must be a non-emp
 #### Scenario: Kind defaults to Behavior
 - **WHEN** a behavior definition omits `kind`
 - **THEN** the behavior is treated as `kind: Behavior`
+
+#### Scenario: redis action accepted
+- **WHEN** a behavior includes a `redis` action
+- **THEN** the server loads the behavior without error
+
+#### Scenario: send_http action accepted
+- **WHEN** a behavior includes a `send_http` action
+- **THEN** the server loads the behavior without error
 
 ### Requirement: Duplicate key resolution
 When multiple loaded behaviors share the same `key`, the last loaded behavior SHALL replace earlier ones. The server SHALL emit a warning log when a key is overridden.

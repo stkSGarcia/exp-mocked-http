@@ -10,7 +10,9 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
+import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
@@ -31,6 +33,8 @@ TEMPLATES_DIR = os.environ.get("HM_TEMPLATES_DIR", "./templates")
 HTTP_PORT     = int(os.environ.get("HM_HTTP_PORT", "9999"))
 HTTP_HOST     = os.environ.get("HM_HTTP_HOST", "0.0.0.0")
 _LOG_LEVEL    = _LOG_LEVELS.get(os.environ.get("HM_LOG_LEVEL", "info").lower(), logging.INFO)
+REDIS_TYPE    = os.environ.get("HM_REDIS_TYPE", "memory")
+REDIS_URL     = os.environ.get("HM_REDIS_URL", "redis://redis:6379")
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -144,6 +148,45 @@ def _gjson_path_safe(expr: str, data: str) -> str:
                 return "\n".join(vals)
             return ""
     return _gjson_path(expr, data)
+
+# ---------------------------------------------------------------------------
+# Redis Backend
+# ---------------------------------------------------------------------------
+
+def _make_redis_client():
+    if REDIS_TYPE == "redis":
+        import redis as _redis_lib
+        return _redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    import fakeredis
+    return fakeredis.FakeRedis(decode_responses=True)
+
+
+_REDIS = _make_redis_client()
+
+
+def _redis_do(cmd: str, *args) -> str:
+    result = _REDIS.execute_command(cmd.upper(), *[str(a) for a in args])
+    if result is None:
+        return ""
+    if isinstance(result, bool):
+        return "OK" if result else "0"
+    if isinstance(result, (int, float)):
+        return str(result)
+    if isinstance(result, bytes):
+        return result.decode("utf-8")
+    if isinstance(result, list):
+        return ";;".join(
+            "" if v is None else (v.decode("utf-8") if isinstance(v, bytes) else str(v))
+            for v in result
+        )
+    if isinstance(result, dict):
+        parts: list[str] = []
+        for k, v in result.items():
+            parts.append(k.decode("utf-8") if isinstance(k, bytes) else str(k))
+            parts.append("" if v is None else (v.decode("utf-8") if isinstance(v, bytes) else str(v)))
+        return ";;".join(parts)
+    return str(result)
+
 
 # ---------------------------------------------------------------------------
 # Template Engine
@@ -263,6 +306,8 @@ def _make_jinja_env() -> Environment:
         # Misc
         "isLastIndex":     lambda index, array: int(index) == len(array) - 1,
         "htmlEscapeString": lambda s: html.escape(str(s), quote=True),
+        # Redis
+        "redisDo": _redis_do,
     }
     env.globals.update(extras)
     env.filters.update(extras)
@@ -378,6 +423,22 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
             elif bff and not templates_dir:
                 raise ValueError(
                     f"{source}: behavior {key!r} body_from_file requires templates_dir to be set"
+                )
+        if isinstance(action, dict) and "send_http" in action:
+            cfg = action["send_http"]
+            bff = str(cfg.get("body_from_file") or "").strip()
+            if bff and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, bff))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} send_http body_from_file {bff!r} escapes templates dir"
+                    )
+                with open(resolved) as fh:
+                    cfg["_body_snapshot"] = fh.read()
+            elif bff and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} send_http body_from_file requires templates_dir to be set"
                 )
     return b
 
@@ -526,6 +587,46 @@ def execute_reply_http(cfg: dict, context: dict, handler: "MockRequestHandler") 
     return status
 
 
+def execute_redis(items: list, context: dict):
+    for item in (items or []):
+        render(str(item), context)
+
+
+def execute_send_http(cfg: dict, context: dict):
+    url_str, err = render(str(cfg.get("url") or ""), context)
+    if err:
+        _log(logging.DEBUG, "send_http url render error", error=str(err))
+        return
+    method = str(cfg.get("method") or "GET").upper()
+    rendered_headers: dict[str, str] = {}
+    for k, v in (cfg.get("headers") or {}).items():
+        rv, err = render(str(v), context)
+        if err:
+            _log(logging.DEBUG, "send_http header render error", key=k, error=str(err))
+            return
+        rendered_headers[k] = rv
+    raw_body = str(cfg.get("body") or "")
+    snapshot = str(cfg.get("_body_snapshot") or "")
+    effective = snapshot if (snapshot and not raw_body) else raw_body
+    body_str, err = render(effective, context)
+    if err:
+        _log(logging.DEBUG, "send_http body render error", error=str(err))
+        return
+
+    def _fire(url=url_str, meth=method, hdrs=rendered_headers, body=body_str):
+        try:
+            data = body.encode("utf-8") if body else None
+            req  = urllib.request.Request(url, data=data, method=meth)
+            for k, v in hdrs.items():
+                req.add_header(k, v)
+            with urllib.request.urlopen(req, timeout=10):
+                pass
+        except Exception as exc:
+            _log(logging.DEBUG, "send_http request failed", url=url, error=str(exc))
+
+    threading.Thread(target=_fire, daemon=True).start()
+
+
 def execute_actions(actions: list, context: dict, handler: "MockRequestHandler") -> int:
     status = 200
     for action in actions:
@@ -535,6 +636,10 @@ def execute_actions(actions: list, context: dict, handler: "MockRequestHandler")
             execute_sleep(action["sleep"])
         elif "reply_http" in action:
             status = execute_reply_http(action["reply_http"], context, handler)
+        elif "redis" in action:
+            execute_redis(action["redis"], context)
+        elif "send_http" in action:
+            execute_send_http(action["send_http"], context)
     return status
 
 # ---------------------------------------------------------------------------
