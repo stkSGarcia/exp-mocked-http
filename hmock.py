@@ -38,6 +38,15 @@ REDIS_URL          = os.environ.get("HM_REDIS_URL", "redis://redis:6379")
 ADMIN_HTTP_ENABLED = os.environ.get("HM_ADMIN_HTTP_ENABLED", "true").lower() != "false"
 ADMIN_HTTP_PORT    = int(os.environ.get("HM_ADMIN_HTTP_PORT", "9998"))
 ADMIN_HTTP_HOST    = os.environ.get("HM_ADMIN_HTTP_HOST", "0.0.0.0")
+CORS_ENABLED       = os.environ.get("HM_CORS_ENABLED", "false").lower() == "true"
+HOT_RELOAD         = os.environ.get("HM_TEMPLATES_DIR_HOT_RELOAD", "true").lower() != "false"
+
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin":      "*",
+    "Access-Control-Allow-Methods":     "*",
+    "Access-Control-Allow-Headers":     "*",
+    "Access-Control-Allow-Credentials": "true",
+}
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -548,6 +557,20 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
                 raise ValueError(
                     f"{source}: behavior {key!r} body_from_file requires templates_dir to be set"
                 )
+            bfbf = str(cfg.get("body_from_binary_file") or "").strip()
+            if bfbf and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, bfbf))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} body_from_binary_file {bfbf!r} escapes templates dir"
+                    )
+                with open(resolved, "rb") as fh:
+                    cfg["_binary_bytes"] = fh.read()
+            elif bfbf and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} body_from_binary_file requires templates_dir to be set"
+                )
         if isinstance(action, dict) and "send_http" in action:
             cfg = action["send_http"]
             bff = str(cfg.get("body_from_file") or "").strip()
@@ -563,6 +586,20 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
             elif bff and not templates_dir:
                 raise ValueError(
                     f"{source}: behavior {key!r} send_http body_from_file requires templates_dir to be set"
+                )
+            bfbf = str(cfg.get("body_from_binary_file") or "").strip()
+            if bfbf and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, bfbf))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} send_http body_from_binary_file {bfbf!r} escapes templates dir"
+                    )
+                with open(resolved, "rb") as fh:
+                    cfg["_binary_bytes"] = fh.read()
+            elif bfbf and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} send_http body_from_binary_file requires templates_dir to be set"
                 )
     return b
 
@@ -751,17 +788,14 @@ def execute_sleep(cfg: dict):
 
 
 def execute_reply_http(cfg: dict, context: dict, handler: "MockRequestHandler") -> int:
-    status = int(cfg["status_code"])
-    raw_headers: dict = dict(cfg.get("headers") or {})
-    raw_body: str     = str(cfg.get("body") or "")
-    snapshot: str     = str(cfg.get("_body_snapshot") or "")
-    effective_body    = snapshot if (snapshot and not raw_body) else raw_body
+    status           = int(cfg["status_code"])
+    raw_headers      = dict(cfg.get("headers") or {})
+    raw_body         = str(cfg.get("body") or "")
+    snapshot         = str(cfg.get("_body_snapshot") or "")
+    binary_bytes     = cfg.get("_binary_bytes")
+    binary_file_name = str(cfg.get("binary_file_name") or "").strip()
 
-    body_str, err = render(effective_body, context)
-    if err:
-        handler.send_error(500, f"body render error: {err}")
-        return 500
-
+    # Render mock-defined headers first (mock values take precedence over CORS middleware)
     headers: dict[str, str] = {}
     for k, v in raw_headers.items():
         rendered_v, err = render(str(v), context)
@@ -770,17 +804,56 @@ def execute_reply_http(cfg: dict, context: dict, handler: "MockRequestHandler") 
             return 500
         headers[k] = rendered_v
 
+    # Inject CORS headers only for keys not already set by the mock
+    if CORS_ENABLED:
+        headers_lower = {k.lower() for k in headers}
+        for k, v in _CORS_HEADERS.items():
+            if k.lower() not in headers_lower:
+                headers[k] = v
+
+    if binary_bytes is not None and not raw_body:
+        # Binary path: send raw bytes, no template rendering
+        if not any(k.lower() == "content-type" for k in headers):
+            headers["Content-Type"] = "application/octet-stream"
+        headers["Content-Length"] = str(len(binary_bytes))
+        if binary_file_name:
+            headers["Content-Disposition"] = f'inline; filename="{binary_file_name}"'
+        handler.send_response(status)
+        for k, v in headers.items():
+            handler.send_header(k, v)
+        handler.end_headers()
+        handler.wfile.write(binary_bytes)
+        return status
+
+    # Text path: render body template
+    effective_body = snapshot if (snapshot and not raw_body) else raw_body
+    body_str, err  = render(effective_body, context)
+    if err:
+        handler.send_error(500, f"body render error: {err}")
+        return 500
+
     if not any(k.lower() == "content-type" for k in headers):
         headers["Content-Type"] = "application/json"
-    body_bytes = body_str.encode("utf-8")
-    headers["Content-Length"] = str(len(body_bytes))
+    body_bytes_out = body_str.encode("utf-8")
+    headers["Content-Length"] = str(len(body_bytes_out))
 
     handler.send_response(status)
     for k, v in headers.items():
         handler.send_header(k, v)
     handler.end_headers()
-    handler.wfile.write(body_bytes)
+    handler.wfile.write(body_bytes_out)
     return status
+
+
+def _build_multipart(field_name: str, filename: str, content_type: str, data: bytes) -> tuple[bytes, str]:
+    boundary = uuid.uuid4().hex
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
+        f"Content-Type: {content_type}\r\n"
+        f"\r\n"
+    ).encode("ascii") + data + f"\r\n--{boundary}--\r\n".encode("ascii")
+    return body, f"multipart/form-data; boundary={boundary}"
 
 
 def execute_redis(items: list, context: dict):
@@ -801,6 +874,42 @@ def execute_send_http(cfg: dict, context: dict):
             _log(logging.DEBUG, "send_http header render error", key=k, error=str(err))
             return
         rendered_headers[k] = rv
+
+    binary_bytes = cfg.get("_binary_bytes")
+    if binary_bytes is not None:
+        bfbf = str(cfg.get("body_from_binary_file") or "")
+        file_name = str(cfg.get("binary_file_name") or "").strip() or os.path.basename(bfbf)
+        if method == "POST":
+            ct = next((v for k, v in rendered_headers.items() if k.lower() == "content-type"), "application/octet-stream")
+            hdrs_no_ct = {k: v for k, v in rendered_headers.items() if k.lower() != "content-type"}
+            mp_data, mp_ct = _build_multipart("file", file_name, ct, binary_bytes)
+
+            def _fire_post(url=url_str, meth=method, hdrs=hdrs_no_ct, data=mp_data, content_type=mp_ct):
+                try:
+                    req = urllib.request.Request(url, data=data, method=meth)
+                    req.add_header("Content-Type", content_type)
+                    for k, v in hdrs.items():
+                        req.add_header(k, v)
+                    with urllib.request.urlopen(req, timeout=10):
+                        pass
+                except Exception as exc:
+                    _log(logging.DEBUG, "send_http request failed", url=url, error=str(exc))
+
+            threading.Thread(target=_fire_post, daemon=True).start()
+        else:
+            def _fire_raw(url=url_str, meth=method, hdrs=rendered_headers, data=binary_bytes):
+                try:
+                    req = urllib.request.Request(url, data=data, method=meth)
+                    for k, v in hdrs.items():
+                        req.add_header(k, v)
+                    with urllib.request.urlopen(req, timeout=10):
+                        pass
+                except Exception as exc:
+                    _log(logging.DEBUG, "send_http request failed", url=url, error=str(exc))
+
+            threading.Thread(target=_fire_raw, daemon=True).start()
+        return
+
     raw_body = str(cfg.get("body") or "")
     snapshot = str(cfg.get("_body_snapshot") or "")
     effective = snapshot if (snapshot and not raw_body) else raw_body
@@ -845,6 +954,7 @@ def execute_actions(actions: list, context: dict, handler: "MockRequestHandler")
 # ---------------------------------------------------------------------------
 
 _BEHAVIORS: list = []
+_BEHAVIORS_LOCK = threading.Lock()
 _reload_event = threading.Event()
 
 
@@ -857,10 +967,67 @@ def _reload_loop() -> None:
         _reload_event.wait(timeout=1.0)
         _reload_event.clear()
         try:
-            global _BEHAVIORS
-            _BEHAVIORS = build_mock_set()
+            new_behaviors = build_mock_set()
         except Exception as exc:
             _log(logging.WARNING, "reload error", error=str(exc))
+            continue
+        with _BEHAVIORS_LOCK:
+            global _BEHAVIORS
+            _BEHAVIORS = new_behaviors
+
+
+def _poll_templates_dir() -> None:
+    def _collect_mtimes() -> dict:
+        mtimes: dict = {}
+        try:
+            for root, dirs, files in os.walk(TEMPLATES_DIR):
+                dirs.sort()
+                for fname in sorted(files):
+                    if fname.endswith(".yaml") or fname.endswith(".yml"):
+                        fpath = os.path.join(root, fname)
+                        try:
+                            mtimes[fpath] = os.path.getmtime(fpath)
+                        except OSError:
+                            pass
+        except OSError:
+            pass
+        return mtimes
+
+    last = _collect_mtimes()
+    while True:
+        time.sleep(1.0)
+        current = _collect_mtimes()
+        if current != last:
+            last = current
+            _trigger_reload()
+
+
+def _start_watchdog_watcher() -> None:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+
+    _debounce: list = [None]
+    _debounce_lock = threading.Lock()
+
+    class _Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            if event.is_directory:
+                return
+            src = getattr(event, "src_path", "") or ""
+            if not (src.endswith(".yaml") or src.endswith(".yml")):
+                return
+            with _debounce_lock:
+                if _debounce[0] is not None:
+                    _debounce[0].cancel()
+                t = threading.Timer(0.2, _trigger_reload)
+                t.daemon = True
+                _debounce[0] = t
+                t.start()
+
+    observer = Observer()
+    observer.schedule(_Handler(), TEMPLATES_DIR, recursive=True)
+    observer.daemon = True
+    observer.start()
 
 
 # ---------------------------------------------------------------------------
@@ -879,18 +1046,31 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         headers  = dict(self.headers)
         context  = build_context(self.command, path, query, headers, body)
 
-        behavior, params = find_behavior(_BEHAVIORS, self.command, path, context)
+        with _BEHAVIORS_LOCK:
+            behaviors = _BEHAVIORS
+        behavior, params = find_behavior(behaviors, self.command, path, context)
         if params:
             context["HTTPParams"] = params
 
         if behavior is None:
-            not_found = b"not found"
-            self.send_response(404)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(not_found)))
-            self.end_headers()
-            self.wfile.write(not_found)
-            status = 404
+            if CORS_ENABLED and self.command == "OPTIONS":
+                self.send_response(200)
+                for k, v in _CORS_HEADERS.items():
+                    self.send_header(k, v)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                status = 200
+            else:
+                not_found = b"not found"
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(not_found)))
+                if CORS_ENABLED:
+                    for k, v in _CORS_HEADERS.items():
+                        self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(not_found)
+                status = 404
         else:
             context["Values"] = behavior.get("values") or {}
             status = execute_actions(behavior.get("actions") or [], context, self)
@@ -940,6 +1120,22 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError as exc:
             return None, f"invalid JSON: {exc}"
 
+    def _read_body_items(self):
+        """Parse request body as JSON or YAML depending on Content-Type."""
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        if not length:
+            return None, "missing or empty request body"
+        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        ct = (self.headers.get("Content-Type") or "").lower()
+        try:
+            if "yaml" in ct:
+                data = yaml.safe_load(raw)
+            else:
+                data = json.loads(raw)
+            return data, None
+        except Exception as exc:
+            return None, f"parse error: {exc}"
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path == "/api/v1/health":
@@ -976,7 +1172,7 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": "not found"})
 
     def _handle_post_templates(self):
-        body, err = self._read_json_body()
+        body, err = self._read_body_items()
         if err:
             self._send_json(400, {"error": err})
             return
@@ -1013,7 +1209,7 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         self._send_empty(204)
 
     def _handle_post_template_set(self, set_key: str):
-        body, err = self._read_json_body()
+        body, err = self._read_body_items()
         if err:
             self._send_json(400, {"error": err})
             return
@@ -1045,6 +1241,17 @@ def main():
     global _BEHAVIORS
     _BEHAVIORS = build_mock_set()
     _log(logging.INFO, f"loaded {len(_BEHAVIORS)} behaviors", templates_dir=TEMPLATES_DIR)
+
+    if HOT_RELOAD:
+        try:
+            _start_watchdog_watcher()
+            _log(logging.INFO, "hot reload active", mechanism="watchdog")
+        except ImportError:
+            t = threading.Thread(target=_poll_templates_dir, daemon=True)
+            t.start()
+            _log(logging.INFO, "hot reload active", mechanism="polling")
+    else:
+        _log(logging.INFO, "hot reload disabled")
 
     reload_thread = threading.Thread(target=_reload_loop, daemon=True)
     reload_thread.start()

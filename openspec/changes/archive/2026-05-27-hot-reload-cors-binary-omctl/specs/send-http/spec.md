@@ -1,10 +1,4 @@
-# send-http
-
-## Purpose
-
-TBD
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: send_http action
 The `send_http` action SHALL make an outbound HTTP request as a side effect when a behavior is matched. The action SHALL accept the following fields: `url` (string, required — rendered as a template), `method` (string, required), `headers` (string map, optional — each value rendered as a template), `body` (string, optional — rendered as a template), `body_from_file` (string, optional — path resolved relative to `HM_TEMPLATES_DIR`, loaded at startup and rendered at request time), `body_from_binary_file` (string, optional — binary file path relative to `HM_TEMPLATES_DIR`, loaded at startup and sent as-is or as multipart), `binary_file_name` (string, optional — filename hint for multipart upload or raw binary body). Outbound request failures SHALL NOT affect mock execution or the inbound response.
@@ -48,10 +42,3 @@ The `send_http` action SHALL make an outbound HTTP request as a side effect when
 #### Scenario: Basename used when binary_file_name absent
 - **WHEN** `method: POST` and `body_from_binary_file: data/payload.bin` without `binary_file_name`
 - **THEN** the multipart part's filename is `payload.bin`
-
-### Requirement: send_http and reply_http can coexist
-A behavior MAY include both `send_http` and `reply_http` actions. The outbound request SHALL be dispatched before the inbound response is written but SHALL NOT block the response.
-
-#### Scenario: Both actions execute
-- **WHEN** a behavior has `send_http` followed by `reply_http` in its actions list
-- **THEN** the outbound request is dispatched and the configured HTTP response is returned to the caller

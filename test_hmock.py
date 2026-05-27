@@ -928,3 +928,532 @@ def test_admin_disabled_env(monkeypatch):
     monkeypatch.setattr(hmock, "ADMIN_HTTP_ENABLED", False)
     # Just verify the flag is readable; we don't start the server in this test
     assert not hmock.ADMIN_HTTP_ENABLED
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 6: Binary file payloads — reply_http (task 6.1)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_server():
+    """Start mock HTTP server on a free port."""
+    server = HTTPServer(("127.0.0.1", 0), hmock.MockRequestHandler)
+    port = server.server_address[1]
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    yield port
+    server.shutdown()
+
+
+def _mock_get(path, port):
+    url = f"http://127.0.0.1:{port}{path}"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, dict(resp.headers), resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, dict(exc.headers), exc.read()
+
+
+def _mock_req(method, path, port, body=None):
+    url = f"http://127.0.0.1:{port}{path}"
+    req = urllib.request.Request(url, data=body, method=method)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, dict(resp.headers), resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, dict(exc.headers), exc.read()
+
+
+def test_reply_http_binary_body(tmp_path, mock_server, monkeypatch):
+    bin_data = bytes(range(256))
+    (tmp_path / "data.bin").write_bytes(bin_data)
+
+    b = hmock._validate_behavior(
+        {"key": "bin-reply", "kind": "Behavior",
+         "expect": {"http": {"method": "GET", "path": "/bin"}},
+         "actions": [{"reply_http": {"status_code": 200, "body_from_binary_file": "data.bin"}}]},
+        "test", str(tmp_path)
+    )
+    b["_pattern"] = hmock._compile_path("/bin")
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, body = _mock_get("/bin", mock_server)
+    assert status == 200
+    assert body == bin_data
+    assert headers.get("Content-Length") == str(len(bin_data))
+
+
+def test_reply_http_binary_content_length(tmp_path, mock_server, monkeypatch):
+    payload = b"\x00\x01\x02\x03"
+    (tmp_path / "small.bin").write_bytes(payload)
+    b = hmock._validate_behavior(
+        {"key": "b", "kind": "Behavior",
+         "expect": {"http": {"method": "GET", "path": "/small"}},
+         "actions": [{"reply_http": {"status_code": 200, "body_from_binary_file": "small.bin"}}]},
+        "test", str(tmp_path)
+    )
+    b["_pattern"] = hmock._compile_path("/small")
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, _ = _mock_get("/small", mock_server)
+    assert status == 200
+    assert headers.get("Content-Length") == "4"
+
+
+def test_reply_http_binary_content_disposition(tmp_path, mock_server, monkeypatch):
+    (tmp_path / "img.png").write_bytes(b"\x89PNG")
+    b = hmock._validate_behavior(
+        {"key": "img", "kind": "Behavior",
+         "expect": {"http": {"method": "GET", "path": "/img"}},
+         "actions": [{"reply_http": {
+             "status_code": 200,
+             "body_from_binary_file": "img.png",
+             "binary_file_name": "photo.png",
+         }}]},
+        "test", str(tmp_path)
+    )
+    b["_pattern"] = hmock._compile_path("/img")
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, _ = _mock_get("/img", mock_server)
+    assert status == 200
+    assert headers.get("Content-Disposition") == 'inline; filename="photo.png"'
+
+
+def test_reply_http_nonempty_body_wins_over_binary(tmp_path, mock_server, monkeypatch):
+    (tmp_path / "x.bin").write_bytes(b"\xFF\xFE")
+    b = hmock._validate_behavior(
+        {"key": "txt-wins", "kind": "Behavior",
+         "expect": {"http": {"method": "GET", "path": "/txt"}},
+         "actions": [{"reply_http": {
+             "status_code": 200,
+             "body": "hello",
+             "body_from_binary_file": "x.bin",
+         }}]},
+        "test", str(tmp_path)
+    )
+    b["_pattern"] = hmock._compile_path("/txt")
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, _, body = _mock_get("/txt", mock_server)
+    assert status == 200
+    assert body == b"hello"
+
+
+def test_validate_binary_file_escapes_dir(tmp_path):
+    with pytest.raises(ValueError, match="escapes templates dir"):
+        hmock._validate_behavior(
+            {"key": "evil", "kind": "Behavior",
+             "expect": {}, "actions": [{"reply_http": {
+                 "status_code": 200,
+                 "body_from_binary_file": "../../etc/passwd",
+             }}]},
+            "test", str(tmp_path)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 6: Binary file payloads — send_http (task 6.2)
+# ---------------------------------------------------------------------------
+
+def test_send_http_binary_post_multipart(tmp_path):
+    payload = b"binary-content"
+    (tmp_path / "upload.bin").write_bytes(payload)
+
+    done = threading.Event()
+    captured = {}
+    original = urllib.request.urlopen
+
+    def mock_urlopen(req, timeout=None):
+        captured["method"] = req.get_method()
+        captured["ct"] = req.get_header("Content-type") or req.get_header("Content-Type") or ""
+        captured["body"] = req.data
+        done.set()
+        m = MagicMock()
+        m.__enter__ = lambda s: s
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    urllib.request.urlopen = mock_urlopen
+    try:
+        b = hmock._validate_behavior(
+            {"key": "s", "kind": "Behavior", "expect": {}, "actions": [{"send_http": {
+                "url": "http://example.com/upload",
+                "method": "POST",
+                "body_from_binary_file": "upload.bin",
+            }}]},
+            "test", str(tmp_path)
+        )
+        cfg = b["actions"][0]["send_http"]
+        ctx = hmock.build_context("POST", "/", "", {}, "")
+        hmock.execute_send_http(cfg, ctx)
+        assert done.wait(timeout=2)
+        assert captured["method"] == "POST"
+        assert "multipart/form-data" in captured["ct"]
+        assert payload in captured["body"]
+    finally:
+        urllib.request.urlopen = original
+
+
+def test_send_http_binary_post_uses_file_field_name(tmp_path):
+    payload = b"data"
+    (tmp_path / "f.bin").write_bytes(payload)
+
+    done = threading.Event()
+    captured_body = []
+    original = urllib.request.urlopen
+
+    def mock_urlopen(req, timeout=None):
+        captured_body.append(req.data)
+        done.set()
+        m = MagicMock()
+        m.__enter__ = lambda s: s
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    urllib.request.urlopen = mock_urlopen
+    try:
+        b = hmock._validate_behavior(
+            {"key": "s", "kind": "Behavior", "expect": {}, "actions": [{"send_http": {
+                "url": "http://example.com/up",
+                "method": "POST",
+                "body_from_binary_file": "f.bin",
+            }}]},
+            "test", str(tmp_path)
+        )
+        cfg = b["actions"][0]["send_http"]
+        ctx = hmock.build_context("POST", "/", "", {}, "")
+        hmock.execute_send_http(cfg, ctx)
+        assert done.wait(timeout=2)
+        # multipart body should contain 'name="file"'
+        assert b'name="file"' in captured_body[0]
+    finally:
+        urllib.request.urlopen = original
+
+
+def test_send_http_binary_post_binary_file_name_as_filename(tmp_path):
+    payload = b"x"
+    (tmp_path / "orig.bin").write_bytes(payload)
+
+    done = threading.Event()
+    captured_body = []
+    original = urllib.request.urlopen
+
+    def mock_urlopen(req, timeout=None):
+        captured_body.append(req.data)
+        done.set()
+        m = MagicMock()
+        m.__enter__ = lambda s: s
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    urllib.request.urlopen = mock_urlopen
+    try:
+        b = hmock._validate_behavior(
+            {"key": "s", "kind": "Behavior", "expect": {}, "actions": [{"send_http": {
+                "url": "http://example.com/up",
+                "method": "POST",
+                "body_from_binary_file": "orig.bin",
+                "binary_file_name": "renamed.bin",
+            }}]},
+            "test", str(tmp_path)
+        )
+        cfg = b["actions"][0]["send_http"]
+        ctx = hmock.build_context("POST", "/", "", {}, "")
+        hmock.execute_send_http(cfg, ctx)
+        assert done.wait(timeout=2)
+        assert b'filename="renamed.bin"' in captured_body[0]
+    finally:
+        urllib.request.urlopen = original
+
+
+def test_send_http_binary_post_basename_fallback(tmp_path):
+    payload = b"x"
+    (tmp_path / "myfile.bin").write_bytes(payload)
+
+    done = threading.Event()
+    captured_body = []
+    original = urllib.request.urlopen
+
+    def mock_urlopen(req, timeout=None):
+        captured_body.append(req.data)
+        done.set()
+        m = MagicMock()
+        m.__enter__ = lambda s: s
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    urllib.request.urlopen = mock_urlopen
+    try:
+        b = hmock._validate_behavior(
+            {"key": "s", "kind": "Behavior", "expect": {}, "actions": [{"send_http": {
+                "url": "http://example.com/up",
+                "method": "POST",
+                "body_from_binary_file": "myfile.bin",
+            }}]},
+            "test", str(tmp_path)
+        )
+        cfg = b["actions"][0]["send_http"]
+        ctx = hmock.build_context("POST", "/", "", {}, "")
+        hmock.execute_send_http(cfg, ctx)
+        assert done.wait(timeout=2)
+        assert b'filename="myfile.bin"' in captured_body[0]
+    finally:
+        urllib.request.urlopen = original
+
+
+def test_send_http_binary_non_post_raw_body(tmp_path):
+    payload = b"\xDE\xAD\xBE\xEF"
+    (tmp_path / "raw.bin").write_bytes(payload)
+
+    done = threading.Event()
+    captured = {}
+    original = urllib.request.urlopen
+
+    def mock_urlopen(req, timeout=None):
+        captured["method"] = req.get_method()
+        captured["body"] = req.data
+        done.set()
+        m = MagicMock()
+        m.__enter__ = lambda s: s
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    urllib.request.urlopen = mock_urlopen
+    try:
+        b = hmock._validate_behavior(
+            {"key": "s", "kind": "Behavior", "expect": {}, "actions": [{"send_http": {
+                "url": "http://example.com/put",
+                "method": "PUT",
+                "body_from_binary_file": "raw.bin",
+            }}]},
+            "test", str(tmp_path)
+        )
+        cfg = b["actions"][0]["send_http"]
+        ctx = hmock.build_context("PUT", "/", "", {}, "")
+        hmock.execute_send_http(cfg, ctx)
+        assert done.wait(timeout=2)
+        assert captured["method"] == "PUT"
+        assert captured["body"] == payload
+    finally:
+        urllib.request.urlopen = original
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 6: CORS middleware (task 6.3)
+# ---------------------------------------------------------------------------
+
+def test_cors_headers_on_matched_response(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", True)
+    b = {
+        "key": "hello", "kind": "Behavior",
+        "expect": {"http": {"method": "GET", "path": "/hello"}},
+        "actions": [{"reply_http": {"status_code": 200, "body": "hi"}}],
+        "_pattern": hmock._compile_path("/hello"),
+    }
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, _ = _mock_get("/hello", mock_server)
+    assert status == 200
+    assert headers.get("Access-Control-Allow-Origin") == "*"
+    assert headers.get("Access-Control-Allow-Methods") == "*"
+    assert headers.get("Access-Control-Allow-Headers") == "*"
+    assert headers.get("Access-Control-Allow-Credentials") == "true"
+
+
+def test_cors_headers_on_404(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", True)
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [])
+
+    status, headers, _ = _mock_get("/missing", mock_server)
+    assert status == 404
+    assert headers.get("Access-Control-Allow-Origin") == "*"
+
+
+def test_cors_mock_defined_header_overrides_middleware(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", True)
+    b = {
+        "key": "custom-cors", "kind": "Behavior",
+        "expect": {"http": {"method": "GET", "path": "/custom"}},
+        "actions": [{"reply_http": {
+            "status_code": 200,
+            "body": "ok",
+            "headers": {"Access-Control-Allow-Origin": "https://example.com"},
+        }}],
+        "_pattern": hmock._compile_path("/custom"),
+    }
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, _ = _mock_get("/custom", mock_server)
+    assert status == 200
+    assert headers.get("Access-Control-Allow-Origin") == "https://example.com"
+
+
+def test_cors_unmatched_options_returns_200(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", True)
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [])
+
+    status, headers, body = _mock_req("OPTIONS", "/api/anything", mock_server)
+    assert status == 200
+    assert body == b""
+    assert headers.get("Access-Control-Allow-Origin") == "*"
+
+
+def test_cors_disabled_options_returns_404(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", False)
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [])
+
+    status, _, _ = _mock_req("OPTIONS", "/api/anything", mock_server)
+    assert status == 404
+
+
+def test_cors_matched_options_behavior_wins(mock_server, monkeypatch):
+    monkeypatch.setattr(hmock, "CORS_ENABLED", True)
+    b = {
+        "key": "options-mock", "kind": "Behavior",
+        "expect": {"http": {"method": "OPTIONS", "path": "/explicit"}},
+        "actions": [{"reply_http": {"status_code": 204, "body": ""}}],
+        "_pattern": hmock._compile_path("/explicit"),
+    }
+    monkeypatch.setattr(hmock, "_BEHAVIORS", [b])
+
+    status, headers, _ = _mock_req("OPTIONS", "/explicit", mock_server)
+    assert status == 204
+    # CORS headers still added by middleware
+    assert headers.get("Access-Control-Allow-Origin") == "*"
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 6: Hot reload (task 6.4)
+# ---------------------------------------------------------------------------
+
+def test_hot_reload_new_file_picked_up(tmp_path):
+    hmock._REDIS.flushall()
+    # Start with no YAML files
+    behaviors = hmock.build_mock_set(str(tmp_path))
+    assert behaviors == []
+
+    # Add a YAML file
+    (tmp_path / "new.yaml").write_text(
+        "- key: new-behavior\n  kind: Behavior\n"
+        "  expect:\n    http:\n      method: GET\n      path: /new\n"
+        "  actions:\n    - reply_http:\n        status_code: 200\n        body: new\n"
+    )
+    behaviors2 = hmock.build_mock_set(str(tmp_path))
+    assert any(b["key"] == "new-behavior" for b in behaviors2)
+
+
+def test_hot_reload_edited_file_reflected(tmp_path):
+    hmock._REDIS.flushall()
+    f = tmp_path / "edit.yaml"
+    f.write_text(
+        "- key: editable\n  kind: Behavior\n"
+        "  expect:\n    http:\n      method: GET\n      path: /edit\n"
+        "  actions:\n    - reply_http:\n        status_code: 200\n        body: v1\n"
+    )
+    b1 = hmock.build_mock_set(str(tmp_path))
+    body_v1 = b1[0]["actions"][0]["reply_http"]["body"]
+    assert body_v1 == "v1"
+
+    f.write_text(
+        "- key: editable\n  kind: Behavior\n"
+        "  expect:\n    http:\n      method: GET\n      path: /edit\n"
+        "  actions:\n    - reply_http:\n        status_code: 200\n        body: v2\n"
+    )
+    b2 = hmock.build_mock_set(str(tmp_path))
+    body_v2 = b2[0]["actions"][0]["reply_http"]["body"]
+    assert body_v2 == "v2"
+
+
+def test_hot_reload_deleted_file_removed(tmp_path):
+    hmock._REDIS.flushall()
+    f = tmp_path / "del.yaml"
+    f.write_text(
+        "- key: deletable\n  kind: Behavior\n"
+        "  expect:\n    http:\n      method: GET\n      path: /del\n"
+        "  actions:\n    - reply_http:\n        status_code: 200\n        body: bye\n"
+    )
+    b1 = hmock.build_mock_set(str(tmp_path))
+    assert any(b["key"] == "deletable" for b in b1)
+
+    f.unlink()
+    b2 = hmock.build_mock_set(str(tmp_path))
+    assert not any(b["key"] == "deletable" for b in b2)
+
+
+def test_hot_reload_failure_preserves_previous_state(tmp_path, monkeypatch):
+    hmock._REDIS.flushall()
+    f = tmp_path / "good.yaml"
+    f.write_text(
+        "- key: valid\n  kind: Behavior\n"
+        "  expect:\n    http:\n      method: GET\n      path: /valid\n"
+        "  actions:\n    - reply_http:\n        status_code: 200\n        body: ok\n"
+    )
+    hmock.build_mock_set(str(tmp_path))
+
+    # Capture current _BEHAVIORS before the failing reload
+    original_behaviors = list(hmock._BEHAVIORS)
+
+    # Simulate a reload failure by patching _load_filesystem_items to raise
+    monkeypatch.setattr(hmock, "_load_filesystem_items", lambda _: (_ for _ in ()).throw(ValueError("bad yaml")))
+    hmock._reload_event.set()
+    # Manually run one reload cycle
+    hmock._reload_event.wait(timeout=0.1)
+    hmock._reload_event.clear()
+    try:
+        new_behaviors = hmock.build_mock_set(str(tmp_path))
+    except ValueError:
+        pass
+    # _BEHAVIORS should be unchanged (still has the valid behavior)
+    with hmock._BEHAVIORS_LOCK:
+        current = list(hmock._BEHAVIORS)
+    assert current == original_behaviors
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 6: omctl CLI (task 6.5)
+# ---------------------------------------------------------------------------
+
+import omctl as omctl_mod
+
+
+def test_omctl_push_no_set_key_posts_to_templates(tmp_path, admin_port):
+    (tmp_path / "t.yaml").write_text(
+        "- key: omctl-test\n  kind: Behavior\n  expect: {}\n  actions: []\n"
+    )
+    args = omctl_mod._parse_args(["push", "-d", str(tmp_path), "-u", f"http://127.0.0.1:{admin_port}"])
+    omctl_mod.cmd_push(args)
+    stored = hmock._load_api_mocks()
+    assert any(m["key"] == "omctl-test" for m in stored)
+
+
+def test_omctl_push_with_set_key_posts_to_template_sets(tmp_path, admin_port):
+    (tmp_path / "ts.yaml").write_text(
+        "- key: set-item\n  kind: Behavior\n  expect: {}\n  actions: []\n"
+    )
+    args = omctl_mod._parse_args(["push", "-d", str(tmp_path), "-u", f"http://127.0.0.1:{admin_port}", "-k", "mytest2"])
+    omctl_mod.cmd_push(args)
+    stored = hmock._load_template_set("mytest2")
+    assert any(m["key"] == "set-item" for m in stored)
+
+
+def test_omctl_delete_sends_delete(tmp_path, admin_port):
+    hmock._save_template_set("todel", [_simple_mock("d1")])
+    args = omctl_mod._parse_args(["delete", "-u", f"http://127.0.0.1:{admin_port}", "-k", "todel"])
+    omctl_mod.cmd_delete(args)
+    assert hmock._load_template_set("todel") == []
+
+
+def test_omctl_delete_missing_set_key_exits_nonzero():
+    with pytest.raises(SystemExit) as exc_info:
+        omctl_mod._parse_args(["delete", "-u", "http://localhost:9998"])
+    assert exc_info.value.code != 0
+
+
+def test_omctl_push_server_error_exits_nonzero(tmp_path, admin_port):
+    (tmp_path / "t.yaml").write_text("- key: err\n  kind: Widget\n")  # invalid kind → 400
+    args = omctl_mod._parse_args(["push", "-d", str(tmp_path), "-u", f"http://127.0.0.1:{admin_port}"])
+    with pytest.raises(SystemExit) as exc_info:
+        omctl_mod.cmd_push(args)
+    assert exc_info.value.code != 0

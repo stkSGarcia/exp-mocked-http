@@ -11,6 +11,9 @@ dependencies = [
     "redis>=5.0",
 ]
 
+[project.scripts]
+omctl = "omctl:main"
+
 [tool.uv]
 dev-dependencies = [
     "pytest>=8.0",
