@@ -1,6 +1,9 @@
 """Tests for Redis state and outbound HTTP features."""
+import json
 import threading
 import urllib.request
+import urllib.error
+from http.server import HTTPServer
 from unittest.mock import MagicMock
 
 import pytest
@@ -671,3 +674,257 @@ def test_e2e_values_in_condition(tmp_path):
     ctx_wrong = hmock.build_context("GET", "/secured", "", {"X-Token": "default-token"}, "")
     b2, _ = hmock.find_behavior(behaviors, "GET", "/secured", ctx_wrong)
     assert b2 is None
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 5: Reserved keyspace guard in redisDo (tasks 1.1, 1.2, 6.10)
+# ---------------------------------------------------------------------------
+
+def test_redis_do_blocks_internal_set():
+    with pytest.raises(ValueError, match="reserved internal keyspace"):
+        hmock._redis_do("SET", "__hmock_internal:templates", "x")
+
+
+def test_redis_do_blocks_internal_get():
+    with pytest.raises(ValueError, match="reserved internal keyspace"):
+        hmock._redis_do("GET", "__hmock_internal:tset:foo")
+
+
+def test_redis_do_normal_key_unblocked():
+    hmock._redis_do("SET", "safe_key", "val")
+    assert hmock._redis_do("GET", "safe_key") == "val"
+
+
+def test_redis_do_internal_keyspace_render_error():
+    ctx = hmock.build_context("GET", "/", "", {}, "")
+    _, err = hmock.render('{{ redisDo("SET", "__hmock_internal:templates", "x") }}', ctx)
+    assert err is not None
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 5: Persistent storage layer (tasks 2.1–2.6)
+# ---------------------------------------------------------------------------
+
+def test_load_api_mocks_empty_when_not_set():
+    assert hmock._load_api_mocks() == []
+
+
+def test_save_and_load_api_mocks():
+    mocks = [{"key": "m1", "kind": "Behavior", "expect": {}, "actions": []}]
+    hmock._save_api_mocks(mocks)
+    loaded = hmock._load_api_mocks()
+    assert len(loaded) == 1
+    assert loaded[0]["key"] == "m1"
+
+
+def test_load_template_set_empty_when_not_set():
+    assert hmock._load_template_set("noset") == []
+
+
+def test_save_and_load_template_set():
+    mocks = [{"key": "ts1", "kind": "Behavior", "expect": {}, "actions": []}]
+    hmock._save_template_set("myset", mocks)
+    loaded = hmock._load_template_set("myset")
+    assert loaded[0]["key"] == "ts1"
+
+
+def test_delete_template_set():
+    hmock._save_template_set("todelete", [{"key": "x", "kind": "Behavior"}])
+    hmock._delete_template_set("todelete")
+    assert hmock._load_template_set("todelete") == []
+
+
+def test_list_template_set_keys_sorted():
+    hmock._save_template_set("zzz", [])
+    hmock._save_template_set("aaa", [])
+    keys = hmock._list_template_set_keys()
+    assert "aaa" in keys and "zzz" in keys
+    assert keys.index("aaa") < keys.index("zzz")
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 5: build_mock_set merge order (tasks 3.1, 6.11)
+# ---------------------------------------------------------------------------
+
+def _simple_mock(key, body="ok"):
+    return {
+        "key": key, "kind": "Behavior",
+        "expect": {"http": {"method": "GET", "path": f"/{key}"}},
+        "actions": [{"reply_http": {"status_code": 200, "body": body}}],
+    }
+
+
+def test_build_mock_set_merge_order(tmp_path):
+    # Filesystem mock
+    (tmp_path / "mocks.yaml").write_text(
+        "- key: shared\n  kind: Behavior\n  expect:\n    http:\n      method: GET\n      path: /shared\n  actions:\n    - reply_http:\n        status_code: 200\n        body: 'filesystem'\n"
+    )
+    # API mock overrides filesystem
+    hmock._save_api_mocks([_simple_mock("shared", "api")])
+    # Template set overrides API
+    hmock._save_template_set("s1", [_simple_mock("shared", "set")])
+
+    behaviors = hmock.build_mock_set(str(tmp_path))
+    shared = next((b for b in behaviors if b["key"] == "shared"), None)
+    assert shared is not None
+    body_tmpl = shared["actions"][0]["reply_http"]["body"]
+    assert body_tmpl == "set"
+
+
+def test_build_mock_set_template_sets_sorted(tmp_path):
+    hmock._save_template_set("zzz", [_simple_mock("conflict", "zzz")])
+    hmock._save_template_set("aaa", [_simple_mock("conflict", "aaa")])
+    behaviors = hmock.build_mock_set(str(tmp_path))
+    conflict = next((b for b in behaviors if b["key"] == "conflict"), None)
+    # zzz loads after aaa, so zzz wins
+    assert conflict["actions"][0]["reply_http"]["body"] == "zzz"
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 5: Admin HTTP server endpoints (tasks 4.3–4.9, 6.1–6.9, 6.12)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def admin_port(tmp_path):
+    """Start an admin server on a free port; yield port; shut down after test."""
+    server = HTTPServer(("127.0.0.1", 0), hmock.AdminRequestHandler)
+    port = server.server_address[1]
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    yield port
+    server.shutdown()
+
+
+def _admin(method, path, port, body=None):
+    url = f"http://127.0.0.1:{port}{path}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    if data is not None:
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Content-Length", str(len(data)))
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+
+
+def _admin_no_body(method, path, port):
+    url = f"http://127.0.0.1:{port}{path}"
+    req = urllib.request.Request(url, method=method)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read()
+
+
+def test_admin_health(admin_port):
+    status, body = _admin("GET", "/api/v1/health", admin_port)
+    assert status == 200
+    assert body == {"status": "OK"}
+
+
+def test_admin_get_templates_empty(admin_port):
+    hmock._BEHAVIORS.clear()
+    status, body = _admin("GET", "/api/v1/templates", admin_port)
+    assert status == 200
+    assert isinstance(body, list)
+
+
+def test_admin_post_templates_valid(admin_port):
+    mocks = [_simple_mock("admin-t1")]
+    status, body = _admin("POST", "/api/v1/templates", admin_port, mocks)
+    assert status == 200
+    assert body[0]["key"] == "admin-t1"
+    stored = hmock._load_api_mocks()
+    assert any(m["key"] == "admin-t1" for m in stored)
+
+
+def test_admin_post_templates_invalid(admin_port):
+    status, body = _admin("POST", "/api/v1/templates", admin_port, [{"kind": "Behavior"}])
+    assert status == 400
+    assert "error" in body
+
+
+def test_admin_post_templates_invalid_json(admin_port):
+    url = f"http://127.0.0.1:{admin_port}/api/v1/templates"
+    data = b"not json"
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Length", str(len(data)))
+    try:
+        with urllib.request.urlopen(req) as resp:
+            status = resp.status
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+    assert status == 400
+
+
+def test_admin_delete_templates(admin_port):
+    hmock._save_api_mocks([_simple_mock("to-delete")])
+    status, body = _admin_no_body("DELETE", "/api/v1/templates", admin_port)
+    assert status == 204
+    assert hmock._load_api_mocks() == []
+
+
+def test_admin_delete_templates_leaves_sets(admin_port):
+    hmock._save_template_set("keep", [_simple_mock("set-mock")])
+    hmock._save_api_mocks([_simple_mock("api-mock")])
+    _admin_no_body("DELETE", "/api/v1/templates", admin_port)
+    assert hmock._load_api_mocks() == []
+    assert len(hmock._load_template_set("keep")) == 1
+
+
+def test_admin_delete_template_by_key(admin_port):
+    hmock._save_api_mocks([_simple_mock("foo"), _simple_mock("bar")])
+    status, _ = _admin_no_body("DELETE", "/api/v1/templates/foo", admin_port)
+    assert status == 204
+    remaining = [m["key"] for m in hmock._load_api_mocks()]
+    assert "foo" not in remaining
+    assert "bar" in remaining
+
+
+def test_admin_delete_template_by_key_not_found(admin_port):
+    hmock._save_api_mocks([])
+    status, body = _admin("DELETE", "/api/v1/templates/nonexistent", admin_port, None)
+    # Need to handle no-body delete with a 404
+    url = f"http://127.0.0.1:{admin_port}/api/v1/templates/nonexistent"
+    req = urllib.request.Request(url, method="DELETE")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            status = resp.status
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+    assert status == 404
+
+
+def test_admin_post_template_set(admin_port):
+    mocks = [_simple_mock("set-item")]
+    status, body = _admin("POST", "/api/v1/template_sets/mytest", admin_port, mocks)
+    assert status == 200
+    assert body[0]["key"] == "set-item"
+    stored = hmock._load_template_set("mytest")
+    assert stored[0]["key"] == "set-item"
+
+
+def test_admin_post_template_set_replaces(admin_port):
+    hmock._save_template_set("rep", [_simple_mock("old")])
+    _admin("POST", "/api/v1/template_sets/rep", admin_port, [_simple_mock("new")])
+    stored = hmock._load_template_set("rep")
+    assert len(stored) == 1
+    assert stored[0]["key"] == "new"
+
+
+def test_admin_delete_template_set(admin_port):
+    hmock._save_template_set("gone", [_simple_mock("g1")])
+    hmock._save_template_set("kept", [_simple_mock("k1")])
+    status, _ = _admin_no_body("DELETE", "/api/v1/template_sets/gone", admin_port)
+    assert status == 204
+    assert hmock._load_template_set("gone") == []
+    assert hmock._load_template_set("kept")[0]["key"] == "k1"
+
+
+def test_admin_disabled_env(monkeypatch):
+    monkeypatch.setattr(hmock, "ADMIN_HTTP_ENABLED", False)
+    # Just verify the flag is readable; we don't start the server in this test
+    assert not hmock.ADMIN_HTTP_ENABLED

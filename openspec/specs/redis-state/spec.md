@@ -45,7 +45,7 @@ The server SHALL provide a `redisDo(cmd, *args)` template function usable in con
 - **THEN** the response body contains the current value of `counter` from Redis
 
 ### Requirement: Supported redisDo commands
-`redisDo` SHALL support the following commands: `SET`, `GET`, `RPUSH`, `LPUSH`, `LRANGE`, `LPOP`, `RPOP`, `HSET`, `HGET`, `HGETALL`, `HDEL`, `DEL`, `EXISTS`, `KEYS`.
+`redisDo` SHALL support the following commands: `SET`, `GET`, `RPUSH`, `LPUSH`, `LRANGE`, `LPOP`, `RPOP`, `HSET`, `HGET`, `HGETALL`, `HDEL`, `DEL`, `EXISTS`, `KEYS`. `redisDo` SHALL reject any command whose first argument (the Redis key) matches the prefix `__hmock_internal:` by raising a template render error without executing the command.
 
 #### Scenario: SET and GET
 - **WHEN** `redisDo "SET" "key" "value"` is called
@@ -66,6 +66,18 @@ The server SHALL provide a `redisDo(cmd, *args)` template function usable in con
 #### Scenario: KEYS returns matching keys
 - **WHEN** keys `foo`, `bar`, `baz` exist and `redisDo "KEYS" "*"` is called
 - **THEN** all three keys appear in the `;;`-joined result
+
+#### Scenario: Reserved keyspace blocked
+- **WHEN** `redisDo "SET" "__hmock_internal:templates" "x"` is called in a template
+- **THEN** a template render error occurs and the Redis command is not executed
+
+#### Scenario: Reserved keyspace prefix checked for all commands
+- **WHEN** `redisDo "GET" "__hmock_internal:tset:foo"` is called in a template
+- **THEN** a template render error occurs and the Redis command is not executed
+
+#### Scenario: Non-reserved keys unaffected
+- **WHEN** `redisDo "SET" "my_app_key" "value"` is called
+- **THEN** the command executes normally and returns the Redis response
 
 ### Requirement: redis action
 The `redis` action SHALL be an ordered array of Jinja2 template strings. The server SHALL render each item in order using the full request context (including `redisDo`). The rendered output of each item SHALL be discarded; the purpose of each item is to invoke `redisDo` as a side effect.

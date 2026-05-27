@@ -29,12 +29,15 @@ _LOG_LEVELS = {
     "warn": logging.WARNING, "error": logging.ERROR,
 }
 
-TEMPLATES_DIR = os.environ.get("HM_TEMPLATES_DIR", "./templates")
-HTTP_PORT     = int(os.environ.get("HM_HTTP_PORT", "9999"))
-HTTP_HOST     = os.environ.get("HM_HTTP_HOST", "0.0.0.0")
-_LOG_LEVEL    = _LOG_LEVELS.get(os.environ.get("HM_LOG_LEVEL", "info").lower(), logging.INFO)
-REDIS_TYPE    = os.environ.get("HM_REDIS_TYPE", "memory")
-REDIS_URL     = os.environ.get("HM_REDIS_URL", "redis://redis:6379")
+TEMPLATES_DIR      = os.environ.get("HM_TEMPLATES_DIR", "./templates")
+HTTP_PORT          = int(os.environ.get("HM_HTTP_PORT", "9999"))
+HTTP_HOST          = os.environ.get("HM_HTTP_HOST", "0.0.0.0")
+_LOG_LEVEL         = _LOG_LEVELS.get(os.environ.get("HM_LOG_LEVEL", "info").lower(), logging.INFO)
+REDIS_TYPE         = os.environ.get("HM_REDIS_TYPE", "memory")
+REDIS_URL          = os.environ.get("HM_REDIS_URL", "redis://redis:6379")
+ADMIN_HTTP_ENABLED = os.environ.get("HM_ADMIN_HTTP_ENABLED", "true").lower() != "false"
+ADMIN_HTTP_PORT    = int(os.environ.get("HM_ADMIN_HTTP_PORT", "9998"))
+ADMIN_HTTP_HOST    = os.environ.get("HM_ADMIN_HTTP_HOST", "0.0.0.0")
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -153,6 +156,9 @@ def _gjson_path_safe(expr: str, data: str) -> str:
 # Redis Backend
 # ---------------------------------------------------------------------------
 
+_INTERNAL_PREFIX = "__hmock_internal:"
+
+
 def _make_redis_client():
     if REDIS_TYPE == "redis":
         import redis as _redis_lib
@@ -165,6 +171,8 @@ _REDIS = _make_redis_client()
 
 
 def _redis_do(cmd: str, *args) -> str:
+    if args and str(args[0]).startswith(_INTERNAL_PREFIX):
+        raise ValueError(f"redisDo: key {args[0]!r} is in reserved internal keyspace")
     result = _REDIS.execute_command(cmd.upper(), *[str(a) for a in args])
     if result is None:
         return ""
@@ -186,6 +194,66 @@ def _redis_do(cmd: str, *args) -> str:
             parts.append("" if v is None else (v.decode("utf-8") if isinstance(v, bytes) else str(v)))
         return ";;".join(parts)
     return str(result)
+
+
+# ---------------------------------------------------------------------------
+# Internal Redis Storage (bypasses _redis_do guard; uses _INTERNAL_PREFIX keys)
+# ---------------------------------------------------------------------------
+
+def _internal_get(key: str) -> str:
+    v = _REDIS.get(key)
+    return v if v is not None else ""
+
+
+def _internal_set(key: str, value: str) -> None:
+    _REDIS.set(key, value)
+
+
+def _internal_del(key: str) -> None:
+    _REDIS.delete(key)
+
+
+def _internal_keys(pattern: str) -> list:
+    return sorted(str(k) for k in _REDIS.keys(pattern))
+
+
+_INTERNAL_TEMPLATES_KEY = f"{_INTERNAL_PREFIX}templates"
+_INTERNAL_TSET_PREFIX   = f"{_INTERNAL_PREFIX}tset:"
+
+
+def _load_api_mocks() -> list:
+    raw = _internal_get(_INTERNAL_TEMPLATES_KEY)
+    if not raw:
+        return []
+    return json.loads(raw)
+
+
+def _save_api_mocks(mocks: list) -> None:
+    _internal_set(_INTERNAL_TEMPLATES_KEY, json.dumps(mocks))
+
+
+def _load_template_set(set_key: str) -> list:
+    raw = _internal_get(f"{_INTERNAL_TSET_PREFIX}{set_key}")
+    if not raw:
+        return []
+    return json.loads(raw)
+
+
+def _save_template_set(set_key: str, mocks: list) -> None:
+    _internal_set(f"{_INTERNAL_TSET_PREFIX}{set_key}", json.dumps(mocks))
+
+
+def _delete_template_set(set_key: str) -> None:
+    _internal_del(f"{_INTERNAL_TSET_PREFIX}{set_key}")
+
+
+def _list_template_set_keys() -> list:
+    prefix_len = len(_INTERNAL_TSET_PREFIX)
+    return sorted(k[prefix_len:] for k in _internal_keys(f"{_INTERNAL_TSET_PREFIX}*"))
+
+
+def _serialize_behavior(b: dict) -> dict:
+    return {k: v for k, v in b.items() if not k.startswith("_")}
 
 
 # ---------------------------------------------------------------------------
@@ -525,11 +593,8 @@ def _merge_behavior(parent: dict, child: dict) -> dict:
     return merged
 
 
-def load_behaviors(templates_dir: str) -> list[dict]:
-    global _TEMPLATES
-    _TEMPLATES = {}
-
-    all_items: list[dict] = []
+def _load_filesystem_items(templates_dir: str) -> list:
+    items = []
     for root, dirs, files in os.walk(templates_dir):
         dirs.sort()
         for fname in sorted(files):
@@ -543,19 +608,20 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             if not isinstance(data, list):
                 raise ValueError(f"{fpath}: top-level must be a list")
             for item in data:
-                all_items.append(_validate_behavior(item, fpath, templates_dir))
+                items.append(_validate_behavior(item, fpath, templates_dir))
+    return items
 
-    # Separate by kind
+
+def _assemble_behaviors(all_items: list) -> tuple:
+    """Process raw validated items into (templates_dict, behaviors_list)."""
+    templates: dict = {}
     for b in all_items:
-        if b["kind"] == "Template":
-            _TEMPLATES[str(b["key"])] = str(b["template"])
+        if b.get("kind") == "Template":
+            templates[str(b["key"])] = str(b["template"])
 
-    matchable = [b for b in all_items if b["kind"] != "Template"]
+    matchable = [b for b in all_items if b.get("kind") != "Template"]
 
-    # Build parent lookup for inheritance resolution
-    parents: dict[str, dict] = {str(b["key"]): b for b in matchable}
-
-    # Resolve extend references (supports forward references since all items are loaded)
+    parents: dict = {str(b["key"]): b for b in matchable}
     for b in matchable:
         if b.get("extend"):
             parent_key = str(b["extend"])
@@ -565,9 +631,8 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             else:
                 b.update(_merge_behavior(parent, b))
 
-    # Duplicate-key-wins for matchable behaviors (preserves last-loaded wins)
-    key_index: dict[str, int] = {}
-    merged: list[dict] = []
+    key_index: dict = {}
+    merged: list = []
     for b in matchable:
         key = str(b["key"])
         if key in key_index:
@@ -577,14 +642,37 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             key_index[key] = len(merged)
             merged.append(b)
 
-    # Compile path patterns; AbstractBehaviors included in merged but excluded from matching
     for b in merged:
         http = (b.get("expect") or {}).get("http") or {}
         path_str = http.get("path")
         b["_pattern"] = _compile_path(path_str) if path_str else None
 
-    # Only Behavior kind participates in matching
-    return [b for b in merged if b["kind"] == "Behavior"]
+    return templates, [b for b in merged if b.get("kind") == "Behavior"]
+
+
+def load_behaviors(templates_dir: str) -> list:
+    """Load behaviors from filesystem only (kept for backward compatibility/tests)."""
+    global _TEMPLATES
+    items = _load_filesystem_items(templates_dir)
+    templates, behaviors = _assemble_behaviors(items)
+    _TEMPLATES = templates
+    return behaviors
+
+
+def build_mock_set(templates_dir: str = None) -> list:
+    """Build the full active mock set: filesystem + API base mocks + template sets."""
+    global _TEMPLATES
+    if templates_dir is None:
+        templates_dir = TEMPLATES_DIR
+    fs_items  = _load_filesystem_items(templates_dir)
+    api_items = _load_api_mocks()
+    set_keys  = _list_template_set_keys()
+    set_items: list = []
+    for sk in set_keys:
+        set_items.extend(_load_template_set(sk))
+    new_templates, behaviors = _assemble_behaviors(fs_items + api_items + set_items)
+    _TEMPLATES = new_templates
+    return behaviors
 
 # ---------------------------------------------------------------------------
 # Path Matching
@@ -753,10 +841,31 @@ def execute_actions(actions: list, context: dict, handler: "MockRequestHandler")
     return status
 
 # ---------------------------------------------------------------------------
-# HTTP Server
+# Reload Infrastructure
 # ---------------------------------------------------------------------------
 
-_BEHAVIORS: list[dict] = []
+_BEHAVIORS: list = []
+_reload_event = threading.Event()
+
+
+def _trigger_reload() -> None:
+    _reload_event.set()
+
+
+def _reload_loop() -> None:
+    while True:
+        _reload_event.wait(timeout=1.0)
+        _reload_event.clear()
+        try:
+            global _BEHAVIORS
+            _BEHAVIORS = build_mock_set()
+        except Exception as exc:
+            _log(logging.WARNING, "reload error", error=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# HTTP Server
+# ---------------------------------------------------------------------------
 
 
 class MockRequestHandler(BaseHTTPRequestHandler):
@@ -801,13 +910,151 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         raise AttributeError(name)
 
 # ---------------------------------------------------------------------------
+# Admin HTTP Server
+# ---------------------------------------------------------------------------
+
+class AdminRequestHandler(BaseHTTPRequestHandler):
+    def log_message(self, format: str, *args) -> None:
+        pass
+
+    def _send_json(self, status: int, data) -> None:
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_empty(self, status: int) -> None:
+        self.send_response(status)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _read_json_body(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        if not length:
+            return None, "missing or empty request body"
+        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        try:
+            return json.loads(raw), None
+        except json.JSONDecodeError as exc:
+            return None, f"invalid JSON: {exc}"
+
+    def do_GET(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/api/v1/health":
+            self._send_json(200, {"status": "OK"})
+        elif path == "/api/v1/templates":
+            self._send_json(200, [_serialize_behavior(b) for b in _BEHAVIORS])
+        else:
+            self._send_json(404, {"error": "not found"})
+
+    def do_POST(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/api/v1/templates":
+            self._handle_post_templates()
+        else:
+            m = re.match(r"^/api/v1/template_sets/([^/]+)$", path)
+            if m:
+                self._handle_post_template_set(m.group(1))
+            else:
+                self._send_json(404, {"error": "not found"})
+
+    def do_DELETE(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/api/v1/templates":
+            self._handle_delete_templates()
+            return
+        m = re.match(r"^/api/v1/templates/([^/]+)$", path)
+        if m:
+            self._handle_delete_template(m.group(1))
+            return
+        m = re.match(r"^/api/v1/template_sets/([^/]+)$", path)
+        if m:
+            self._handle_delete_template_set(m.group(1))
+            return
+        self._send_json(404, {"error": "not found"})
+
+    def _handle_post_templates(self):
+        body, err = self._read_json_body()
+        if err:
+            self._send_json(400, {"error": err})
+            return
+        if not isinstance(body, list):
+            self._send_json(400, {"error": "expected JSON array"})
+            return
+        validated = []
+        for item in body:
+            try:
+                validated.append(_validate_behavior(dict(item), "api"))
+            except (ValueError, Exception) as exc:
+                self._send_json(400, {"error": str(exc)})
+                return
+        existing = {str(m.get("key", "")): m for m in _load_api_mocks()}
+        for v in validated:
+            existing[str(v.get("key", ""))] = _serialize_behavior(v)
+        _save_api_mocks(list(existing.values()))
+        _trigger_reload()
+        self._send_json(200, [_serialize_behavior(v) for v in validated])
+
+    def _handle_delete_templates(self):
+        _save_api_mocks([])
+        _trigger_reload()
+        self._send_empty(204)
+
+    def _handle_delete_template(self, template_key: str):
+        mocks = _load_api_mocks()
+        new_mocks = [m for m in mocks if str(m.get("key", "")) != template_key]
+        if len(new_mocks) == len(mocks):
+            self._send_json(404, {"error": f"template key {template_key!r} not found"})
+            return
+        _save_api_mocks(new_mocks)
+        _trigger_reload()
+        self._send_empty(204)
+
+    def _handle_post_template_set(self, set_key: str):
+        body, err = self._read_json_body()
+        if err:
+            self._send_json(400, {"error": err})
+            return
+        if not isinstance(body, list):
+            self._send_json(400, {"error": "expected JSON array"})
+            return
+        validated = []
+        for item in body:
+            try:
+                validated.append(_validate_behavior(dict(item), f"template_set:{set_key}"))
+            except (ValueError, Exception) as exc:
+                self._send_json(400, {"error": str(exc)})
+                return
+        _save_template_set(set_key, [_serialize_behavior(v) for v in validated])
+        _trigger_reload()
+        self._send_json(200, [_serialize_behavior(v) for v in validated])
+
+    def _handle_delete_template_set(self, set_key: str):
+        _delete_template_set(set_key)
+        _trigger_reload()
+        self._send_empty(204)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     global _BEHAVIORS
-    _BEHAVIORS = load_behaviors(TEMPLATES_DIR)
+    _BEHAVIORS = build_mock_set()
     _log(logging.INFO, f"loaded {len(_BEHAVIORS)} behaviors", templates_dir=TEMPLATES_DIR)
+
+    reload_thread = threading.Thread(target=_reload_loop, daemon=True)
+    reload_thread.start()
+
+    if ADMIN_HTTP_ENABLED:
+        admin_server = HTTPServer((ADMIN_HTTP_HOST, ADMIN_HTTP_PORT), AdminRequestHandler)
+        admin_thread = threading.Thread(target=admin_server.serve_forever, daemon=True)
+        admin_thread.start()
+        _log(logging.INFO, "admin listening", host=ADMIN_HTTP_HOST, port=ADMIN_HTTP_PORT)
+
     server = HTTPServer((HTTP_HOST, HTTP_PORT), MockRequestHandler)
     _log(logging.INFO, "listening", host=HTTP_HOST, port=HTTP_PORT)
     try:
