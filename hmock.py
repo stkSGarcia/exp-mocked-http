@@ -309,14 +309,32 @@ def _make_jinja_env() -> Environment:
         # Redis
         "redisDo": _redis_do,
     }
+
+    def _render_tmpl(key, ctx=None):
+        tmpl_str = _TEMPLATES.get(key, "")
+        if not tmpl_str:
+            return ""
+        if ctx is None:
+            ctx = getattr(_render_tl, "context", {})
+        elif not isinstance(ctx, dict):
+            ctx = {}
+        result, err = render(tmpl_str, ctx)
+        if err:
+            raise err
+        return result
+
+    extras["_render_tmpl"] = _render_tmpl
     env.globals.update(extras)
     env.filters.update(extras)
     return env
 
 
 _JINJA = _make_jinja_env()
+_TEMPLATES: dict[str, str] = {}
+_render_tl = threading.local()
 _BLOCK_RE = re.compile(r"\{\{-?.*?-?\}\}", re.DOTALL)
-_CTX_VAR_RE = re.compile(r"(?<![.\w])\.(HTTP\w+)")
+_CTX_VAR_RE = re.compile(r"(?<![.\w])\.(\w+)")
+_TMPL_CALL_RE = re.compile(r'^template\s+"([^"]+)"\s+(.*)')
 
 
 def _preprocess(s: str) -> str:
@@ -329,8 +347,20 @@ def _preprocess(s: str) -> str:
         right = "-}}" if raw.endswith("-}}") else "}}"
         inner = raw[len(left):-len(right)]
 
-        # Strip leading dot from HTTP* context vars: .HTTPHeader -> HTTPHeader
+        # Strip leading dot from context vars: .HTTPHeader -> HTTPHeader, .Values -> Values
         inner = _CTX_VAR_RE.sub(r"\1", inner)
+
+        # {{template "key" .}} -> _render_tmpl("key", None)
+        # {{template "key" .Values}} -> _render_tmpl("key", Values)
+        t_check = inner.strip()
+        mc = _TMPL_CALL_RE.match(t_check)
+        if mc:
+            tmpl_key = mc.group(1)
+            ctx_expr = mc.group(2).strip()
+            if ctx_expr == ".":
+                return f'{{{{ _render_tmpl("{tmpl_key}", None) }}}}'
+            ctx_expr = _CTX_VAR_RE.sub(r"\1", ctx_expr).lstrip(".")
+            return f'{{{{ _render_tmpl("{tmpl_key}", {ctx_expr}) }}}}'
 
         # .Method "a" "b" -> .Method("a", "b")
         inner = re.sub(
@@ -342,6 +372,12 @@ def _preprocess(s: str) -> str:
         inner = re.sub(
             r"(\|\s*\w+)((?:\s+\"[^\"]*\")+)",
             lambda x: x.group(1) + "(" + ", ".join(re.findall(r'"[^"]*"', x.group(2))) + ")",
+            inner,
+        )
+        # | func identifier.path -> | func(identifier.path)  [unquoted arg at end]
+        inner = re.sub(
+            r"(\|\s*\w+)\s+([\w][\w.]*)\s*$",
+            lambda x: f"{x.group(1)}({x.group(2).rstrip()})",
             inner,
         )
         # backtick raw strings
@@ -371,6 +407,7 @@ def _preprocess(s: str) -> str:
 
 
 def render(template_str: str, context: dict) -> tuple[str, Optional[Exception]]:
+    _render_tl.context = context
     try:
         tmpl = _JINJA.from_string(_preprocess(template_str))
         return tmpl.render(**context), None
@@ -394,6 +431,14 @@ def parse_duration(s: str) -> float:
 # YAML Loading & Validation
 # ---------------------------------------------------------------------------
 
+_KIND_ALLOWED_FIELDS: dict[str, set[str]] = {
+    "Behavior":         {"key", "kind", "extend", "expect", "actions", "values"},
+    "AbstractBehavior": {"key", "kind", "expect", "actions", "values"},
+    "Template":         {"key", "kind", "template"},
+}
+_VALID_KINDS = frozenset(_KIND_ALLOWED_FIELDS)
+
+
 def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
     if not isinstance(b, dict):
         raise ValueError(f"{source}: expected a mapping, got {type(b).__name__}")
@@ -401,6 +446,17 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
     if not key or not str(key).strip():
         raise ValueError(f"{source}: behavior has missing or empty 'key'")
     b.setdefault("kind", "Behavior")
+    kind = b["kind"]
+    if kind not in _VALID_KINDS:
+        raise ValueError(f"{source}: behavior {key!r} has unknown kind {kind!r}")
+    extra = set(b) - _KIND_ALLOWED_FIELDS[kind]
+    if extra:
+        raise ValueError(f"{source}: {kind} {key!r} has disallowed fields: {sorted(extra)}")
+    if kind == "Template":
+        tmpl = str(b.get("template") or "").strip()
+        if not tmpl:
+            raise ValueError(f"{source}: Template {key!r} has missing or empty 'template'")
+        return b
     actions = b.get("actions") or []
     n_reply = sum(1 for a in actions if isinstance(a, dict) and "reply_http" in a)
     if n_reply > 1:
@@ -443,7 +499,36 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
     return b
 
 
+def _deep_merge(parent: dict, child: dict) -> dict:
+    result = dict(parent)
+    for k, v in child.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def _merge_behavior(parent: dict, child: dict) -> dict:
+    merged: dict = {}
+    for field in set(parent) | set(child):
+        if field in ("values",):
+            merged[field] = {**(parent.get(field) or {}), **(child.get(field) or {})}
+        elif field == "actions":
+            merged[field] = list(parent.get(field) or []) + list(child.get(field) or [])
+        elif field == "expect":
+            p_exp = parent.get("expect") or {}
+            c_exp = child.get("expect") or {}
+            merged[field] = _deep_merge(p_exp, c_exp)
+        else:
+            merged[field] = child.get(field) or parent.get(field)
+    return merged
+
+
 def load_behaviors(templates_dir: str) -> list[dict]:
+    global _TEMPLATES
+    _TEMPLATES = {}
+
     all_items: list[dict] = []
     for root, dirs, files in os.walk(templates_dir):
         dirs.sort()
@@ -460,10 +545,30 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             for item in data:
                 all_items.append(_validate_behavior(item, fpath, templates_dir))
 
-    # Merge with last-key-wins
+    # Separate by kind
+    for b in all_items:
+        if b["kind"] == "Template":
+            _TEMPLATES[str(b["key"])] = str(b["template"])
+
+    matchable = [b for b in all_items if b["kind"] != "Template"]
+
+    # Build parent lookup for inheritance resolution
+    parents: dict[str, dict] = {str(b["key"]): b for b in matchable}
+
+    # Resolve extend references (supports forward references since all items are loaded)
+    for b in matchable:
+        if b.get("extend"):
+            parent_key = str(b["extend"])
+            parent = parents.get(parent_key)
+            if parent is None:
+                _log(logging.DEBUG, "extend parent not found, skipping", key=b["key"], extend=parent_key)
+            else:
+                b.update(_merge_behavior(parent, b))
+
+    # Duplicate-key-wins for matchable behaviors (preserves last-loaded wins)
     key_index: dict[str, int] = {}
     merged: list[dict] = []
-    for b in all_items:
+    for b in matchable:
         key = str(b["key"])
         if key in key_index:
             _log(logging.WARNING, "duplicate key overrides earlier definition", key=key)
@@ -472,12 +577,14 @@ def load_behaviors(templates_dir: str) -> list[dict]:
             key_index[key] = len(merged)
             merged.append(b)
 
+    # Compile path patterns; AbstractBehaviors included in merged but excluded from matching
     for b in merged:
         http = (b.get("expect") or {}).get("http") or {}
         path_str = http.get("path")
         b["_pattern"] = _compile_path(path_str) if path_str else None
 
-    return merged
+    # Only Behavior kind participates in matching
+    return [b for b in merged if b["kind"] == "Behavior"]
 
 # ---------------------------------------------------------------------------
 # Path Matching
@@ -535,7 +642,8 @@ def find_behavior(
 
         condition = str((b.get("expect") or {}).get("condition") or "").strip()
         if condition:
-            rendered, err = render(condition, context)
+            ctx = {**context, "Values": b.get("values") or {}}
+            rendered, err = render(condition, ctx)
             if err:
                 _log(logging.DEBUG, "condition render error", key=b["key"], error=str(err))
                 continue
@@ -629,9 +737,11 @@ def execute_send_http(cfg: dict, context: dict):
 
 def execute_actions(actions: list, context: dict, handler: "MockRequestHandler") -> int:
     status = 200
+    actions = sorted(
+        [a for a in actions if isinstance(a, dict)],
+        key=lambda a: int(a.get("order", 0)),
+    )
     for action in actions:
-        if not isinstance(action, dict):
-            continue
         if "sleep" in action:
             execute_sleep(action["sleep"])
         elif "reply_http" in action:
@@ -673,6 +783,7 @@ class MockRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(not_found)
             status = 404
         else:
+            context["Values"] = behavior.get("values") or {}
             status = execute_actions(behavior.get("actions") or [], context, self)
 
         _log(
