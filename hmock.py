@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """YAML-driven HTTP mock server."""
 
+import asyncio
 import base64
 import hashlib
 import hmac as _hmac
@@ -40,6 +41,26 @@ ADMIN_HTTP_PORT    = int(os.environ.get("HM_ADMIN_HTTP_PORT", "9998"))
 ADMIN_HTTP_HOST    = os.environ.get("HM_ADMIN_HTTP_HOST", "0.0.0.0")
 CORS_ENABLED       = os.environ.get("HM_CORS_ENABLED", "false").lower() == "true"
 HOT_RELOAD         = os.environ.get("HM_TEMPLATES_DIR_HOT_RELOAD", "true").lower() != "false"
+
+# Kafka
+KAFKA_ENABLED            = os.environ.get("HM_KAFKA_ENABLED", "false").lower() == "true"
+KAFKA_CLIENT_ID          = os.environ.get("HM_KAFKA_CLIENT_ID", "hmock")
+KAFKA_SEED_BROKERS       = os.environ.get("HM_KAFKA_SEED_BROKERS", "kafka:9092")
+KAFKA_SASL_USERNAME      = os.environ.get("HM_KAFKA_SASL_USERNAME", "")
+KAFKA_SASL_PASSWORD      = os.environ.get("HM_KAFKA_SASL_PASSWORD", "")
+KAFKA_TLS_ENABLED        = os.environ.get("HM_KAFKA_TLS_ENABLED", "false").lower() == "true"
+KAFKA_PRODUCER_BROKERS   = os.environ.get("HM_KAFKA_PRODUCER_SEED_BROKERS", "")
+KAFKA_CONSUMER_BROKERS   = os.environ.get("HM_KAFKA_CONSUMER_SEED_BROKERS", "")
+KAFKA_SASL_PROD_USERNAME = os.environ.get("HM_KAFKA_SASL_PRODUCER_USERNAME", "")
+KAFKA_SASL_PROD_PASSWORD = os.environ.get("HM_KAFKA_SASL_PRODUCER_PASSWORD", "")
+KAFKA_SASL_CONS_USERNAME = os.environ.get("HM_KAFKA_SASL_CONSUMER_USERNAME", "")
+KAFKA_SASL_CONS_PASSWORD = os.environ.get("HM_KAFKA_SASL_CONSUMER_PASSWORD", "")
+_KAFKA_TLS_PROD_RAW      = os.environ.get("HM_KAFKA_TLS_PRODUCER_ENABLED", "")
+_KAFKA_TLS_CONS_RAW      = os.environ.get("HM_KAFKA_TLS_CONSUMER_ENABLED", "")
+
+# AMQP
+AMQP_ENABLED = os.environ.get("HM_AMQP_ENABLED", "false").lower() == "true"
+AMQP_URL     = os.environ.get("HM_AMQP_URL", "amqp://guest:guest@rabbitmq:5672")
 
 _CORS_HEADERS = {
     "Access-Control-Allow-Origin":      "*",
@@ -259,6 +280,27 @@ def _delete_template_set(set_key: str) -> None:
 def _list_template_set_keys() -> list:
     prefix_len = len(_INTERNAL_TSET_PREFIX)
     return sorted(k[prefix_len:] for k in _internal_keys(f"{_INTERNAL_TSET_PREFIX}*"))
+
+
+def _resolve_kafka_role_config(role: str) -> dict:
+    if role == "producer":
+        brokers_raw = KAFKA_PRODUCER_BROKERS or KAFKA_SEED_BROKERS
+        username    = KAFKA_SASL_PROD_USERNAME or KAFKA_SASL_USERNAME
+        password    = KAFKA_SASL_PROD_PASSWORD or KAFKA_SASL_PASSWORD
+        tls_raw     = _KAFKA_TLS_PROD_RAW
+    else:
+        brokers_raw = KAFKA_CONSUMER_BROKERS or KAFKA_SEED_BROKERS
+        username    = KAFKA_SASL_CONS_USERNAME or KAFKA_SASL_USERNAME
+        password    = KAFKA_SASL_CONS_PASSWORD or KAFKA_SASL_PASSWORD
+        tls_raw     = _KAFKA_TLS_CONS_RAW
+    tls = tls_raw.lower() == "true" if tls_raw else KAFKA_TLS_ENABLED
+    return {
+        "brokers":      [b.strip() for b in brokers_raw.split(",") if b.strip()],
+        "username":     username,
+        "password":     password,
+        "sasl_enabled": bool(username and password),
+        "tls_enabled":  tls,
+    }
 
 
 def _serialize_behavior(b: dict) -> dict:
@@ -601,6 +643,52 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
                 raise ValueError(
                     f"{source}: behavior {key!r} send_http body_from_binary_file requires templates_dir to be set"
                 )
+        if isinstance(action, dict) and "publish_kafka" in action:
+            cfg = action["publish_kafka"]
+            if not str(cfg.get("topic") or "").strip():
+                raise ValueError(f"{source}: behavior {key!r} publish_kafka requires 'topic'")
+            pff = str(cfg.get("payload_from_file") or "").strip()
+            if not str(cfg.get("payload") or "").strip() and not pff:
+                raise ValueError(
+                    f"{source}: behavior {key!r} publish_kafka requires 'payload' or 'payload_from_file'"
+                )
+            if pff and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, pff))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} publish_kafka payload_from_file {pff!r} escapes templates dir"
+                    )
+                with open(resolved) as fh:
+                    cfg["_payload_snapshot"] = fh.read()
+            elif pff and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} publish_kafka payload_from_file requires templates_dir"
+                )
+        if isinstance(action, dict) and "publish_amqp" in action:
+            cfg = action["publish_amqp"]
+            if not str(cfg.get("exchange") or "").strip():
+                raise ValueError(f"{source}: behavior {key!r} publish_amqp requires 'exchange'")
+            if not str(cfg.get("routing_key") or "").strip():
+                raise ValueError(f"{source}: behavior {key!r} publish_amqp requires 'routing_key'")
+            pff = str(cfg.get("payload_from_file") or "").strip()
+            if not str(cfg.get("payload") or "").strip() and not pff:
+                raise ValueError(
+                    f"{source}: behavior {key!r} publish_amqp requires 'payload' or 'payload_from_file'"
+                )
+            if pff and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, pff))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} publish_amqp payload_from_file {pff!r} escapes templates dir"
+                    )
+                with open(resolved) as fh:
+                    cfg["_payload_snapshot"] = fh.read()
+            elif pff and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} publish_amqp payload_from_file requires templates_dir"
+                )
     return b
 
 
@@ -680,6 +768,9 @@ def _assemble_behaviors(all_items: list) -> tuple:
             merged.append(b)
 
     for b in merged:
+        amqp = (b.get("expect") or {}).get("amqp")
+        if isinstance(amqp, dict) and not amqp.get("queue"):
+            amqp["queue"] = amqp.get("routing_key", "")
         http = (b.get("expect") or {}).get("http") or {}
         path_str = http.get("path")
         b["_pattern"] = _compile_path(path_str) if path_str else None
@@ -942,12 +1033,339 @@ def execute_actions(actions: list, context: dict, handler: "MockRequestHandler")
         if "sleep" in action:
             execute_sleep(action["sleep"])
         elif "reply_http" in action:
-            status = execute_reply_http(action["reply_http"], context, handler)
+            if handler is None:
+                _log(logging.DEBUG, "reply_http skipped: no HTTP handler in messaging context")
+            else:
+                status = execute_reply_http(action["reply_http"], context, handler)
         elif "redis" in action:
             execute_redis(action["redis"], context)
         elif "send_http" in action:
             execute_send_http(action["send_http"], context)
+        elif "publish_kafka" in action:
+            execute_publish_kafka(action["publish_kafka"], context)
+        elif "publish_amqp" in action:
+            execute_publish_amqp(action["publish_amqp"], context)
     return status
+
+# ---------------------------------------------------------------------------
+# Messaging
+# ---------------------------------------------------------------------------
+
+_messaging_loop: Optional[asyncio.AbstractEventLoop] = None
+_kafka_producer = None
+_amqp_connection = None
+_amqp_channel = None
+_amqp_started_queues: set = set()
+
+
+def _collect_kafka_topics(behaviors: list) -> set:
+    topics: set = set()
+    for b in behaviors:
+        topic = str(((b.get("expect") or {}).get("kafka") or {}).get("topic") or "")
+        if topic:
+            topics.add(topic)
+    return topics
+
+
+def find_all_behaviors_for_kafka(behaviors: list, topic: str, context: dict) -> list:
+    result = []
+    for b in behaviors:
+        kafka = (b.get("expect") or {}).get("kafka") or {}
+        if str(kafka.get("topic") or "") != topic:
+            continue
+        condition = str((b.get("expect") or {}).get("condition") or "").strip()
+        if condition:
+            ctx = {**context, "Values": b.get("values") or {}}
+            rendered, err = render(condition, ctx)
+            if err or rendered.strip().lower() != "true":
+                continue
+        result.append(b)
+    return result
+
+
+def find_all_behaviors_for_amqp(
+    behaviors: list, exchange: str, routing_key: str, queue: str, context: dict
+) -> list:
+    result = []
+    for b in behaviors:
+        amqp = (b.get("expect") or {}).get("amqp") or {}
+        if not amqp:
+            continue
+        b_exchange = str(amqp.get("exchange") or "")
+        b_rk       = str(amqp.get("routing_key") or "")
+        b_queue    = str(amqp.get("queue") or b_rk)
+        if b_exchange != exchange or b_queue != queue:
+            continue
+        condition = str((b.get("expect") or {}).get("condition") or "").strip()
+        if condition:
+            ctx = {**context, "Values": b.get("values") or {}}
+            rendered, err = render(condition, ctx)
+            if err or rendered.strip().lower() != "true":
+                continue
+        result.append(b)
+    return result
+
+
+def execute_publish_kafka(cfg: dict, context: dict) -> None:
+    producer = _kafka_producer
+    loop     = _messaging_loop
+    if not producer or not loop:
+        return
+    topic_str, err = render(str(cfg.get("topic") or ""), context)
+    if err:
+        _log(logging.DEBUG, "publish_kafka topic render error", error=str(err))
+        return
+    snapshot = str(cfg.get("_payload_snapshot") or "")
+    raw      = str(cfg.get("payload") or "")
+    payload_str, err = render(snapshot if (snapshot and not raw) else raw, context)
+    if err:
+        _log(logging.DEBUG, "publish_kafka payload render error", error=str(err))
+        return
+
+    async def _send():
+        await producer.send(topic_str, payload_str.encode("utf-8"))
+
+    try:
+        asyncio.run_coroutine_threadsafe(_send(), loop).result(timeout=10)
+    except Exception as exc:
+        _log(logging.DEBUG, "publish_kafka error", topic=topic_str, error=str(exc))
+
+
+def execute_publish_amqp(cfg: dict, context: dict) -> None:
+    channel = _amqp_channel
+    loop    = _messaging_loop
+    if not channel or not loop:
+        return
+    exchange_str, err = render(str(cfg.get("exchange") or ""), context)
+    if err:
+        _log(logging.DEBUG, "publish_amqp exchange render error", error=str(err))
+        return
+    rk_str, err = render(str(cfg.get("routing_key") or ""), context)
+    if err:
+        _log(logging.DEBUG, "publish_amqp routing_key render error", error=str(err))
+        return
+    snapshot = str(cfg.get("_payload_snapshot") or "")
+    raw      = str(cfg.get("payload") or "")
+    payload_str, err = render(snapshot if (snapshot and not raw) else raw, context)
+    if err:
+        _log(logging.DEBUG, "publish_amqp payload render error", error=str(err))
+        return
+
+    async def _send():
+        import aio_pika
+        exchange = await channel.declare_exchange(
+            exchange_str, aio_pika.ExchangeType.TOPIC, durable=True
+        )
+        await exchange.publish(
+            aio_pika.Message(body=payload_str.encode("utf-8")),
+            routing_key=rk_str,
+        )
+
+    try:
+        asyncio.run_coroutine_threadsafe(_send(), loop).result(timeout=10)
+    except Exception as exc:
+        _log(logging.DEBUG, "publish_amqp error", exchange=exchange_str, error=str(exc))
+
+
+async def _process_kafka_message(msg) -> None:
+    topic   = msg.topic
+    payload = msg.value.decode("utf-8") if msg.value else ""
+    context = {"KafkaTopic": topic, "KafkaPayload": payload}
+    with _BEHAVIORS_LOCK:
+        behaviors = _BEHAVIORS
+    matching = find_all_behaviors_for_kafka(behaviors, topic, context)
+    loop = asyncio.get_running_loop()
+    for behavior in matching:
+        ctx = {**context, "Values": behavior.get("values") or {}}
+        await loop.run_in_executor(
+            None, execute_actions, behavior.get("actions") or [], ctx, None
+        )
+
+
+async def _kafka_consumer_manager() -> None:
+    from aiokafka import AIOKafkaConsumer
+    consumer = None
+    current_topics: frozenset = frozenset()
+
+    while True:
+        with _BEHAVIORS_LOCK:
+            behaviors = _BEHAVIORS
+        required = frozenset(_collect_kafka_topics(behaviors))
+
+        if required != current_topics:
+            if consumer is not None:
+                try:
+                    await consumer.stop()
+                except Exception:
+                    pass
+                consumer = None
+            current_topics = required
+
+            if current_topics:
+                cons_cfg = _resolve_kafka_role_config("consumer")
+                kwargs: dict = {
+                    "bootstrap_servers": cons_cfg["brokers"],
+                    "client_id":         f"{KAFKA_CLIENT_ID}-consumer",
+                    "group_id":          f"{KAFKA_CLIENT_ID}-group",
+                    "auto_offset_reset": "latest",
+                }
+                if cons_cfg["sasl_enabled"]:
+                    kwargs["sasl_mechanism"]      = "PLAIN"
+                    kwargs["sasl_plain_username"]  = cons_cfg["username"]
+                    kwargs["sasl_plain_password"]  = cons_cfg["password"]
+                    kwargs["security_protocol"]    = (
+                        "SASL_SSL" if cons_cfg["tls_enabled"] else "SASL_PLAINTEXT"
+                    )
+                elif cons_cfg["tls_enabled"]:
+                    kwargs["security_protocol"] = "SSL"
+                consumer = AIOKafkaConsumer(*current_topics, **kwargs)
+                try:
+                    await consumer.start()
+                    _log(logging.INFO, "kafka consuming", topics=sorted(current_topics))
+                except Exception as exc:
+                    _log(logging.WARNING, "kafka consumer start failed", error=str(exc))
+                    consumer = None
+
+        if consumer is not None:
+            try:
+                msg = await asyncio.wait_for(consumer.getone(), timeout=1.0)
+                await _process_kafka_message(msg)
+            except asyncio.TimeoutError:
+                pass
+            except Exception as exc:
+                _log(logging.WARNING, "kafka consume error", error=str(exc))
+                await asyncio.sleep(1.0)
+        else:
+            await asyncio.sleep(1.0)
+
+
+async def _kafka_start() -> None:
+    global _kafka_producer
+    from aiokafka import AIOKafkaProducer
+    prod_cfg = _resolve_kafka_role_config("producer")
+    kwargs: dict = {
+        "bootstrap_servers": prod_cfg["brokers"],
+        "client_id":         KAFKA_CLIENT_ID,
+    }
+    if prod_cfg["sasl_enabled"]:
+        kwargs["sasl_mechanism"]     = "PLAIN"
+        kwargs["sasl_plain_username"] = prod_cfg["username"]
+        kwargs["sasl_plain_password"] = prod_cfg["password"]
+        kwargs["security_protocol"]   = (
+            "SASL_SSL" if prod_cfg["tls_enabled"] else "SASL_PLAINTEXT"
+        )
+    elif prod_cfg["tls_enabled"]:
+        kwargs["security_protocol"] = "SSL"
+    try:
+        _kafka_producer = AIOKafkaProducer(**kwargs)
+        await _kafka_producer.start()
+        _log(logging.INFO, "kafka producer started")
+        asyncio.ensure_future(_kafka_consumer_manager())
+    except Exception as exc:
+        _log(logging.WARNING, "kafka producer start failed", error=str(exc))
+
+
+async def _amqp_setup_and_consume(behaviors: list) -> None:
+    global _amqp_started_queues
+    import aio_pika
+    queues_to_start: dict = {}
+    for b in behaviors:
+        amqp = (b.get("expect") or {}).get("amqp") or {}
+        if not amqp:
+            continue
+        exchange_name = str(amqp.get("exchange") or "")
+        routing_key   = str(amqp.get("routing_key") or "")
+        queue_name    = str(amqp.get("queue") or routing_key)
+        if not exchange_name or not routing_key or queue_name in _amqp_started_queues:
+            continue
+        exchange = await _amqp_channel.declare_exchange(
+            exchange_name, aio_pika.ExchangeType.TOPIC, durable=True
+        )
+        queue = await _amqp_channel.declare_queue(queue_name, durable=True)
+        await queue.bind(exchange, routing_key)
+        queues_to_start[queue_name] = (queue, exchange_name, routing_key)
+
+    for queue_name, (queue, exchange_name, routing_key) in queues_to_start.items():
+        _amqp_started_queues.add(queue_name)
+        asyncio.ensure_future(
+            _amqp_consume_queue(queue, queue_name, exchange_name, routing_key)
+        )
+    if queues_to_start:
+        _log(logging.INFO, "amqp consuming", queues=sorted(queues_to_start))
+
+
+async def _amqp_consume_queue(
+    queue, queue_name: str, exchange_name: str, routing_key: str
+) -> None:
+    loop = asyncio.get_running_loop()
+    async with queue.iterator() as it:
+        async for message in it:
+            async with message.process():
+                payload = message.body.decode("utf-8") if message.body else ""
+                context = {
+                    "AMQPExchange":   message.exchange or exchange_name,
+                    "AMQPRoutingKey": message.routing_key or routing_key,
+                    "AMQPQueue":      queue_name,
+                    "AMQPPayload":    payload,
+                }
+                with _BEHAVIORS_LOCK:
+                    behaviors = _BEHAVIORS
+                matching = find_all_behaviors_for_amqp(
+                    behaviors,
+                    message.exchange or exchange_name,
+                    message.routing_key or routing_key,
+                    queue_name,
+                    context,
+                )
+                for behavior in matching:
+                    ctx = {**context, "Values": behavior.get("values") or {}}
+                    await loop.run_in_executor(
+                        None, execute_actions, behavior.get("actions") or [], ctx, None
+                    )
+
+
+async def _amqp_reconcile() -> None:
+    with _BEHAVIORS_LOCK:
+        behaviors = _BEHAVIORS
+    await _amqp_setup_and_consume(behaviors)
+
+
+async def _amqp_start() -> None:
+    global _amqp_connection, _amqp_channel
+    import aio_pika
+    try:
+        _amqp_connection = await aio_pika.connect_robust(AMQP_URL)
+        _amqp_channel    = await _amqp_connection.channel()
+        with _BEHAVIORS_LOCK:
+            behaviors = _BEHAVIORS
+        await _amqp_setup_and_consume(behaviors)
+        _log(logging.INFO, "amqp connected", url=AMQP_URL)
+    except Exception as exc:
+        _log(logging.WARNING, "amqp start failed", error=str(exc))
+
+
+def _reconcile_messaging() -> None:
+    if not _messaging_loop or not _messaging_loop.is_running():
+        return
+    if AMQP_ENABLED:
+        asyncio.run_coroutine_threadsafe(_amqp_reconcile(), _messaging_loop)
+
+
+def _start_messaging_loop() -> None:
+    global _messaging_loop
+    loop = asyncio.new_event_loop()
+    _messaging_loop = loop
+
+    def _run():
+        loop.run_forever()
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+    if KAFKA_ENABLED:
+        asyncio.run_coroutine_threadsafe(_kafka_start(), loop)
+    if AMQP_ENABLED:
+        asyncio.run_coroutine_threadsafe(_amqp_start(), loop)
 
 # ---------------------------------------------------------------------------
 # Reload Infrastructure
@@ -974,6 +1392,7 @@ def _reload_loop() -> None:
         with _BEHAVIORS_LOCK:
             global _BEHAVIORS
             _BEHAVIORS = new_behaviors
+        _reconcile_messaging()
 
 
 def _poll_templates_dir() -> None:
@@ -1241,6 +1660,9 @@ def main():
     global _BEHAVIORS
     _BEHAVIORS = build_mock_set()
     _log(logging.INFO, f"loaded {len(_BEHAVIORS)} behaviors", templates_dir=TEMPLATES_DIR)
+
+    if KAFKA_ENABLED or AMQP_ENABLED:
+        _start_messaging_loop()
 
     if HOT_RELOAD:
         try:

@@ -1457,3 +1457,258 @@ def test_omctl_push_server_error_exits_nonzero(tmp_path, admin_port):
     with pytest.raises(SystemExit) as exc_info:
         omctl_mod.cmd_push(args)
     assert exc_info.value.code != 0
+
+
+# ---------------------------------------------------------------------------
+# 8.1  _resolve_kafka_role_config
+# ---------------------------------------------------------------------------
+
+def test_kafka_role_config_producer_uses_own_brokers(monkeypatch):
+    monkeypatch.setattr(hmock, "KAFKA_SEED_BROKERS", "default:9092")
+    monkeypatch.setattr(hmock, "KAFKA_PRODUCER_BROKERS", "prod:9092")
+    monkeypatch.setattr(hmock, "KAFKA_CONSUMER_BROKERS", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PROD_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PROD_PASSWORD", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PASSWORD", "")
+    monkeypatch.setattr(hmock, "_KAFKA_TLS_PROD_RAW", "")
+    monkeypatch.setattr(hmock, "KAFKA_TLS_ENABLED", False)
+    cfg = hmock._resolve_kafka_role_config("producer")
+    assert cfg["brokers"] == ["prod:9092"]
+
+
+def test_kafka_role_config_consumer_falls_back_to_shared_brokers(monkeypatch):
+    monkeypatch.setattr(hmock, "KAFKA_SEED_BROKERS", "default:9092")
+    monkeypatch.setattr(hmock, "KAFKA_CONSUMER_BROKERS", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_PASSWORD", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PASSWORD", "")
+    monkeypatch.setattr(hmock, "_KAFKA_TLS_CONS_RAW", "")
+    monkeypatch.setattr(hmock, "KAFKA_TLS_ENABLED", False)
+    cfg = hmock._resolve_kafka_role_config("consumer")
+    assert cfg["brokers"] == ["default:9092"]
+
+
+def test_kafka_role_config_consumer_sasl_from_shared(monkeypatch):
+    monkeypatch.setattr(hmock, "KAFKA_SEED_BROKERS", "kafka:9092")
+    monkeypatch.setattr(hmock, "KAFKA_CONSUMER_BROKERS", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_PASSWORD", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_USERNAME", "user")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PASSWORD", "pass")
+    monkeypatch.setattr(hmock, "_KAFKA_TLS_CONS_RAW", "")
+    monkeypatch.setattr(hmock, "KAFKA_TLS_ENABLED", False)
+    cfg = hmock._resolve_kafka_role_config("consumer")
+    assert cfg["sasl_enabled"] is True
+    assert cfg["username"] == "user"
+    assert cfg["password"] == "pass"
+
+
+def test_kafka_role_config_sasl_disabled_when_password_empty(monkeypatch):
+    monkeypatch.setattr(hmock, "KAFKA_SEED_BROKERS", "kafka:9092")
+    monkeypatch.setattr(hmock, "KAFKA_CONSUMER_BROKERS", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_USERNAME", "user")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_CONS_PASSWORD", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PASSWORD", "")
+    monkeypatch.setattr(hmock, "_KAFKA_TLS_CONS_RAW", "")
+    monkeypatch.setattr(hmock, "KAFKA_TLS_ENABLED", False)
+    cfg = hmock._resolve_kafka_role_config("consumer")
+    assert cfg["sasl_enabled"] is False
+
+
+def test_kafka_role_config_producer_tls_override(monkeypatch):
+    monkeypatch.setattr(hmock, "KAFKA_SEED_BROKERS", "kafka:9092")
+    monkeypatch.setattr(hmock, "KAFKA_PRODUCER_BROKERS", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PROD_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PROD_PASSWORD", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_USERNAME", "")
+    monkeypatch.setattr(hmock, "KAFKA_SASL_PASSWORD", "")
+    monkeypatch.setattr(hmock, "_KAFKA_TLS_PROD_RAW", "true")
+    monkeypatch.setattr(hmock, "KAFKA_TLS_ENABLED", False)
+    cfg = hmock._resolve_kafka_role_config("producer")
+    assert cfg["tls_enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# 8.2  _validate_behavior — publish_kafka and publish_amqp
+# ---------------------------------------------------------------------------
+
+def test_validate_publish_kafka_valid():
+    b = {"key": "k1", "actions": [{"publish_kafka": {"topic": "events", "payload": "hello"}}]}
+    result = hmock._validate_behavior(b, "test")
+    assert result["key"] == "k1"
+
+
+def test_validate_publish_kafka_missing_topic():
+    b = {"key": "k1", "actions": [{"publish_kafka": {"payload": "hello"}}]}
+    with pytest.raises(ValueError, match="publish_kafka requires 'topic'"):
+        hmock._validate_behavior(b, "test")
+
+
+def test_validate_publish_kafka_missing_payload():
+    b = {"key": "k1", "actions": [{"publish_kafka": {"topic": "events"}}]}
+    with pytest.raises(ValueError, match="publish_kafka requires 'payload' or 'payload_from_file'"):
+        hmock._validate_behavior(b, "test")
+
+
+def test_validate_publish_amqp_valid():
+    b = {
+        "key": "k1",
+        "actions": [{"publish_amqp": {"exchange": "ex", "routing_key": "rk", "payload": "hi"}}],
+    }
+    result = hmock._validate_behavior(b, "test")
+    assert result["key"] == "k1"
+
+
+def test_validate_publish_amqp_missing_exchange():
+    b = {
+        "key": "k1",
+        "actions": [{"publish_amqp": {"routing_key": "rk", "payload": "hi"}}],
+    }
+    with pytest.raises(ValueError, match="publish_amqp requires 'exchange'"):
+        hmock._validate_behavior(b, "test")
+
+
+def test_validate_publish_amqp_missing_routing_key():
+    b = {
+        "key": "k1",
+        "actions": [{"publish_amqp": {"exchange": "ex", "payload": "hi"}}],
+    }
+    with pytest.raises(ValueError, match="publish_amqp requires 'routing_key'"):
+        hmock._validate_behavior(b, "test")
+
+
+def test_validate_publish_amqp_missing_payload():
+    b = {
+        "key": "k1",
+        "actions": [{"publish_amqp": {"exchange": "ex", "routing_key": "rk"}}],
+    }
+    with pytest.raises(ValueError, match="publish_amqp requires 'payload' or 'payload_from_file'"):
+        hmock._validate_behavior(b, "test")
+
+
+# ---------------------------------------------------------------------------
+# 8.3  find_all_behaviors_for_kafka
+# ---------------------------------------------------------------------------
+
+def _kafka_behavior(key, topic, condition=None):
+    expect: dict = {"kafka": {"topic": topic}}
+    if condition:
+        expect["condition"] = condition
+    return {"key": key, "kind": "Behavior", "expect": expect, "actions": [], "values": {}}
+
+
+def test_kafka_topic_match_returns_behavior():
+    behaviors = [_kafka_behavior("b1", "events"), _kafka_behavior("b2", "other")]
+    ctx = {"KafkaTopic": "events", "KafkaPayload": ""}
+    result = hmock.find_all_behaviors_for_kafka(behaviors, "events", ctx)
+    assert [b["key"] for b in result] == ["b1"]
+
+
+def test_kafka_execute_all_matching():
+    behaviors = [_kafka_behavior("b1", "events"), _kafka_behavior("b2", "events")]
+    ctx = {"KafkaTopic": "events", "KafkaPayload": ""}
+    result = hmock.find_all_behaviors_for_kafka(behaviors, "events", ctx)
+    assert [b["key"] for b in result] == ["b1", "b2"]
+
+
+def test_kafka_no_match_wrong_topic():
+    behaviors = [_kafka_behavior("b1", "events")]
+    ctx = {"KafkaTopic": "orders", "KafkaPayload": ""}
+    result = hmock.find_all_behaviors_for_kafka(behaviors, "orders", ctx)
+    assert result == []
+
+
+def test_kafka_condition_filters_behavior():
+    behaviors = [
+        _kafka_behavior("b1", "events", condition="{{ false }}"),
+        _kafka_behavior("b2", "events"),
+    ]
+    ctx = {"KafkaTopic": "events", "KafkaPayload": ""}
+    result = hmock.find_all_behaviors_for_kafka(behaviors, "events", ctx)
+    assert [b["key"] for b in result] == ["b2"]
+
+
+def test_kafka_loaded_order_preserved():
+    behaviors = [_kafka_behavior("b1", "t"), _kafka_behavior("b2", "t"), _kafka_behavior("b3", "t")]
+    ctx = {"KafkaTopic": "t", "KafkaPayload": ""}
+    result = hmock.find_all_behaviors_for_kafka(behaviors, "t", ctx)
+    assert [b["key"] for b in result] == ["b1", "b2", "b3"]
+
+
+# ---------------------------------------------------------------------------
+# 8.4  find_all_behaviors_for_amqp
+# ---------------------------------------------------------------------------
+
+def _amqp_behavior(key, exchange, routing_key, queue=None, condition=None):
+    amqp: dict = {"exchange": exchange, "routing_key": routing_key}
+    if queue:
+        amqp["queue"] = queue
+    else:
+        amqp["queue"] = routing_key
+    expect: dict = {"amqp": amqp}
+    if condition:
+        expect["condition"] = condition
+    return {"key": key, "kind": "Behavior", "expect": expect, "actions": [], "values": {}}
+
+
+def test_amqp_match_returns_behavior():
+    behaviors = [
+        _amqp_behavior("b1", "ex", "rk"),
+        _amqp_behavior("b2", "ex", "other"),
+    ]
+    ctx = {"AMQPExchange": "ex", "AMQPRoutingKey": "rk", "AMQPQueue": "rk", "AMQPPayload": ""}
+    result = hmock.find_all_behaviors_for_amqp(behaviors, "ex", "rk", "rk", ctx)
+    assert [b["key"] for b in result] == ["b1"]
+
+
+def test_amqp_execute_all_matching():
+    behaviors = [_amqp_behavior("b1", "ex", "rk"), _amqp_behavior("b2", "ex", "rk")]
+    ctx = {"AMQPExchange": "ex", "AMQPRoutingKey": "rk", "AMQPQueue": "rk", "AMQPPayload": ""}
+    result = hmock.find_all_behaviors_for_amqp(behaviors, "ex", "rk", "rk", ctx)
+    assert [b["key"] for b in result] == ["b1", "b2"]
+
+
+def test_amqp_no_match_wrong_exchange():
+    behaviors = [_amqp_behavior("b1", "ex", "rk")]
+    ctx = {"AMQPExchange": "other", "AMQPRoutingKey": "rk", "AMQPQueue": "rk", "AMQPPayload": ""}
+    result = hmock.find_all_behaviors_for_amqp(behaviors, "other", "rk", "rk", ctx)
+    assert result == []
+
+
+def test_amqp_condition_filters_behavior():
+    behaviors = [
+        _amqp_behavior("b1", "ex", "rk", condition="{{ false }}"),
+        _amqp_behavior("b2", "ex", "rk"),
+    ]
+    ctx = {"AMQPExchange": "ex", "AMQPRoutingKey": "rk", "AMQPQueue": "rk", "AMQPPayload": ""}
+    result = hmock.find_all_behaviors_for_amqp(behaviors, "ex", "rk", "rk", ctx)
+    assert [b["key"] for b in result] == ["b2"]
+
+
+# ---------------------------------------------------------------------------
+# 8.5  _assemble_behaviors — AMQP queue defaulting
+# ---------------------------------------------------------------------------
+
+def test_amqp_queue_defaults_to_routing_key():
+    items = [{
+        "key": "b1",
+        "kind": "Behavior",
+        "expect": {"amqp": {"exchange": "ex", "routing_key": "rk"}},
+        "actions": [],
+    }]
+    _, behaviors = hmock._assemble_behaviors(items)
+    assert behaviors[0]["expect"]["amqp"]["queue"] == "rk"
+
+
+def test_amqp_explicit_queue_not_overridden():
+    items = [{
+        "key": "b1",
+        "kind": "Behavior",
+        "expect": {"amqp": {"exchange": "ex", "routing_key": "rk", "queue": "myqueue"}},
+        "actions": [],
+    }]
+    _, behaviors = hmock._assemble_behaviors(items)
+    assert behaviors[0]["expect"]["amqp"]["queue"] == "myqueue"
