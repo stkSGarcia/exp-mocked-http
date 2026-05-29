@@ -1712,3 +1712,433 @@ def test_amqp_explicit_queue_not_overridden():
     }]
     _, behaviors = hmock._assemble_behaviors(items)
     assert behaviors[0]["expect"]["amqp"]["queue"] == "myqueue"
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 8: gRPC helpers
+# ---------------------------------------------------------------------------
+
+def _make_grpc_classes(package="grpchello", service="Greeter",
+                       method="SayHello", in_field="name", out_field="message"):
+    """Return (input_class, output_class) for a simple request/response proto pair."""
+    from google.protobuf import descriptor_pb2, descriptor_pool as _dp, message_factory as _mf
+    pool = _dp.DescriptorPool()
+    fp = descriptor_pb2.FileDescriptorProto()
+    fp.name = f"{package}_{service}_{method}.proto"
+    fp.syntax = "proto3"
+    fp.package = package
+    svc = fp.service.add()
+    svc.name = service
+    meth = svc.method.add()
+    meth.name = method
+    meth.input_type  = f".{package}.Request"
+    meth.output_type = f".{package}.Response"
+    msg_in = fp.message_type.add()
+    msg_in.name = "Request"
+    f = msg_in.field.add()
+    f.name = in_field; f.number = 1
+    f.type  = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+    f.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+    msg_out = fp.message_type.add()
+    msg_out.name = "Response"
+    f2 = msg_out.field.add()
+    f2.name = out_field; f2.number = 1
+    f2.type  = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+    f2.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+    pool.Add(fp)
+    in_desc  = pool.FindMessageTypeByName(f"{package}.Request")
+    out_desc = pool.FindMessageTypeByName(f"{package}.Response")
+    return _mf.GetMessageClass(in_desc), _mf.GetMessageClass(out_desc)
+
+
+# 10.1 — _grpc_decode_request / _grpc_encode_response
+
+def test_grpc_decode_request_strips_framing_and_returns_json():
+    in_cls, _ = _make_grpc_classes(package="dec1")
+    req = in_cls()
+    req.name = "alice"
+    pb = req.SerializeToString()
+    raw = bytes([0]) + len(pb).to_bytes(4, "big") + pb
+    result = hmock._grpc_decode_request(raw, in_cls)
+    import json
+    data = json.loads(result)
+    assert data["name"] == "alice"
+
+
+def test_grpc_encode_response_prepends_framing():
+    _, out_cls = _make_grpc_classes(package="enc1")
+    encoded = hmock._grpc_encode_response('{"message": "hi"}', out_cls)
+    assert encoded[0] == 0                                     # compression flag
+    msg_len = int.from_bytes(encoded[1:5], "big")
+    assert msg_len == len(encoded) - 5                        # framing length matches body
+    resp = out_cls()
+    resp.ParseFromString(encoded[5:])
+    assert resp.message == "hi"
+
+
+def test_grpc_encode_decode_roundtrip():
+    in_cls, out_cls = _make_grpc_classes(package="rt1")
+    req = in_cls()
+    req.name = "roundtrip"
+    pb = req.SerializeToString()
+    raw = bytes([0]) + len(pb).to_bytes(4, "big") + pb
+    payload_json = hmock._grpc_decode_request(raw, in_cls)
+    import json
+    assert json.loads(payload_json)["name"] == "roundtrip"
+    encoded = hmock._grpc_encode_response('{"message": "done"}', out_cls)
+    resp = out_cls()
+    resp.ParseFromString(encoded[5:])
+    assert resp.message == "done"
+
+
+# 10.2 — find_behavior_for_grpc
+
+def test_find_behavior_for_grpc_match():
+    behaviors = [{
+        "key": "grpc1", "kind": "Behavior",
+        "expect": {"grpc": {"service": "pkg.Svc", "method": "Do"}},
+        "actions": [],
+    }]
+    ctx = hmock.build_grpc_context("pkg.Svc", "Do", "{}", {})
+    b = hmock.find_behavior_for_grpc(behaviors, "pkg.Svc", "Do", ctx)
+    assert b is not None and b["key"] == "grpc1"
+
+
+def test_find_behavior_for_grpc_no_match_wrong_method():
+    behaviors = [{
+        "key": "grpc1", "kind": "Behavior",
+        "expect": {"grpc": {"service": "pkg.Svc", "method": "Do"}},
+        "actions": [],
+    }]
+    ctx = hmock.build_grpc_context("pkg.Svc", "Other", "{}", {})
+    b = hmock.find_behavior_for_grpc(behaviors, "pkg.Svc", "Other", ctx)
+    assert b is None
+
+
+def test_find_behavior_for_grpc_first_match_wins():
+    behaviors = [
+        {"key": "first",  "kind": "Behavior",
+         "expect": {"grpc": {"service": "pkg.Svc", "method": "Do"}}, "actions": []},
+        {"key": "second", "kind": "Behavior",
+         "expect": {"grpc": {"service": "pkg.Svc", "method": "Do"}}, "actions": []},
+    ]
+    ctx = hmock.build_grpc_context("pkg.Svc", "Do", "{}", {})
+    b = hmock.find_behavior_for_grpc(behaviors, "pkg.Svc", "Do", ctx)
+    assert b["key"] == "first"
+
+
+def test_find_behavior_for_grpc_condition_filtering():
+    behaviors = [{
+        "key": "cond", "kind": "Behavior",
+        "expect": {
+            "grpc": {"service": "pkg.Svc", "method": "Do"},
+            "condition": '{{ gJsonPath("name", GRPCPayload) | eq("allowed") }}',
+        },
+        "actions": [],
+    }]
+    ctx_pass = hmock.build_grpc_context("pkg.Svc", "Do", '{"name":"allowed"}', {})
+    ctx_fail = hmock.build_grpc_context("pkg.Svc", "Do", '{"name":"denied"}',  {})
+    assert hmock.find_behavior_for_grpc(behaviors, "pkg.Svc", "Do", ctx_pass) is not None
+    assert hmock.find_behavior_for_grpc(behaviors, "pkg.Svc", "Do", ctx_fail) is None
+
+
+# 10.3 — build_grpc_context
+
+def test_build_grpc_context_sets_all_variables():
+    ctx = hmock.build_grpc_context("com.Svc", "Method", '{"k":"v"}', {"x-id": "123"})
+    assert ctx["GRPCService"] == "com.Svc"
+    assert ctx["GRPCMethod"]  == "Method"
+    assert ctx["GRPCPayload"] == '{"k":"v"}'
+    assert ctx["GRPCHeader"].Get("x-id") == "123"
+    assert ctx["GRPCHeader"].Get("missing") == ""
+
+
+# 10.4 — _handle_evaluate via admin server
+
+@pytest.fixture()
+def admin_server():
+    server = HTTPServer(("127.0.0.1", 0), hmock.AdminRequestHandler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    port = server.server_address[1]
+    yield port
+    server.shutdown()
+
+
+def _eval_post(port, payload):
+    import io
+    body = json.dumps(payload).encode()
+    req  = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/v1/evaluate",
+        data=body,
+        headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read())
+
+
+def test_evaluate_missing_key_returns_400(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock":    {"key": "", "expect": {"http": {"method": "GET"}}},
+        "context": {"http_context": {"method": "GET", "path": "/"}},
+    })
+    assert status == 400
+    assert "key" in data["error"]
+
+
+def test_evaluate_missing_matcher_returns_400(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock":    {"key": "x", "expect": {}},
+        "context": {"http_context": {"method": "GET"}},
+    })
+    assert status == 400
+
+
+def test_evaluate_missing_context_sub_object_returns_400(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock":    {"key": "x", "expect": {"http": {"method": "GET"}}},
+        "context": {},
+    })
+    assert status == 400
+    assert "http_context" in data["error"]
+
+
+def test_evaluate_amqp_missing_exchange_returns_400(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock":    {"key": "x", "expect": {"amqp": {"routing_key": "rk"}}},
+        "context": {"amqp_context": {"exchange": "ex", "routing_key": "rk"}},
+    })
+    assert status == 400
+    assert "exchange" in data["error"]
+
+
+def test_evaluate_amqp_missing_routing_key_returns_400(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock":    {"key": "x", "expect": {"amqp": {"exchange": "ex"}}},
+        "context": {"amqp_context": {"exchange": "ex", "routing_key": "rk"}},
+    })
+    assert status == 400
+    assert "routing_key" in data["error"]
+
+
+def test_evaluate_expect_passed_false_on_method_mismatch(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"http": {"method": "GET"}},
+            "actions": [],
+        },
+        "context": {"http_context": {"method": "POST", "path": "/"}},
+    })
+    assert status == 200
+    assert data["expect_passed"] is False
+    assert data["actions_performed"] == []
+
+
+def test_evaluate_condition_failed(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {
+                "http": {"method": "GET"},
+                "condition": "false",
+            },
+            "actions": [],
+        },
+        "context": {"http_context": {"method": "GET", "path": "/"}},
+    })
+    assert status == 200
+    assert data["expect_passed"] is True
+    assert data["condition_passed"] is False
+    assert data["actions_performed"] == []
+
+
+def test_evaluate_full_match_reply_http(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"http": {"method": "GET"}},
+            "actions": [{"reply_http": {"status_code": 201, "body": "ok"}}],
+        },
+        "context": {"http_context": {"method": "GET", "path": "/"}},
+    })
+    assert status == 200
+    assert data["expect_passed"] is True
+    assert data["condition_passed"] is True
+    acts = data["actions_performed"]
+    assert len(acts) == 1
+    assert acts[0]["type"] == "reply_http_action_performed"
+    assert acts[0]["status_code"] == "201"
+    assert acts[0]["body"] == "ok"
+    assert acts[0]["content_type"] == "application/json"
+    assert "Content-Type" in acts[0]["headers"]
+    assert "Content-Length" in acts[0]["headers"]
+
+
+def test_evaluate_full_match_publish_kafka(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"kafka": {"topic": "orders"}},
+            "actions": [{"publish_kafka": {"topic": "results", "payload": "done"}}],
+        },
+        "context": {"kafka_context": {"topic": "orders", "payload": "payload"}},
+    })
+    assert status == 200
+    acts = data["actions_performed"]
+    assert len(acts) == 1
+    assert acts[0]["type"] == "publish_kafka_action_performed"
+    assert acts[0]["topic"] == "results"
+    assert acts[0]["payload"] == "done"
+
+
+def test_evaluate_non_renderable_actions_omitted(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"http": {"method": "GET"}},
+            "actions": [
+                {"sleep":        {"duration": "1ms"}},
+                {"publish_amqp": {"exchange": "ex", "routing_key": "rk", "payload": "p"}},
+                {"reply_http":   {"status_code": 200, "body": "hi"}},
+            ],
+        },
+        "context": {"http_context": {"method": "GET", "path": "/"}},
+    })
+    assert status == 200
+    acts = data["actions_performed"]
+    assert len(acts) == 1
+    assert acts[0]["type"] == "reply_http_action_performed"
+
+
+def test_evaluate_empty_condition_treated_as_passing(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"http": {"method": "GET"}},
+            "actions": [],
+        },
+        "context": {"http_context": {"method": "GET", "path": "/"}},
+    })
+    assert status == 200
+    assert data["expect_passed"] is True
+    assert data["condition_passed"] is True
+
+
+def test_evaluate_amqp_queue_defaults_to_routing_key(admin_server):
+    status, data = _eval_post(admin_server, {
+        "mock": {
+            "key": "x",
+            "expect": {"amqp": {"exchange": "ex", "routing_key": "rk"}},
+            "actions": [],
+        },
+        "context": {"amqp_context": {"exchange": "ex", "routing_key": "rk"}},
+    })
+    assert status == 200
+    assert data["expect_passed"] is True
+
+
+# 10.5 — gRPC server integration test
+
+def _make_pb_descriptor_bytes(package="integ", service="Greeter", method="Say",
+                               in_field="name", out_field="message"):
+    """Return serialized FileDescriptorSet bytes for a simple service."""
+    from google.protobuf import descriptor_pb2
+    fds = descriptor_pb2.FileDescriptorSet()
+    fp  = fds.file.add()
+    fp.name    = f"{package}.proto"
+    fp.syntax  = "proto3"
+    fp.package = package
+    svc = fp.service.add()
+    svc.name = service
+    meth = svc.method.add()
+    meth.name        = method
+    meth.input_type  = f".{package}.Request"
+    meth.output_type = f".{package}.Response"
+    msg_in = fp.message_type.add()
+    msg_in.name = "Request"
+    f = msg_in.field.add()
+    f.name = in_field; f.number = 1
+    f.type  = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+    f.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+    msg_out = fp.message_type.add()
+    msg_out.name = "Response"
+    f2 = msg_out.field.add()
+    f2.name = out_field; f2.number = 1
+    f2.type  = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+    f2.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+    return fds.SerializeToString()
+
+
+def test_grpc_server_integration(tmp_path):
+    import grpc
+    from google.protobuf import descriptor_pb2, descriptor_pool as _dp, message_factory as _mf
+
+    # Write descriptor-set file
+    pb_bytes = _make_pb_descriptor_bytes(package="integ2")
+    pb_file  = tmp_path / "integ2.pb"
+    pb_file.write_bytes(pb_bytes)
+
+    # Load registry and message classes
+    pool = _dp.DescriptorPool()
+    fds  = descriptor_pb2.FileDescriptorSet.FromString(pb_bytes)
+    for fp in fds.file:
+        pool.Add(fp)
+    in_cls  = _mf.GetMessageClass(pool.FindMessageTypeByName("integ2.Request"))
+    out_cls = _mf.GetMessageClass(pool.FindMessageTypeByName("integ2.Response"))
+
+    # Build a behavior
+    behavior = {
+        "key":  "grpc-integ",
+        "kind": "Behavior",
+        "expect": {"grpc": {"service": "integ2.Greeter", "method": "Say"}},
+        "actions": [{"reply_grpc": {"payload": '{"message": "hello from grpc"}'}}],
+        "values": {},
+        "_pattern": None,
+    }
+
+    # Patch globals
+    original_behaviors = hmock._BEHAVIORS[:]
+    original_registry  = hmock._GRPC_REGISTRY.copy()
+    hmock._BEHAVIORS = [behavior]
+    hmock._GRPC_REGISTRY = hmock._load_descriptor_registry([str(pb_file)])
+
+    try:
+        # Start the gRPC server on a free port
+        from concurrent import futures
+        port   = 0
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+        server.add_generic_rpc_handlers([hmock._GrpcHandler()])
+        port = server.add_insecure_port("127.0.0.1:0")
+        server.start()
+
+        try:
+            # Build raw request bytes
+            req = in_cls()
+            req.name = "world"
+            pb   = req.SerializeToString()
+            raw  = bytes([0]) + len(pb).to_bytes(4, "big") + pb
+
+            # Make a raw unary gRPC call
+            channel = grpc.insecure_channel(f"127.0.0.1:{port}")
+            stub    = channel.unary_unary(
+                "/integ2.Greeter/Say",
+                request_serializer=lambda b: b,
+                response_deserializer=lambda b: b,
+            )
+            response_bytes = stub(raw)
+            channel.close()
+
+            # Decode response
+            resp = out_cls()
+            resp.ParseFromString(response_bytes[5:])
+            assert resp.message == "hello from grpc"
+        finally:
+            server.stop(grace=0)
+    finally:
+        hmock._BEHAVIORS      = original_behaviors
+        hmock._GRPC_REGISTRY  = original_registry

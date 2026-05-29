@@ -62,6 +62,14 @@ _KAFKA_TLS_CONS_RAW      = os.environ.get("HM_KAFKA_TLS_CONSUMER_ENABLED", "")
 AMQP_ENABLED = os.environ.get("HM_AMQP_ENABLED", "false").lower() == "true"
 AMQP_URL     = os.environ.get("HM_AMQP_URL", "amqp://guest:guest@rabbitmq:5672")
 
+# gRPC
+GRPC_ENABLED              = os.environ.get("HM_GRPC_ENABLED", "false").lower() == "true"
+GRPC_PORT                 = int(os.environ.get("HM_GRPC_PORT", "50051"))
+GRPC_HOST                 = os.environ.get("HM_GRPC_HOST", "0.0.0.0")
+GRPC_DESCRIPTOR_SET_PATHS = [
+    p.strip() for p in os.environ.get("HM_GRPC_DESCRIPTOR_SET_PATHS", "").split(",") if p.strip()
+]
+
 _CORS_HEADERS = {
     "Access-Control-Allow-Origin":      "*",
     "Access-Control-Allow-Methods":     "*",
@@ -689,6 +697,39 @@ def _validate_behavior(b: object, source: str, templates_dir: str = "") -> dict:
                 raise ValueError(
                     f"{source}: behavior {key!r} publish_amqp payload_from_file requires templates_dir"
                 )
+        if isinstance(action, dict) and "reply_grpc" in action:
+            cfg = action["reply_grpc"]
+            pff = str(cfg.get("payload_from_file") or "").strip()
+            if not str(cfg.get("payload") or "").strip() and not pff:
+                raise ValueError(
+                    f"{source}: behavior {key!r} reply_grpc requires 'payload' or 'payload_from_file'"
+                )
+            if pff and templates_dir:
+                safe_root = os.path.realpath(templates_dir)
+                resolved  = os.path.realpath(os.path.join(templates_dir, pff))
+                if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+                    raise ValueError(
+                        f"{source}: behavior {key!r} reply_grpc payload_from_file {pff!r} escapes templates dir"
+                    )
+                with open(resolved) as fh:
+                    cfg["_payload_snapshot"] = fh.read()
+            elif pff and not templates_dir:
+                raise ValueError(
+                    f"{source}: behavior {key!r} reply_grpc payload_from_file requires templates_dir"
+                )
+    # Validate expect.grpc fields
+    grpc_exp = (b.get("expect") or {}).get("grpc")
+    if grpc_exp is not None:
+        if not str(grpc_exp.get("service") or "").strip():
+            raise ValueError(f"{source}: behavior {key!r} expect.grpc requires 'service'")
+        if not str(grpc_exp.get("method") or "").strip():
+            raise ValueError(f"{source}: behavior {key!r} expect.grpc requires 'method'")
+    # reply_grpc only valid alongside expect.grpc
+    has_reply_grpc = any(isinstance(a, dict) and "reply_grpc" in a for a in actions)
+    if has_reply_grpc and grpc_exp is None:
+        raise ValueError(
+            f"{source}: behavior {key!r} has reply_grpc action but no expect.grpc matcher"
+        )
     return b
 
 
@@ -1368,6 +1409,231 @@ def _start_messaging_loop() -> None:
         asyncio.run_coroutine_threadsafe(_amqp_start(), loop)
 
 # ---------------------------------------------------------------------------
+# gRPC
+# ---------------------------------------------------------------------------
+
+_GRPC_REGISTRY: dict = {}
+
+
+def _load_descriptor_registry(paths: list) -> dict:
+    from google.protobuf import descriptor_pb2, descriptor_pool as _dp, message_factory as _mf
+    pool = _dp.DescriptorPool()
+    file_protos: list = []
+    for path in paths:
+        resolved = path if os.path.isabs(path) else os.path.join(TEMPLATES_DIR, path)
+        with open(resolved, "rb") as f:
+            fds = descriptor_pb2.FileDescriptorSet.FromString(f.read())
+        for fp in fds.file:
+            file_protos.append(fp)
+    for fp in file_protos:
+        try:
+            pool.Add(fp)
+        except Exception:
+            pass
+    registry: dict = {}
+    for fp in file_protos:
+        fd = pool.FindFileByName(fp.name)
+        for svc in fd.services_by_name.values():
+            for meth in svc.methods_by_name.values():
+                registry[f"{svc.full_name}/{meth.name}"] = (
+                    _mf.GetMessageClass(meth.input_type),
+                    _mf.GetMessageClass(meth.output_type),
+                )
+    return registry
+
+
+def _check_grpc_descriptor_requirements(behaviors: list, registry: dict) -> None:
+    for b in behaviors:
+        grpc_exp = (b.get("expect") or {}).get("grpc")
+        if grpc_exp:
+            service = str(grpc_exp.get("service") or "")
+            method  = str(grpc_exp.get("method") or "")
+            key     = f"{service}/{method}"
+            if key not in registry:
+                raise ValueError(
+                    f"behavior {b.get('key')!r}: gRPC descriptor for {key!r} not found in registry"
+                )
+        for action in b.get("actions") or []:
+            if isinstance(action, dict) and "reply_grpc" in action:
+                grpc_exp = (b.get("expect") or {}).get("grpc") or {}
+                service  = str(grpc_exp.get("service") or "")
+                method   = str(grpc_exp.get("method") or "")
+                key      = f"{service}/{method}"
+                if key not in registry:
+                    raise ValueError(
+                        f"behavior {b.get('key')!r}: gRPC descriptor for {key!r} not found in registry"
+                    )
+
+
+def find_behavior_for_grpc(
+    behaviors: list, service: str, method: str, context: dict
+) -> Optional[dict]:
+    for b in behaviors:
+        grpc_exp = (b.get("expect") or {}).get("grpc") or {}
+        if not grpc_exp:
+            continue
+        if str(grpc_exp.get("service") or "") != service:
+            continue
+        if str(grpc_exp.get("method") or "") != method:
+            continue
+        condition = str((b.get("expect") or {}).get("condition") or "").strip()
+        if condition:
+            ctx = {**context, "Values": b.get("values") or {}}
+            rendered, err = render(condition, ctx)
+            if err or rendered.strip().lower() != "true":
+                continue
+        return b
+    return None
+
+
+def build_grpc_context(service: str, method: str, payload_json: str, headers: dict) -> dict:
+    return {
+        "GRPCService": service,
+        "GRPCMethod":  method,
+        "GRPCPayload": payload_json,
+        "GRPCHeader":  HeaderMap(headers),
+    }
+
+
+def _grpc_decode_request(raw_body: bytes, msg_class) -> str:
+    from google.protobuf.json_format import MessageToJson
+    proto_bytes = raw_body[5:] if len(raw_body) >= 5 else raw_body
+    msg = msg_class()
+    msg.ParseFromString(proto_bytes)
+    return MessageToJson(msg, preserving_proto_field_name=True)
+
+
+def _grpc_encode_response(payload_json: str, msg_class) -> bytes:
+    from google.protobuf.json_format import Parse
+    msg = Parse(payload_json, msg_class())
+    proto_bytes = msg.SerializeToString()
+    return bytes([0]) + len(proto_bytes).to_bytes(4, "big") + proto_bytes
+
+
+def execute_reply_grpc(cfg: dict, context: dict, output_msg_class) -> tuple:
+    pff      = str(cfg.get("payload_from_file") or "").strip()
+    snapshot = str(cfg.get("_payload_snapshot") or "")
+    raw      = str(cfg.get("payload") or snapshot or "")
+    if pff and not snapshot:
+        full = pff if os.path.isabs(pff) else os.path.join(TEMPLATES_DIR, pff)
+        with open(full) as fh:
+            raw = fh.read()
+    payload_str, err = render(raw, context)
+    if err:
+        _log(logging.WARNING, "reply_grpc payload render error", error=str(err))
+        payload_str = "{}"
+    response_bytes = _grpc_encode_response(payload_str, output_msg_class)
+    rendered_headers: dict[str, str] = {}
+    for k, v in (cfg.get("headers") or {}).items():
+        rv, _ = render(str(v), context)
+        rendered_headers[k] = rv
+    return response_bytes, rendered_headers
+
+
+def _handle_grpc_call(request_bytes: bytes, grpc_context, service_name: str, method_name: str) -> bytes:
+    import grpc as _grpc
+    key   = f"{service_name}/{method_name}"
+    entry = _GRPC_REGISTRY.get(key)
+    if entry is None:
+        grpc_context.set_code(_grpc.StatusCode.UNIMPLEMENTED)
+        grpc_context.set_details(f"no descriptor for {key}")
+        return b""
+    input_class, output_class = entry
+    try:
+        payload_json = _grpc_decode_request(request_bytes, input_class)
+    except Exception as exc:
+        grpc_context.set_code(_grpc.StatusCode.INTERNAL)
+        grpc_context.set_details(f"decode error: {exc}")
+        return b""
+    headers  = dict(grpc_context.invocation_metadata())
+    grpc_ctx = build_grpc_context(service_name, method_name, payload_json, headers)
+    with _BEHAVIORS_LOCK:
+        behaviors = _BEHAVIORS
+    behavior = find_behavior_for_grpc(behaviors, service_name, method_name, grpc_ctx)
+    if behavior is None:
+        grpc_context.set_code(_grpc.StatusCode.UNIMPLEMENTED)
+        grpc_context.set_details(f"no behavior matched for {key}")
+        return b""
+    ctx = {**grpc_ctx, "Values": behavior.get("values") or {}}
+    for action in sorted(
+        [a for a in (behavior.get("actions") or []) if isinstance(a, dict)],
+        key=lambda a: int(a.get("order", 0)),
+    ):
+        if "reply_grpc" in action:
+            response_bytes, reply_headers = execute_reply_grpc(action["reply_grpc"], ctx, output_class)
+            grpc_context.set_trailing_metadata(list(reply_headers.items()))
+            return response_bytes
+    grpc_context.set_code(_grpc.StatusCode.UNIMPLEMENTED)
+    grpc_context.set_details(f"no reply_grpc action for {key}")
+    return b""
+
+
+class _GrpcHandler:
+    def service_name(self):
+        return None
+
+    def service(self, handler_call_details):
+        import grpc as _grpc
+        method_path = handler_call_details.method  # "/package.Service/Method"
+        parts = method_path.lstrip("/").split("/", 1)
+        if len(parts) != 2:
+            return None
+        service_name, method_name = parts
+
+        def _call(request_bytes, context):
+            return _handle_grpc_call(request_bytes, context, service_name, method_name)
+
+        return _grpc.unary_unary_rpc_method_handler(
+            _call,
+            request_deserializer=lambda b: b,
+            response_serializer=lambda b: b,
+        )
+
+
+def _grpc_has_behaviors(behaviors: list) -> bool:
+    for b in behaviors:
+        if (b.get("expect") or {}).get("grpc"):
+            return True
+        if any(isinstance(a, dict) and "reply_grpc" in a for a in (b.get("actions") or [])):
+            return True
+    return False
+
+
+def _grpc_start() -> None:
+    global _GRPC_REGISTRY
+    import grpc as _grpc
+    from concurrent import futures
+
+    paths = GRPC_DESCRIPTOR_SET_PATHS
+    with _BEHAVIORS_LOCK:
+        behaviors = _BEHAVIORS
+
+    if paths:
+        try:
+            _GRPC_REGISTRY = _load_descriptor_registry(paths)
+        except Exception as exc:
+            _log(logging.ERROR, "grpc descriptor-set load failed", error=str(exc))
+            sys.exit(1)
+    else:
+        _GRPC_REGISTRY = {}
+
+    if _grpc_has_behaviors(behaviors):
+        try:
+            _check_grpc_descriptor_requirements(behaviors, _GRPC_REGISTRY)
+        except ValueError as exc:
+            _log(logging.ERROR, "grpc descriptor requirements not met", error=str(exc))
+            sys.exit(1)
+
+    server = _grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server.add_generic_rpc_handlers([_GrpcHandler()])
+    server.add_insecure_port(f"{GRPC_HOST}:{GRPC_PORT}")
+    server.start()
+    _log(logging.INFO, "grpc listening", host=GRPC_HOST, port=GRPC_PORT)
+    t = threading.Thread(target=server.wait_for_termination, daemon=True)
+    t.start()
+
+
+# ---------------------------------------------------------------------------
 # Reload Infrastructure
 # ---------------------------------------------------------------------------
 
@@ -1447,6 +1713,88 @@ def _start_watchdog_watcher() -> None:
     observer.schedule(_Handler(), TEMPLATES_DIR, recursive=True)
     observer.daemon = True
     observer.start()
+
+
+# ---------------------------------------------------------------------------
+# Evaluate Endpoint Helpers
+# ---------------------------------------------------------------------------
+
+def _build_eval_context(context_obj: dict) -> dict:
+    ctx: dict = {}
+    http_ctx = context_obj.get("http_context") or {}
+    if http_ctx:
+        method = str(http_ctx.get("method") or "")
+        path   = str(http_ctx.get("path") or "/")
+        body   = str(http_ctx.get("body") or "")
+        hdrs   = dict(http_ctx.get("headers") or {})
+        qs     = str(http_ctx.get("query_string") or "")
+        ctx.update(build_context(method, path, qs, hdrs, body))
+
+    kafka_ctx = context_obj.get("kafka_context") or {}
+    if kafka_ctx:
+        ctx["KafkaTopic"]   = str(kafka_ctx.get("topic") or "")
+        ctx["KafkaPayload"] = str(kafka_ctx.get("payload") or "")
+
+    amqp_ctx = context_obj.get("amqp_context") or {}
+    if amqp_ctx:
+        rk = str(amqp_ctx.get("routing_key") or "")
+        ctx["AMQPExchange"]   = str(amqp_ctx.get("exchange") or "")
+        ctx["AMQPRoutingKey"] = rk
+        ctx["AMQPQueue"]      = str(amqp_ctx.get("queue") or rk)
+        ctx["AMQPPayload"]    = str(amqp_ctx.get("payload") or "")
+
+    grpc_ctx = context_obj.get("grpc_context") or {}
+    if grpc_ctx:
+        ctx.update(build_grpc_context(
+            str(grpc_ctx.get("service") or ""),
+            str(grpc_ctx.get("method") or ""),
+            str(grpc_ctx.get("payload") or "{}"),
+            dict(grpc_ctx.get("headers") or {}),
+        ))
+
+    return ctx
+
+
+def _dry_run_actions(actions: list, context: dict) -> list:
+    results = []
+    sorted_actions = sorted(
+        [a for a in actions if isinstance(a, dict)],
+        key=lambda a: int(a.get("order", 0)),
+    )
+    for action in sorted_actions:
+        if "reply_http" in action:
+            cfg          = action["reply_http"]
+            status_tmpl  = str(cfg.get("status_code", "200"))
+            content_type = str(cfg.get("content_type") or "application/json")
+            body_tmpl    = str(cfg.get("body") or cfg.get("_body_snapshot") or "")
+            status_str, _ = render(status_tmpl, context)
+            body, _        = render(body_tmpl, context)
+            hdrs: dict[str, str] = {}
+            for k, v in (cfg.get("headers") or {}).items():
+                rv, _ = render(str(v), context)
+                hdrs[k] = rv
+            hdrs["Content-Type"]   = content_type
+            hdrs["Content-Length"] = str(len(body.encode("utf-8")))
+            results.append({
+                "type":         "reply_http_action_performed",
+                "status_code":  status_str.strip(),
+                "content_type": content_type,
+                "body":         body,
+                "headers":      hdrs,
+            })
+        elif "publish_kafka" in action:
+            cfg          = action["publish_kafka"]
+            topic_tmpl   = str(cfg.get("topic") or "")
+            payload_tmpl = str(cfg.get("payload") or cfg.get("_payload_snapshot") or "")
+            topic,   _   = render(topic_tmpl,   context)
+            payload, _   = render(payload_tmpl, context)
+            results.append({
+                "type":    "publish_kafka_action_performed",
+                "topic":   topic,
+                "payload": payload,
+            })
+        # all other action types are skipped (no side effects)
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -1568,6 +1916,8 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/api/v1/templates":
             self._handle_post_templates()
+        elif path == "/api/v1/evaluate":
+            self._handle_evaluate()
         else:
             m = re.match(r"^/api/v1/template_sets/([^/]+)$", path)
             if m:
@@ -1651,6 +2001,153 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         _trigger_reload()
         self._send_empty(204)
 
+    def _handle_evaluate(self):
+        body, err = self._read_json_body()
+        if err:
+            self._send_json(400, {"error": err})
+            return
+        if not isinstance(body, dict):
+            self._send_json(400, {"error": "request body must be a JSON object"})
+            return
+
+        mock        = body.get("mock")
+        context_obj = body.get("context")
+
+        if not isinstance(mock, dict):
+            self._send_json(400, {"error": "mock must be a JSON object"})
+            return
+        if not isinstance(context_obj, dict):
+            self._send_json(400, {"error": "context must be a JSON object (not an array)"})
+            return
+
+        mock_key = str(mock.get("key") or "").strip()
+        if not mock_key:
+            self._send_json(400, {"error": "mock.key must be non-empty"})
+            return
+
+        mock_expect       = mock.get("expect") or {}
+        supported         = {"http", "kafka", "amqp", "grpc"}
+        present_matchers  = supported & set(mock_expect.keys())
+        if not present_matchers:
+            self._send_json(400, {"error": "mock.expect must include at least one of: http, kafka, amqp, grpc"})
+            return
+
+        # Validate each declared matcher's required fields and matching context sub-object
+        if "http" in present_matchers:
+            http_exp = mock_expect.get("http") or {}
+            if not http_exp.get("method") and not http_exp.get("path"):
+                self._send_json(400, {"error": "mock.expect.http requires at least one of: method, path"})
+                return
+            if "http_context" not in context_obj:
+                self._send_json(400, {"error": "context must include http_context for http matcher"})
+                return
+
+        if "kafka" in present_matchers:
+            kafka_exp = mock_expect.get("kafka") or {}
+            if not str(kafka_exp.get("topic") or "").strip():
+                self._send_json(400, {"error": "mock.expect.kafka requires topic"})
+                return
+            if "kafka_context" not in context_obj:
+                self._send_json(400, {"error": "context must include kafka_context for kafka matcher"})
+                return
+
+        if "amqp" in present_matchers:
+            amqp_exp = mock_expect.get("amqp") or {}
+            if not str(amqp_exp.get("exchange") or "").strip():
+                self._send_json(400, {"error": "mock.expect.amqp requires exchange"})
+                return
+            if not str(amqp_exp.get("routing_key") or "").strip():
+                self._send_json(400, {"error": "mock.expect.amqp requires routing_key"})
+                return
+            if "amqp_context" not in context_obj:
+                self._send_json(400, {"error": "context must include amqp_context for amqp matcher"})
+                return
+
+        if "grpc" in present_matchers:
+            grpc_exp = mock_expect.get("grpc") or {}
+            if not str(grpc_exp.get("service") or "").strip():
+                self._send_json(400, {"error": "mock.expect.grpc requires service"})
+                return
+            if not str(grpc_exp.get("method") or "").strip():
+                self._send_json(400, {"error": "mock.expect.grpc requires method"})
+                return
+            if "grpc_context" not in context_obj:
+                self._send_json(400, {"error": "context must include grpc_context for grpc matcher"})
+                return
+
+        # Channel-specific match checks (in fixed priority order)
+        for matcher in ("http", "kafka", "amqp", "grpc"):
+            if matcher not in present_matchers:
+                continue
+            if matcher == "http":
+                http_exp  = mock_expect.get("http") or {}
+                http_ctx  = context_obj.get("http_context") or {}
+                b_method  = str(http_exp.get("method") or "").upper()
+                req_method = str(http_ctx.get("method") or "").upper()
+                req_path   = str(http_ctx.get("path") or "/")
+                if b_method and b_method != req_method:
+                    self._send_json(200, {"expect_passed": False, "actions_performed": []})
+                    return
+                path_str = http_exp.get("path")
+                if path_str and match_path(_compile_path(path_str), req_path) is None:
+                    self._send_json(200, {"expect_passed": False, "actions_performed": []})
+                    return
+
+            elif matcher == "kafka":
+                kafka_exp = mock_expect.get("kafka") or {}
+                kafka_ctx = context_obj.get("kafka_context") or {}
+                if str(kafka_exp.get("topic") or "") != str(kafka_ctx.get("topic") or ""):
+                    self._send_json(200, {"expect_passed": False, "actions_performed": []})
+                    return
+
+            elif matcher == "amqp":
+                amqp_exp  = mock_expect.get("amqp") or {}
+                amqp_ctx  = context_obj.get("amqp_context") or {}
+                b_exchange = str(amqp_exp.get("exchange") or "")
+                b_rk       = str(amqp_exp.get("routing_key") or "")
+                b_queue    = str(amqp_exp.get("queue") or b_rk)
+                req_exchange = str(amqp_ctx.get("exchange") or "")
+                req_rk       = str(amqp_ctx.get("routing_key") or "")
+                req_queue    = str(amqp_ctx.get("queue") or req_rk)
+                if b_exchange != req_exchange or b_queue != req_queue:
+                    self._send_json(200, {"expect_passed": False, "actions_performed": []})
+                    return
+
+            elif matcher == "grpc":
+                grpc_exp = mock_expect.get("grpc") or {}
+                grpc_ctx = context_obj.get("grpc_context") or {}
+                if (str(grpc_exp.get("service") or "") != str(grpc_ctx.get("service") or "") or
+                        str(grpc_exp.get("method") or "") != str(grpc_ctx.get("method") or "")):
+                    self._send_json(200, {"expect_passed": False, "actions_performed": []})
+                    return
+
+        # Build template context from all provided channel contexts
+        eval_ctx = _build_eval_context(context_obj)
+        eval_ctx["Values"] = mock.get("values") or {}
+
+        # Condition evaluation
+        condition         = str(mock_expect.get("condition") or "").strip()
+        condition_rendered = ""
+        if condition:
+            condition_rendered, c_err = render(condition, eval_ctx)
+            if c_err or condition_rendered.strip().lower() != "true":
+                self._send_json(200, {
+                    "expect_passed":     True,
+                    "condition_passed":  False,
+                    "condition_rendered": condition_rendered,
+                    "actions_performed": [],
+                })
+                return
+
+        # Dry-run actions
+        actions_performed = _dry_run_actions(mock.get("actions") or [], eval_ctx)
+        self._send_json(200, {
+            "expect_passed":     True,
+            "condition_passed":  True,
+            "condition_rendered": condition_rendered,
+            "actions_performed": actions_performed,
+        })
+
 
 # ---------------------------------------------------------------------------
 # Main
@@ -1663,6 +2160,9 @@ def main():
 
     if KAFKA_ENABLED or AMQP_ENABLED:
         _start_messaging_loop()
+
+    if GRPC_ENABLED:
+        _grpc_start()
 
     if HOT_RELOAD:
         try:
