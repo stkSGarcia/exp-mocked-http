@@ -1,0 +1,3541 @@
+
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /tmp/uv-cache/archive-v0/ypeSi-qN2b0ljCN9/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.12.13', 'Platform': 'Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.41', 'Packages': {'pytest': '9.0.3', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.13.0', 'json-ctrf': '0.5.0', 'metadata': '3.1.1', 'timeout': '2.4.0', 'json-report': '1.5.0'}}
+rootdir: /workspace
+configfile: pytest.ini
+plugins: anyio-4.13.0, json-ctrf-0.5.0, metadata-3.1.1, timeout-2.4.0, json-report-1.5.0
+timeout: 15.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 147 items
+
+.evaluation_tests/test_checkpoint_1.py::test_first_matching_condition_wins PASSED [  0%]
+.evaluation_tests/test_checkpoint_1.py::test_context_includes_path_query_header PASSED [  1%]
+.evaluation_tests/test_checkpoint_1.py::test_rejects_behavior_with_multiple_reply_http PASSED [  2%]
+.evaluation_tests/test_checkpoint_1.py::test_loads_yaml_and_yml_files_recursively PASSED [  2%]
+.evaluation_tests/test_checkpoint_1.py::test_kind_defaults_to_behavior PASSED [  3%]
+.evaluation_tests/test_checkpoint_1.py::test_duplicate_keys_use_last_definition PASSED [  4%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string FAILED [  4%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_render_error_fallback PASSED [  5%]
+.evaluation_tests/test_checkpoint_1.py::test_reply_http_default_headers_and_empty_body PASSED [  6%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_action_delays_response PASSED [  6%]
+.evaluation_tests/test_checkpoint_1.py::test_no_match_returns_not_found PASSED [  7%]
+.evaluation_tests/test_checkpoint_1.py::test_method_and_path_are_both_required PASSED [  8%]
+.evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered FAILED [  8%]
+.evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields FAILED [  9%]
+.evaluation_tests/test_checkpoint_1.py::test_empty_condition_renders_httpbody PASSED [ 10%]
+.evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_condition PASSED [ 10%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ns] PASSED [ 11%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0us] PASSED [ 12%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ms] PASSED [ 12%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0s] PASSED [ 13%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0m] PASSED [ 14%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0h] PASSED [ 14%]
+.evaluation_tests/test_checkpoint_1.py::test_duplicate_key_override_warns PASSED [ 15%]
+.evaluation_tests/test_checkpoint_1.py::test_rejects_empty_key PASSED    [ 16%]
+.evaluation_tests/test_checkpoint_1.py::test_content_length_reflects_rendered_template PASSED [ 17%]
+.evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template FAILED [ 17%]
+.evaluation_tests/test_checkpoint_1.py::test_non_yaml_files_ignored PASSED [ 18%]
+.evaluation_tests/test_checkpoint_1.py::test_httpbody_empty_for_get_requests PASSED [ 19%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_false_string_does_not_match PASSED [ 19%]
+.evaluation_tests/test_checkpoint_2.py::test_body_from_file_template_rendering PASSED [ 20%]
+.evaluation_tests/test_checkpoint_2.py::test_helper_functions_gjson_regex_and_hmac FAILED [ 21%]
+.evaluation_tests/test_checkpoint_2.py::test_invalid_json_condition_fallback PASSED [ 21%]
+.evaluation_tests/test_checkpoint_2.py::test_inline_body_precedence_over_file PASSED [ 22%]
+.evaluation_tests/test_checkpoint_2.py::test_missing_body_from_file_rejects_startup PASSED [ 23%]
+.evaluation_tests/test_checkpoint_2.py::test_gjson_non_string_raw_json FAILED [ 23%]
+.evaluation_tests/test_checkpoint_2.py::test_additional_helper_functions FAILED [ 24%]
+.evaluation_tests/test_checkpoint_2.py::test_jsonpath_value_and_no_match FAILED [ 25%]
+.evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[hmac_sha256] FAILED [ 25%]
+.evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[uuidv5] FAILED [ 26%]
+.evaluation_tests/test_checkpoint_2.py::test_body_from_file_cached_across_requests PASSED [ 27%]
+.evaluation_tests/test_checkpoint_2.py::test_jsonpath_empty_body_and_headers FAILED [ 27%]
+.evaluation_tests/test_checkpoint_2.py::test_helper_edge_cases FAILED    [ 28%]
+.evaluation_tests/test_checkpoint_2.py::test_empty_body_falls_back_to_file PASSED [ 29%]
+.evaluation_tests/test_checkpoint_2.py::test_gjson_nested_and_array_access FAILED [ 29%]
+.evaluation_tests/test_checkpoint_2.py::test_gjson_array_wildcard FAILED [ 30%]
+.evaluation_tests/test_checkpoint_2.py::test_jsonpath_recursive_descent FAILED [ 31%]
+.evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_index_ordering FAILED [ 31%]
+.evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_no_match FAILED [ 32%]
+.evaluation_tests/test_checkpoint_2.py::test_is_last_index_returns_false FAILED [ 33%]
+.evaluation_tests/test_checkpoint_2.py::test_uuidv5_deterministic_across_requests FAILED [ 34%]
+.evaluation_tests/test_checkpoint_2.py::test_body_from_file_with_helper_functions FAILED [ 34%]
+.evaluation_tests/test_checkpoint_2.py::test_gjson_invalid_json_render_error PASSED [ 35%]
+.evaluation_tests/test_checkpoint_2.py::test_whitespace_body_takes_precedence PASSED [ 36%]
+.evaluation_tests/test_checkpoint_2.py::test_templated_headers_with_helpers FAILED [ 36%]
+.evaluation_tests/test_checkpoint_2.py::test_hmac_sha256_empty_inputs FAILED [ 37%]
+.evaluation_tests/test_checkpoint_3.py::test_redis_persists_state_across_requests FAILED [ 38%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_posts_to_webhook FAILED [ 38%]
+.evaluation_tests/test_checkpoint_3.py::test_redis_array_semicolon_separator FAILED [ 39%]
+.evaluation_tests/test_checkpoint_3.py::test_redis_hash_and_list_ops FAILED [ 40%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_condition_stateful_routing FAILED [ 40%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_body_from_file_templates FAILED [ 41%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_response PASSED [ 42%]
+.evaluation_tests/test_checkpoint_3.py::test_external_redis_mode FAILED  [ 42%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_hdel FAILED         [ 43%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_header_templates FAILED [ 44%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_inline_body_wins FAILED [ 44%]
+.evaluation_tests/test_checkpoint_3.py::test_redis_state_lost_on_restart FAILED [ 45%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_renders_response_headers FAILED [ 46%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_error_no_abort PASSED [ 46%]
+.evaluation_tests/test_checkpoint_3.py::test_mixed_action_ordering FAILED [ 47%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_missing_key_returns_empty FAILED [ 48%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_del_multiple_keys FAILED [ 48%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_list_ops FAILED [ 49%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_hash_and_keys FAILED [ 50%]
+.evaluation_tests/test_checkpoint_3.py::test_redisdo_inside_redis_action_items FAILED [ 51%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_no_body FAILED    [ 51%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_url_template_with_redisdo FAILED [ 52%]
+.evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_redis_state FAILED [ 53%]
+.evaluation_tests/test_checkpoint_4.py::test_extend_merges_child_values PASSED [ 53%]
+.evaluation_tests/test_checkpoint_4.py::test_action_order_after_inherit FAILED [ 54%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[template_with_expect_actions] PASSED [ 55%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[invalid_kind] PASSED [ 55%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[behavior_with_template_field] PASSED [ 56%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[empty_key] PASSED [ 57%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[template_with_values] PASSED [ 57%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[missing_parent_invalid_child] FAILED [ 58%]
+.evaluation_tests/test_checkpoint_4.py::test_abstract_behavior_not_routable PASSED [ 59%]
+.evaluation_tests/test_checkpoint_4.py::test_extend_forward_ref_across_files PASSED [ 59%]
+.evaluation_tests/test_checkpoint_4.py::test_child_expect_overrides_parent PASSED [ 60%]
+.evaluation_tests/test_checkpoint_4.py::test_missing_parent_uses_child_only PASSED [ 61%]
+.evaluation_tests/test_checkpoint_4.py::test_equal_order_preserves_relative FAILED [ 61%]
+.evaluation_tests/test_checkpoint_4.py::test_behavior_extends_behavior PASSED [ 62%]
+.evaluation_tests/test_checkpoint_4.py::test_extend_preserves_parent_values PASSED [ 63%]
+.evaluation_tests/test_checkpoint_4.py::test_template_with_request_context PASSED [ 63%]
+.evaluation_tests/test_checkpoint_4.py::test_values_in_expect_condition FAILED [ 64%]
+.evaluation_tests/test_checkpoint_4.py::test_no_order_defaults_to_zero FAILED [ 65%]
+.evaluation_tests/test_checkpoint_4.py::test_multi_level_inheritance_chain PASSED [ 65%]
+.evaluation_tests/test_checkpoint_4.py::test_parent_actions_precede_child_at_same_order FAILED [ 66%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_merged_multiple_reply_http FAILED [ 67%]
+.evaluation_tests/test_checkpoint_4.py::test_rejects_abstract_behavior_with_extend PASSED [ 68%]
+.evaluation_tests/test_checkpoint_5.py::test_template_crud_and_reload FAILED [ 68%]
+.evaluation_tests/test_checkpoint_5.py::test_template_set_lifecycle FAILED [ 69%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_missing_key_returns_404 PASSED [ 70%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_all_preserves_filesystem FAILED [ 70%]
+.evaluation_tests/test_checkpoint_5.py::test_post_invalid_payload_returns_400 PASSED [ 71%]
+.evaluation_tests/test_checkpoint_5.py::test_admin_server_disabled PASSED [ 72%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_key_reveals_filesystem_fallback FAILED [ 72%]
+.evaluation_tests/test_checkpoint_5.py::test_redisdo_blocks_reserved_key_access[read] PASSED [ 73%]
+.evaluation_tests/test_checkpoint_5.py::test_redisdo_blocks_reserved_key_access[write] PASSED [ 74%]
+.evaluation_tests/test_checkpoint_5.py::test_api_templates_persist_across_restart FAILED [ 74%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_set_isolation FAILED [ 75%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_all_clears_persistent_store_across_restart FAILED [ 76%]
+.evaluation_tests/test_checkpoint_5.py::test_delete_fs_only_key_returns_404 PASSED [ 76%]
+.evaluation_tests/test_checkpoint_5.py::test_post_templates_updates_existing_key FAILED [ 77%]
+.evaluation_tests/test_checkpoint_5.py::test_template_set_replaces_previous FAILED [ 78%]
+.evaluation_tests/test_checkpoint_5.py::test_sets_survive_restart_and_delete_all FAILED [ 78%]
+.evaluation_tests/test_checkpoint_5.py::test_restart_preserves_fs_and_sets_after_delete_all FAILED [ 79%]
+.evaluation_tests/test_checkpoint_5.py::test_redisdo_blocks_template_set_storage_key PASSED [ 80%]
+.evaluation_tests/test_checkpoint_5.py::test_get_templates_includes_template_set_mocks FAILED [ 80%]
+.evaluation_tests/test_checkpoint_5.py::test_persisted_api_mock_overrides_filesystem_after_restart FAILED [ 81%]
+.evaluation_tests/test_checkpoint_6.py::test_hot_reload_modified_file PASSED [ 82%]
+.evaluation_tests/test_checkpoint_6.py::test_hot_reload_create_delete PASSED [ 82%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_global_headers[get] PASSED [ 83%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_global_headers[preflight] PASSED [ 84%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_headers_disabled PASSED [ 85%]
+.evaluation_tests/test_checkpoint_6.py::test_reply_binary_file PASSED    [ 85%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_post_multipart FAILED [ 86%]
+.evaluation_tests/test_checkpoint_6.py::test_hot_reload_disabled_ignores_edits FAILED [ 87%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_explicit_options_mock_wins_over_preflight PASSED [ 87%]
+.evaluation_tests/test_checkpoint_6.py::test_binary_raw_and_inline_precedence PASSED [ 88%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_non_post_raw PASSED [ 89%]
+.evaluation_tests/test_checkpoint_6.py::test_omctl_push_delete_set PASSED [ 89%]
+.evaluation_tests/test_checkpoint_6.py::test_admin_reload_hot_reload_disabled PASSED [ 90%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_preserves_mock_headers PASSED [ 91%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_post_basename FAILED [ 91%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_part_content_type FAILED [ 92%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_404_headers PASSED     [ 93%]
+.evaluation_tests/test_checkpoint_6.py::test_binary_file_empty_body PASSED [ 93%]
+.evaluation_tests/test_checkpoint_6.py::test_binary_assets_stable_until_reload PASSED [ 94%]
+.evaluation_tests/test_checkpoint_6.py::test_omctl_push_recursive_no_key PASSED [ 95%]
+.evaluation_tests/test_checkpoint_6.py::test_omctl_push_reload_disabled PASSED [ 95%]
+.evaluation_tests/test_checkpoint_6.py::test_reply_binary_no_disposition_without_name PASSED [ 96%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_preflight_empty_body PASSED [ 97%]
+.evaluation_tests/test_checkpoint_6.py::test_cors_headers_on_mock_error_status PASSED [ 97%]
+.evaluation_tests/test_checkpoint_6.py::test_reply_binary_content_length PASSED [ 98%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_non_post_ignores_filename PASSED [ 99%]
+.evaluation_tests/test_checkpoint_6.py::test_send_binary_post_nested_basename FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_condition_requires_exact_true_string ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdcfe0>
+
+    @pytest.mark.functionality
+    def test_condition_requires_exact_true_string(hmock_server) -> None:
+        """Matches conditions only when rendering resolves exactly to true."""
+        templates = {
+            "mocks.yaml": """
+    - key: uppercase-true
+      kind: Behavior
+      expect:
+        condition: '{{ `True` }}'
+        http:
+          method: GET
+          path: /condition-exact
+      actions:
+        - reply_http:
+            status_code: 200
+            body: should-not-match
+    - key: lowercase-true
+      kind: Behavior
+      expect:
+        condition: '{{ `true` }}'
+        http:
+          method: GET
+          path: /condition-exact
+      actions:
+        - reply_http:
+            status_code: 200
+            body: matched
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(
+                f"{server.base_url}/condition-exact",
+                timeout=3,
+            )
+    
+        assert response.status_code == 200
+>       assert response.text == "matched"
+E       AssertionError: assert 'should-not-match' == 'matched'
+E         
+E         - matched
+E         + should-not-match
+
+.evaluation_tests/test_checkpoint_1.py:258: AssertionError
+_______________________ test_template_helpers_registered _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdda80>
+
+    @pytest.mark.functionality
+    def test_template_helpers_registered(
+        hmock_server,
+    ) -> None:
+        """Supports extended template helper functions in reply_http templates."""
+        templates = {
+            "mocks.yaml": """
+    - key: helper-surface
+      expect:
+        http:
+          method: GET
+          path: /helpers
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ add 1 2 }}|{{ sub 5 2 }}|{{ join "," (splitList "-" "a-b") }}|{{ "go" | upper }}|{{ "abc" | b64enc }}|{{ env "HELPER_ENV" }}|{{ coalesce "" "fallback" }}|{{ "a b" | nospace }}'
+    """
+        }
+        with hmock_server(
+            templates=templates,
+            extra_env={"HELPER_ENV": "token"},
+        ) as server:
+            response = requests.get(f"{server.base_url}/helpers", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_1.py:423: AssertionError
+________________________ test_http_log_required_fields _________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a1a80>
+
+    @pytest.mark.functionality
+    def test_http_log_required_fields(hmock_server) -> None:
+        """Emits structured HTTP request/response logs with required fields."""
+        templates = {
+            "mocks.yaml": """
+    - key: logs
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /logs
+      actions:
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"HM_LOG_LEVEL": "info", "PYTHONUNBUFFERED": "1"},
+        ) as server:
+            response = requests.get(f"{server.base_url}/logs?trace=1", timeout=3)
+            assert response.status_code == 200
+            assert response.text == "ok"
+            assert server.process.stdout is not None
+            payload = _find_http_log_line(server.process.stdout)
+            if payload is None and server.process.stderr is not None:
+                payload = _find_http_log_line(server.process.stderr)
+    
+>       assert payload is not None
+E       assert None is not None
+
+.evaluation_tests/test_checkpoint_1.py:503: AssertionError
+_________________ test_normalizes_whitespace_in_body_template __________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdd580>
+
+    @pytest.mark.functionality
+    def test_normalizes_whitespace_in_body_template(hmock_server) -> None:
+        """Replaces tab characters with spaces in body templates before rendering."""
+        templates = {
+            "mocks.yaml": """
+    - key: ws-body
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /ws-body
+      actions:
+        - reply_http:
+            status_code: 200
+            body: "{{ \"hello\"\t| upper }}"
+    """
+        }
+>       with hmock_server(templates=templates) as server:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.evaluation_tests/test_checkpoint_1.py:729: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.12/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+.evaluation_tests/conftest.py:244: in _run
+    _wait_for_tcp_port(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+host = '127.0.0.1', port = 37477
+
+    def _wait_for_tcp_port(
+        host: str,
+        port: int,
+        *,
+        process: subprocess.Popen[str],
+        timeout: float,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        last_error: OSError | None = None
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                stdout, stderr = process.communicate(timeout=1)
+>               raise RuntimeError(
+                    f"Process exited before port {port} became ready.\n"
+                    f"exit={process.returncode}\n"
+                    f"stdout:\n{stdout}\n"
+                    f"stderr:\n{stderr}"
+                )
+E               RuntimeError: Process exited before port 37477 became ready.
+E               exit=1
+E               stdout:
+E               
+E               stderr:
+E               warning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+E               Traceback (most recent call last):
+E                 File "/workspace/hmock.py", line 1274, in <module>
+E                   main()
+E                 File "/workspace/hmock.py", line 1242, in main
+E                   _BEHAVIORS = build_mock_set()
+E                                ^^^^^^^^^^^^^^^^
+E                 File "/workspace/hmock.py", line 704, in build_mock_set
+E                   fs_items  = _load_filesystem_items(templates_dir)
+E                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/hmock.py", line 642, in _load_filesystem_items
+E                   data = yaml.safe_load(f)
+E                          ^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 125, in safe_load
+E                   return load(stream, SafeLoader)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 81, in load
+E                   return loader.get_single_data()
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py", line 49, in get_single_data
+E                   node = self.get_single_node()
+E                          ^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 36, in get_single_node
+E                   document = self.compose_document()
+E                              ^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 55, in compose_document
+E                   node = self.compose_node(None, None)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+E                   node = self.compose_sequence_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+E                   node.value.append(self.compose_node(node, index))
+E                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+E                   item_value = self.compose_node(node, item_key)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+E                   node = self.compose_sequence_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+E                   node.value.append(self.compose_node(node, index))
+E                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+E                   item_value = self.compose_node(node, item_key)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 127, in compose_mapping_node
+E                   while not self.check_event(MappingEndEvent):
+E                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 98, in check_event
+E                   self.current_event = self.state()
+E                                        ^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 438, in parse_block_mapping_key
+E                   raise ParserError("while parsing a block mapping", self.marks[-1],
+E               yaml.parser.ParserError: while parsing a block mapping
+E                 in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 10, column 9
+E               expected <block end>, but found '<scalar>'
+E                 in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 11, column 20
+
+.evaluation_tests/conftest.py:109: RuntimeError
+__________________ test_helper_functions_gjson_regex_and_hmac __________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdef20>
+
+    def test_helper_functions_gjson_regex_and_hmac(hmock_server) -> None:
+        """Helper functions gJsonPath, regexFindFirstSubmatch, and hmacSHA256 work in templates."""
+        templates = {
+            "mocks.yaml": """
+    - key: helper-funcs
+      kind: Behavior
+      expect:
+        condition: '{{ .HTTPBody | gJsonPath "kind" | eq "email" }}'
+        http:
+          method: POST
+          path: /helpers
+      actions:
+        - reply_http:
+            status_code: 200
+            body: >
+              {{ $email := .HTTPBody | gJsonPath "email" }}
+              {{ regexFindFirstSubmatch "(\\w+)@" $email }}|
+              {{ hmacSHA256 "secret" "payload" }}
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/helpers",
+                json={"kind": "email", "email": "alice@example.com"},
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:84: AssertionError
+________________________ test_gjson_non_string_raw_json ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdfce0>
+
+    @pytest.mark.functionality
+    def test_gjson_non_string_raw_json(hmock_server) -> None:
+        """gJsonPath returns raw JSON values, including objects, arrays, and scalars."""
+        templates = {
+            "mocks.yaml": """
+    - key: gjson-raw
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /gjson-raw
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ .HTTPBody | gJsonPath "obj" }}|{{ .HTTPBody | gJsonPath "arr" }}|{{ .HTTPBody | gJsonPath "count" }}|{{ .HTTPBody | gJsonPath "flag" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/gjson-raw",
+                json={
+                    "obj": {"a": 1},
+                    "arr": [1, 2],
+                    "count": 2,
+                    "flag": True,
+                },
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:213: AssertionError
+_______________________ test_additional_helper_functions _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fde020>
+
+    @pytest.mark.functionality
+    def test_additional_helper_functions(hmock_server) -> None:
+        """uuidv5, regexFindAllSubmatch, htmlEscapeString, xmlPath, and isLastIndex render correctly."""
+        templates = {
+            "mocks.yaml": """
+    - key: helper-breadth
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /helper-breadth
+      actions:
+        - reply_http:
+            status_code: 200
+            body: >
+              {{ uuidv5 "seed" }}|
+              {{ uuidv5 "seed" }}|
+              {{ regexFindAllSubmatch "(\\w+)@(\\w+)" "alice@example" | join "," }}|
+              {{ `<x>&` | htmlEscapeString }}|
+              {{ `<root><name>alpha</name></root>` | xmlPath "//name" }}|
+              {{ if isLastIndex 1 (splitList "," "a,b") }}true{{ else }}false{{ end }}
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(
+                f"{server.base_url}/helper-breadth",
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:251: AssertionError
+_______________________ test_jsonpath_value_and_no_match _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdf9c0>
+
+    def test_jsonpath_value_and_no_match(hmock_server) -> None:
+        """jsonPath returns extracted value and empty string for missing paths."""
+        templates = {
+            "mocks.yaml": """
+    - key: jsonpath
+      expect:
+        http:
+          method: POST
+          path: /jsonpath
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ .HTTPBody | jsonPath "foo" }}|{{ .HTTPBody | jsonPath "missing" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/jsonpath",
+                json={"foo": 123},
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:285: AssertionError
+_________________ test_known_deterministic_output[hmac_sha256] _________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdee80>
+key = 'hmac', path = '/hmac-known'
+body_expr = '{{ hmacSHA256 "secret" "payload" }}'
+expected = 'b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4'
+
+    @pytest.mark.parametrize(
+        ("key", "path", "body_expr", "expected"),
+        [
+            (
+                "hmac",
+                "/hmac-known",
+                '{{ hmacSHA256 "secret" "payload" }}',
+                "b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4",
+            ),
+            (
+                "uuid5-known",
+                "/uuid5-known",
+                '{{ uuidv5 "hello" }}',
+                "4d71d03f-f19b-5d9e-8523-9628ba18063c",
+            ),
+        ],
+        ids=["hmac_sha256", "uuidv5"],
+    )
+    def test_known_deterministic_output(hmock_server, key, path, body_expr, expected):
+        """hmacSHA256 and uuidv5 helpers emit deterministic expected values."""
+        templates = {
+            "mocks.yaml": (
+                "- key: " + key + "\n"
+                "  expect:\n"
+                "    http:\n"
+                "      method: GET\n"
+                "      path: " + path + "\n"
+                "  actions:\n"
+                "    - reply_http:\n"
+                "        status_code: 200\n"
+                "        body: '" + body_expr + "'\n"
+            )
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}{path}", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:326: AssertionError
+___________________ test_known_deterministic_output[uuidv5] ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdf060>
+key = 'uuid5-known', path = '/uuid5-known', body_expr = '{{ uuidv5 "hello" }}'
+expected = '4d71d03f-f19b-5d9e-8523-9628ba18063c'
+
+    @pytest.mark.parametrize(
+        ("key", "path", "body_expr", "expected"),
+        [
+            (
+                "hmac",
+                "/hmac-known",
+                '{{ hmacSHA256 "secret" "payload" }}',
+                "b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4",
+            ),
+            (
+                "uuid5-known",
+                "/uuid5-known",
+                '{{ uuidv5 "hello" }}',
+                "4d71d03f-f19b-5d9e-8523-9628ba18063c",
+            ),
+        ],
+        ids=["hmac_sha256", "uuidv5"],
+    )
+    def test_known_deterministic_output(hmock_server, key, path, body_expr, expected):
+        """hmacSHA256 and uuidv5 helpers emit deterministic expected values."""
+        templates = {
+            "mocks.yaml": (
+                "- key: " + key + "\n"
+                "  expect:\n"
+                "    http:\n"
+                "      method: GET\n"
+                "      path: " + path + "\n"
+                "  actions:\n"
+                "    - reply_http:\n"
+                "        status_code: 200\n"
+                "        body: '" + body_expr + "'\n"
+            )
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}{path}", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:326: AssertionError
+_____________________ test_jsonpath_empty_body_and_headers _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111c680>
+
+    def test_jsonpath_empty_body_and_headers(hmock_server) -> None:
+        """jsonPath returns empty string when request body data is empty."""
+        templates = {
+            "mocks.yaml": """
+    - key: jsonpath-empty
+      expect:
+        http:
+          method: POST
+          path: /jsonpath-empty
+      actions:
+        - reply_http:
+            status_code: 200
+            headers:
+              X-JsonPath: '{{ .HTTPBody | jsonPath "foo" }}'
+            body: '{{ .HTTPBody | jsonPath "foo" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/jsonpath-empty",
+                data="",
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:383: AssertionError
+____________________________ test_helper_edge_cases ____________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111c860>
+
+    @pytest.mark.functionality
+    def test_helper_edge_cases(hmock_server) -> None:
+        """Helper functions return empty outputs for no-match or missing-input edge cases."""
+        templates = {
+            "mocks.yaml": """
+    - key: helper-edges
+      expect:
+        http:
+          method: GET
+          path: /helper-edges
+      actions:
+        - reply_http:
+            status_code: 200
+            body: >
+              {{ "" | gJsonPath "foo" }}|
+              {{ `{"foo":"bar"}` | gJsonPath "missing" }}|
+              {{ regexFindFirstSubmatch "(foo)" "bar" }}|
+              {{ regexFindFirstSubmatch "foo" "foo" }}|
+              {{ `"'<>&` | htmlEscapeString }}|
+              {{ "" | xmlPath "//name" }}|
+              {{ `<root><item>1</item></root>` | xmlPath "//missing" }}
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/helper-edges", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:415: AssertionError
+______________________ test_gjson_nested_and_array_access ______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111d080>
+
+    @pytest.mark.functionality
+    def test_gjson_nested_and_array_access(hmock_server) -> None:
+        """gJsonPath supports nested field paths, array index access, and array count."""
+        templates = {
+            "mocks.yaml": """
+    - key: gjson-adv
+      expect:
+        http:
+          method: POST
+          path: /gjson-adv
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ .HTTPBody | gJsonPath "user.name" }}|{{ .HTTPBody | gJsonPath "items.0" }}|{{ .HTTPBody | gJsonPath "items.#" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/gjson-adv",
+                json={"user": {"name": "alice"}, "items": ["x", "y", "z"]},
+                timeout=3,
+            )
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:484: AssertionError
+__________________________ test_gjson_array_wildcard ___________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111d440>
+
+    @pytest.mark.functionality
+    def test_gjson_array_wildcard(hmock_server) -> None:
+        """gJsonPath array wildcard extracts sub-fields from all array elements."""
+        templates = {
+            "mocks.yaml": """
+    - key: gjson-wild
+      expect:
+        http:
+          method: POST
+          path: /gjson-wild
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ .HTTPBody | gJsonPath "items.#.id" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/gjson-wild",
+                json={"items": [{"id": 1}, {"id": 2}, {"id": 3}]},
+                timeout=3,
+            )
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:513: AssertionError
+_______________________ test_jsonpath_recursive_descent ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111d9e0>
+
+    @pytest.mark.functionality
+    def test_jsonpath_recursive_descent(hmock_server) -> None:
+        """jsonPath supports recursive descent with double-slash XPath syntax."""
+        templates = {
+            "mocks.yaml": """
+    - key: jsonpath-recurse
+      expect:
+        http:
+          method: POST
+          path: /jsonpath-recurse
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ .HTTPBody | jsonPath "//name" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.post(
+                f"{server.base_url}/jsonpath-recurse",
+                json={"nested": {"name": "deep_value"}},
+                timeout=3,
+            )
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:539: AssertionError
+_________________ test_regex_find_all_submatch_index_ordering __________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111dda0>
+
+    @pytest.mark.functionality
+    def test_regex_find_all_submatch_index_ordering(hmock_server) -> None:
+        """regexFindAllSubmatch returns full match at index 0 and capture groups at index 1+."""
+        templates = {
+            "mocks.yaml": """
+    - key: regex-idx
+      expect:
+        http:
+          method: GET
+          path: /regex-idx
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ index (regexFindAllSubmatch "(\\w+)-(\\d+)" "abc-42") 0 }}|{{ index (regexFindAllSubmatch "(\\w+)-(\\d+)" "abc-42") 1 }}|{{ index (regexFindAllSubmatch "(\\w+)-(\\d+)" "abc-42") 2 }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/regex-idx", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:561: AssertionError
+____________________ test_regex_find_all_submatch_no_match _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111e160>
+
+    @pytest.mark.functionality
+    def test_regex_find_all_submatch_no_match(hmock_server) -> None:
+        """regexFindAllSubmatch returns an empty result when the pattern does not match."""
+        templates = {
+            "mocks.yaml": """
+    - key: regex-nomatch
+      expect:
+        http:
+          method: GET
+          path: /regex-nomatch
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ regexFindAllSubmatch "(\\d+)" "no-digits" | join "," }}END'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/regex-nomatch", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:586: AssertionError
+_______________________ test_is_last_index_returns_false _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111e520>
+
+    @pytest.mark.functionality
+    def test_is_last_index_returns_false(hmock_server) -> None:
+        """isLastIndex returns false when the index is not the last valid index."""
+        templates = {
+            "mocks.yaml": """
+    - key: islast-false
+      expect:
+        http:
+          method: GET
+          path: /islast-false
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ if isLastIndex 0 (splitList "," "a,b,c") }}true{{ else }}false{{ end }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/islast-false", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:608: AssertionError
+__________________ test_uuidv5_deterministic_across_requests ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111e8e0>
+
+    @pytest.mark.functionality
+    def test_uuidv5_deterministic_across_requests(hmock_server) -> None:
+        """uuidv5 produces identical output across separate requests with the same input."""
+        templates = {
+            "mocks.yaml": """
+    - key: uuid-across
+      expect:
+        http:
+          method: GET
+          path: /uuid-across
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ uuidv5 "cross-request" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            first = requests.get(f"{server.base_url}/uuid-across", timeout=3)
+            second = requests.get(f"{server.base_url}/uuid-across", timeout=3)
+>       assert first.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:631: AssertionError
+__________________ test_body_from_file_with_helper_functions ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae70fdee80>
+
+    @pytest.mark.functionality
+    def test_body_from_file_with_helper_functions(hmock_server) -> None:
+        """body_from_file templates have access to helper functions like htmlEscapeString."""
+        templates = {
+            "mocks.yaml": """
+    - key: file-helpers
+      expect:
+        http:
+          method: GET
+          path: /file-helpers
+      actions:
+        - reply_http:
+            status_code: 200
+            body_from_file: files/helper.tmpl
+    """
+        }
+        files = {"files/helper.tmpl": '{{ htmlEscapeString "<b>test</b>" }}'}
+        with hmock_server(templates=templates, files=files) as server:
+            response = requests.get(f"{server.base_url}/file-helpers", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:655: AssertionError
+_____________________ test_templated_headers_with_helpers ______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111dd00>
+
+    @pytest.mark.functionality
+    def test_templated_headers_with_helpers(hmock_server) -> None:
+        """Header template values have access to helper functions like hmacSHA256."""
+        templates = {
+            "mocks.yaml": """
+    - key: hdr-helpers
+      expect:
+        http:
+          method: GET
+          path: /hdr-helpers
+      actions:
+        - reply_http:
+            status_code: 200
+            headers:
+              X-Hmac: '{{ hmacSHA256 "key" "data" }}'
+            body: ok
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/hdr-helpers", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:730: AssertionError
+________________________ test_hmac_sha256_empty_inputs _________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111df80>
+
+    @pytest.mark.functionality
+    def test_hmac_sha256_empty_inputs(hmock_server) -> None:
+        """hmacSHA256 produces a hex digest even with empty secret or data strings."""
+        templates = {
+            "mocks.yaml": """
+    - key: hmac-empty
+      expect:
+        http:
+          method: GET
+          path: /hmac-empty
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ hmacSHA256 "" "data" }}|{{ hmacSHA256 "secret" "" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/hmac-empty", timeout=3)
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_2.py:752: AssertionError
+__________________ test_redis_persists_state_across_requests ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111db20>
+
+    def test_redis_persists_state_across_requests(hmock_server) -> None:
+        """State set via redisDo persists across separate requests to `/state`."""
+        templates = {
+            "mocks.yaml": """
+    - key: redis-state
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /state
+      actions:
+        - redis:
+          - '{{ .HTTPHeader.Get "X-Token" | redisDo "SET" "session_token" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "session_token" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            first = requests.get(
+                f"{server.base_url}/state",
+                headers={"X-Token": "token-a"},
+                timeout=3,
+            )
+            second = requests.get(
+                f"{server.base_url}/state",
+                headers={"X-Token": "token-b"},
+                timeout=3,
+            )
+    
+>       assert first.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:45: AssertionError
+_______________________ test_send_http_posts_to_webhook ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111ce00>
+webhook_sink = WebhookSink(url='http://127.0.0.1:48157', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae715c3980>)
+
+    def test_send_http_posts_to_webhook(hmock_server, webhook_sink) -> None:
+        """`send_http` emits an outbound call to the configured webhook URL."""
+        templates = {
+            "mocks.yaml": """
+    - key: emit-webhook
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /emit
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}'
+            method: POST
+            headers:
+              Content-Type: application/json
+            body: '{"path":"{{.HTTPPath}}","payload":"{{.HTTPBody}}"}'
+        - reply_http:
+            status_code: 202
+            body: accepted
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"WEBHOOK_URL": f"{webhook_sink.url}/hook"},
+        ) as server:
+            response = requests.post(
+                f"{server.base_url}/emit",
+                data="hello",
+                timeout=3,
+            )
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111d4e0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+_____________________ test_redis_array_semicolon_separator _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111c5e0>
+
+    @pytest.mark.functionality
+    def test_redis_array_semicolon_separator(hmock_server) -> None:
+        """Redis array list output is returned as a delimiter-joined string."""
+        templates = {
+            "mocks.yaml": """
+    - key: redis-array
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /array
+      actions:
+        - redis:
+          - '{{ redisDo "DEL" "arr" }}'
+          - '{{ redisDo "RPUSH" "arr" "one" }}'
+          - '{{ redisDo "RPUSH" "arr" "two" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "LRANGE" "arr" 0 -1 }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/array", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:118: AssertionError
+_________________________ test_redis_hash_and_list_ops _________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111eca0>
+
+    @pytest.mark.functionality
+    def test_redis_hash_and_list_ops(
+        hmock_server,
+    ) -> None:
+        """Supported redis commands (`HSET`, `LPUSH`, `HGET`, `LRANGE`, etc.) return expected values."""
+        templates = {
+            "mocks.yaml": """
+    - key: redis-commands
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /redis-commands
+      actions:
+        - redis:
+          - '{{ redisDo "DEL" "h" "l" }}'
+          - '{{ redisDo "HSET" "h" "f1" "v1" }}'
+          - '{{ redisDo "LPUSH" "l" "one" "two" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "HGET" "h" "f1" }}|{{ redisDo "HGETALL" "h" }}|{{ redisDo "LPOP" "l" }}|{{ redisDo "RPOP" "l" }}|{{ redisDo "EXISTS" "h" }}|{{ redisDo "KEYS" "*" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/redis-commands", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:149: AssertionError
+___________________ test_redisdo_condition_stateful_routing ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f100>
+
+    @pytest.mark.functionality
+    def test_redisdo_condition_stateful_routing(hmock_server) -> None:
+        """Condition matching can branch on state read from redisDo."""
+        templates = {
+            "mocks.yaml": """
+    - key: set-flag
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /flags
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "feature_flag" .HTTPBody }}'
+        - reply_http:
+            status_code: 200
+            body: ok
+    - key: gated
+      kind: Behavior
+      expect:
+        condition: '{{ redisDo "GET" "feature_flag" | eq "enabled" }}'
+        http:
+          method: GET
+          path: /feature
+      actions:
+        - reply_http:
+            status_code: 200
+            body: active
+    - key: gated-fallback
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /feature
+      actions:
+        - reply_http:
+            status_code: 404
+            body: inactive
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            before = requests.get(f"{server.base_url}/feature", timeout=3)
+            set_flag = requests.post(
+                f"{server.base_url}/flags",
+                data="enabled",
+                timeout=3,
+            )
+            after = requests.get(f"{server.base_url}/feature", timeout=3)
+    
+        assert before.status_code == 404
+        assert before.text == "inactive"
+        assert set_flag.status_code == 200
+>       assert after.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:212: AssertionError
+___________________ test_send_http_body_from_file_templates ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f4c0>
+webhook_sink = WebhookSink(url='http://127.0.0.1:48157', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae71048ac0>)
+
+    @pytest.mark.functionality
+    def test_send_http_body_from_file_templates(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """`send_http` accepts a template-rendered request body from `body_from_file`."""
+        templates = {
+            "mocks.yaml": """
+    - key: send-http-from-file
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /emit-file
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}'
+            method: POST
+            body_from_file: files/webhook.json
+            headers:
+              Content-Type: application/json
+        - reply_http:
+            status_code: 200
+            body: accepted
+    """
+        }
+        files = {
+            "files/webhook.json": '{"path":"{{.HTTPPath}}","body":"{{.HTTPBody}}"}'
+        }
+    
+        with hmock_server(
+            templates=templates,
+            files=files,
+            extra_env={"WEBHOOK_URL": f"{webhook_sink.url}/hook"},
+        ) as server:
+            response = requests.post(
+                f"{server.base_url}/emit-file",
+                data="payload",
+                timeout=3,
+            )
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:256: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111f420>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+___________________________ test_external_redis_mode ___________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111eca0>
+redis_url = 'redis://127.0.0.1:53833'
+
+    def test_external_redis_mode(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """Redis operations can run against external Redis using `HM_REDIS_TYPE` and `HM_REDIS_URL`."""
+        templates = {
+            "mocks.yaml": """
+    - key: external-redis
+      expect:
+        http:
+          method: GET
+          path: /external-redis
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "k" "v" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "k" }}'
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"HM_REDIS_TYPE": "redis", "HM_REDIS_URL": redis_url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/external-redis", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:325: AssertionError
+______________________________ test_redisdo_hdel _______________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f600>
+
+    @pytest.mark.functionality
+    def test_redisdo_hdel(hmock_server) -> None:
+        """`HDEL` removes a hash key so later `HGET` returns an empty value."""
+        templates = {
+            "mocks.yaml": """
+    - key: hdel
+      expect:
+        http:
+          method: GET
+          path: /hdel
+      actions:
+        - redis:
+          - '{{ redisDo "HSET" "h" "f1" "v1" }}'
+          - '{{ redisDo "HDEL" "h" "f1" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "HGET" "h" "f1" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/hdel", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:352: AssertionError
+_______________________ test_send_http_header_templates ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111c720>
+webhook_sink = WebhookSink(url='http://127.0.0.1:39497', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae7227ad80>)
+
+    @pytest.mark.functionality
+    def test_send_http_header_templates(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """`send_http` request headers are rendered per-spec using template expressions."""
+        templates = {
+            "mocks.yaml": """
+    - key: send-http-headers
+      expect:
+        http:
+          method: GET
+          path: /emit-headers
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/hook'
+            method: POST
+            headers:
+              X-Path: '{{ .HTTPPath }}'
+            body: ok
+        - reply_http:
+            status_code: 200
+            body: done
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/emit-headers", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111cae0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+_______________________ test_send_http_inline_body_wins ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111db20>
+webhook_sink = WebhookSink(url='http://127.0.0.1:36251', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae70ec7c40>)
+
+    @pytest.mark.functionality
+    def test_send_http_inline_body_wins(hmock_server, webhook_sink) -> None:
+        """Inline `send_http` body takes precedence over `body_from_file`."""
+        templates = {
+            "mocks.yaml": """
+    - key: send-http-precedence
+      expect:
+        http:
+          method: GET
+          path: /emit-precedence
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/hook'
+            method: POST
+            body: inline
+            body_from_file: files/fallback.txt
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+        files = {"files/fallback.txt": "from-file"}
+    
+        with hmock_server(
+            templates=templates,
+            files=files,
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/emit-precedence", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:423: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111c900>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+_______________________ test_redis_state_lost_on_restart _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f9c0>
+
+    @pytest.mark.functionality
+    def test_redis_state_lost_on_restart(hmock_server) -> None:
+        """In-memory Redis state is cleared when the mock server is restarted."""
+        templates = {
+            "mocks.yaml": """
+    - key: remember
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /remember
+      actions:
+        - redis:
+          - '{{ .HTTPBody | redisDo "SET" "remembered" }}'
+        - reply_http:
+            status_code: 200
+            body: stored
+    - key: read
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /remember
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "remembered" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            stored = requests.post(
+                f"{server.base_url}/remember",
+                data="alpha",
+                timeout=3,
+            )
+            before_restart = requests.get(f"{server.base_url}/remember", timeout=3)
+    
+        with hmock_server(templates=templates) as server:
+            after_restart = requests.get(f"{server.base_url}/remember", timeout=3)
+    
+        assert stored.status_code == 200
+>       assert before_restart.text == "alpha"
+E       assert '<!DOCTYPE HTML>\n<html lang="en">\n    <head>\n        <meta charset="utf-8">\n        <title>Error response</title>\n    </head>\n    <body>\n        <h1>Error response</h1>\n        <p>Error code: 500</p>\n        <p>Message: body render error: expected token \'end of print statement\', got \'string\'.</p>\n        <p>Error code explanation: 500 - Server got itself in trouble.</p>\n    </body>\n</html>\n' == 'alpha'
+E         
+E         - alpha
+E         + <!DOCTYPE HTML>
+E         + <html lang="en">
+E         +     <head>
+E         +         <meta charset="utf-8">
+E         +         <title>Error response</title>
+E         +     </head>
+E         +     <body>
+E         +         <h1>Error response</h1>
+E         +         <p>Error code: 500</p>
+E         +         <p>Message: body render error: expected token 'end of print statement', got 'string'.</p>
+E         +         <p>Error code explanation: 500 - Server got itself in trouble.</p>
+E         +     </body>
+E         + </html>
+
+.evaluation_tests/test_checkpoint_3.py:472: AssertionError
+____________________ test_redisdo_renders_response_headers _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111fec0>
+
+    @pytest.mark.functionality
+    def test_redisdo_renders_response_headers(hmock_server) -> None:
+        """`redisDo` output can be rendered into outbound response headers."""
+        templates = {
+            "mocks.yaml": """
+    - key: header-state
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /header-state
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "header_value" "from-redis" }}'
+        - reply_http:
+            status_code: 200
+            headers:
+              X-Redis-State: '{{ redisDo "GET" "header_value" }}'
+            body: ok
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/header-state", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:502: AssertionError
+__________________________ test_mixed_action_ordering __________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a8680>
+webhook_sink = WebhookSink(url='http://127.0.0.1:37837', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae70f68180>)
+
+    @pytest.mark.functionality
+    def test_mixed_action_ordering(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """A behavior may mix redis, send_http, and reply_http in order."""
+        templates = {
+            "mocks.yaml": """
+    - key: ordered-actions
+      kind: Behavior
+      expect:
+        http:
+          method: POST
+          path: /ordered-actions
+      actions:
+        - redis:
+          - '{{ .HTTPBody | gJsonPath "user" | redisDo "SET" "last_user" }}'
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/ordered'
+            method: POST
+            body: '{{ redisDo "GET" "last_user" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "last_user" }}'
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.post(
+                f"{server.base_url}/ordered-actions",
+                json={"user": "alice"},
+                timeout=3,
+            )
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:585: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae710a89a0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+____________________ test_redisdo_missing_key_returns_empty ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a8360>
+
+    @pytest.mark.functionality
+    def test_redisdo_missing_key_returns_empty(hmock_server) -> None:
+        """GET on a non-existent key returns empty string; EXISTS returns '0'."""
+        templates = {
+            "mocks.yaml": """
+    - key: missing-key
+      expect:
+        http:
+          method: GET
+          path: /missing-key
+      actions:
+        - redis:
+          - '{{ redisDo "DEL" "never_set" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "never_set" }}|{{ redisDo "EXISTS" "never_set" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/missing-key", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:614: AssertionError
+________________________ test_redisdo_del_multiple_keys ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a8cc0>
+
+    @pytest.mark.functionality
+    def test_redisdo_del_multiple_keys(hmock_server) -> None:
+        """DEL removes multiple keys in a single command."""
+        templates = {
+            "mocks.yaml": """
+    - key: del-multi
+      expect:
+        http:
+          method: GET
+          path: /del-multi
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "a" "1" }}'
+          - '{{ redisDo "SET" "b" "2" }}'
+          - '{{ redisDo "DEL" "a" "b" }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "EXISTS" "a" }}|{{ redisDo "EXISTS" "b" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/del-multi", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:644: AssertionError
+_________________________ test_redisdo_empty_list_ops __________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f9c0>
+
+    @pytest.mark.functionality
+    def test_redisdo_empty_list_ops(hmock_server) -> None:
+        """LPOP, RPOP, and LRANGE on a non-existent list return empty results."""
+        templates = {
+            "mocks.yaml": """
+    - key: empty-list
+      expect:
+        http:
+          method: GET
+          path: /empty-list
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "LPOP" "no_list" }}|{{ redisDo "RPOP" "no_list" }}|{{ redisDo "LRANGE" "no_list" 0 -1 }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/empty-list", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:670: AssertionError
+_______________________ test_redisdo_empty_hash_and_keys _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111dda0>
+
+    @pytest.mark.functionality
+    def test_redisdo_empty_hash_and_keys(hmock_server) -> None:
+        """HGETALL on non-existent hash and KEYS with no matches return empty strings."""
+        templates = {
+            "mocks.yaml": """
+    - key: empty-hash
+      expect:
+        http:
+          method: GET
+          path: /empty-hash
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "HGETALL" "no_hash" }}|{{ redisDo "KEYS" "nonexistent:*" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/empty-hash", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:697: AssertionError
+____________________ test_redisdo_inside_redis_action_items ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111c720>
+
+    @pytest.mark.functionality
+    def test_redisdo_inside_redis_action_items(hmock_server) -> None:
+        """redisDo can be used inside redis action items with sequential evaluation."""
+        templates = {
+            "mocks.yaml": """
+    - key: nested-redis
+      expect:
+        http:
+          method: GET
+          path: /nested-redis
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "src" "hello" }}'
+          - '{{ redisDo "SET" "dst" (redisDo "GET" "src") }}'
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "dst" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/nested-redis", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:726: AssertionError
+____________________________ test_send_http_no_body ____________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111f7e0>
+webhook_sink = WebhookSink(url='http://127.0.0.1:48483', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae71061ac0>)
+
+    @pytest.mark.functionality
+    def test_send_http_no_body(hmock_server, webhook_sink) -> None:
+        """send_http works without body or body_from_file fields."""
+        templates = {
+            "mocks.yaml": """
+    - key: no-body
+      expect:
+        http:
+          method: GET
+          path: /no-body
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/hook'
+            method: GET
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/no-body", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:755: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111f600>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+___________________ test_send_http_url_template_with_redisdo ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a8ae0>
+webhook_sink = WebhookSink(url='http://127.0.0.1:58159', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae70e75700>)
+
+    @pytest.mark.functionality
+    def test_send_http_url_template_with_redisdo(hmock_server, webhook_sink) -> None:
+        """send_http URL field is rendered as a template including redisDo expressions."""
+        templates = {
+            "mocks.yaml": """
+    - key: url-redis
+      expect:
+        http:
+          method: GET
+          path: /url-redis
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "target_path" "/hook" }}'
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}{{ redisDo "GET" "target_path" }}'
+            method: POST
+            body: triggered
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/url-redis", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_3.py:790: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111cae0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+_________________ test_send_http_failure_preserves_redis_state _________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a85e0>
+
+    @pytest.mark.functionality
+    def test_send_http_failure_preserves_redis_state(hmock_server) -> None:
+        """Redis state set before a failed send_http remains intact after the failure."""
+        templates = {
+            "mocks.yaml": """
+    - key: redis-then-fail
+      expect:
+        http:
+          method: GET
+          path: /redis-then-fail
+      actions:
+        - redis:
+          - '{{ redisDo "SET" "survivor" "yes" }}'
+        - send_http:
+            url: http://127.0.0.1:1/unreachable
+            method: POST
+            body: fail
+        - reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "survivor" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/redis-then-fail", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_3.py:824: AssertionError
+_______________________ test_action_order_after_inherit ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a96c0>
+
+    @pytest.mark.functionality
+    def test_action_order_after_inherit(hmock_server) -> None:
+        """Inherited and child actions are ordered by ``order`` before execution."""
+        templates = {
+            "mocks.yaml": """
+    - key: base-order
+      kind: AbstractBehavior
+      expect:
+        http:
+          method: GET
+          path: /order
+      actions:
+        - order: 10
+          redis:
+            - '{{ redisDo "SET" "order_key" "base" }}'
+        - order: 20
+          reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "order_key" }}'
+    
+    - key: child-order
+      kind: Behavior
+      extend: base-order
+      actions:
+        - order: -10
+          redis:
+            - '{{ redisDo "SET" "order_key" "child" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/order", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_4.py:83: AssertionError
+__________ test_rejects_invalid_config[missing_parent_invalid_child] ___________
+
+hmock_startup_failure = <function hmock_startup_failure.<locals>._run at 0x76ae710a9e40>
+templates = {'invalid.yaml': '\n- key: broken-child\n  kind: Behavior\n  extend: missing-parent\n  actions:\n    - sleep:\n        duration: 0s\n'}
+
+    @pytest.mark.error
+    @pytest.mark.parametrize(
+        ("templates",),
+        [
+            (
+                {
+                    "invalid.yaml": """
+    - key: invalid-template
+      kind: Template
+      expect:
+        http:
+          method: GET
+          path: /bad
+      actions:
+        - reply_http:
+            status_code: 200
+            body: bad
+      template: '{{.HTTPPath}}'
+    """
+                },
+            ),
+            (
+                {
+                    "invalid.yaml": """
+    - key: invalid-kind
+      kind: UnsupportedKind
+      expect:
+        http:
+          method: GET
+          path: /invalid-kind
+      actions:
+        - reply_http:
+            status_code: 200
+            body: bad
+    """
+                },
+            ),
+            (
+                {
+                    "invalid.yaml": """
+    - key: behavior-with-template
+      kind: Behavior
+      template: '{{.HTTPPath}}'
+      expect:
+        http:
+          method: GET
+          path: /bad
+      actions:
+        - reply_http:
+            status_code: 200
+            body: bad
+    """
+                },
+            ),
+            (
+                {
+                    "invalid.yaml": """
+    - key: ''
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /bad
+      actions:
+        - reply_http:
+            status_code: 200
+            body: bad
+    """
+                },
+            ),
+            (
+                {
+                    "invalid.yaml": """
+    - key: bad-template
+      kind: Template
+      template: '{{.x}}'
+      values:
+        x: y
+    """
+                },
+            ),
+            (
+                {
+                    "invalid.yaml": """
+    - key: broken-child
+      kind: Behavior
+      extend: missing-parent
+      actions:
+        - sleep:
+            duration: 0s
+    """
+                },
+            ),
+        ],
+        ids=[
+            "template_with_expect_actions",
+            "invalid_kind",
+            "behavior_with_template_field",
+            "empty_key",
+            "template_with_values",
+            "missing_parent_invalid_child",
+        ],
+    )
+    def test_rejects_invalid_config(
+        hmock_startup_failure, templates
+    ) -> None:
+        """Reject invalid configurations for template/kind/template-field/key/values/parent usage."""
+>       failure = hmock_startup_failure(templates=templates)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.evaluation_tests/test_checkpoint_4.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run(
+        *,
+        templates: dict[str, str] | None = None,
+        files: dict[str, str | bytes] | None = None,
+        extra_env: dict[str, str] | None = None,
+        timeout: float = 8.0,
+    ) -> StartupFailure:
+        nonlocal run_id
+        run_id += 1
+        run_dir = tmp_path / f"fail_run_{run_id}"
+        templates_dir = run_dir / "templates"
+        _materialize_templates(templates_dir, templates, files)
+    
+        env = os.environ.copy()
+        env.update(
+            {
+                "HM_TEMPLATES_DIR": str(templates_dir),
+                "HM_HTTP_HOST": "127.0.0.1",
+                "HM_HTTP_PORT": str(_find_free_port()),
+                "HM_ADMIN_HTTP_ENABLED": "false",
+            }
+        )
+        if extra_env:
+            env.update(extra_env)
+    
+        process = subprocess.Popen(
+            entrypoint_argv,
+            cwd=run_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                stdout, stderr = process.communicate(timeout=1)
+                return StartupFailure(
+                    returncode=int(process.returncode or 0),
+                    stdout=stdout,
+                    stderr=stderr,
+                )
+            time.sleep(0.1)
+    
+        _terminate_process(process)
+>       raise AssertionError("Expected startup failure but server kept running")
+E       AssertionError: Expected startup failure but server kept running
+
+.evaluation_tests/conftest.py:342: AssertionError
+_____________________ test_equal_order_preserves_relative ______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae7111d1c0>
+
+    @pytest.mark.functionality
+    def test_equal_order_preserves_relative(hmock_server) -> None:
+        """Actions sharing order preserve their original relative sequence."""
+        templates = {
+            "mocks.yaml": """
+    - key: equal-order
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /equal-order
+      actions:
+        - order: 0
+          redis:
+            - '{{ redisDo "SET" "k" "first" }}'
+        - order: 0
+          redis:
+            - '{{ redisDo "SET" "k" "second" }}'
+        - order: 1
+          reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "k" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/equal-order", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_4.py:342: AssertionError
+_______________________ test_values_in_expect_condition ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aa0c0>
+
+    @pytest.mark.functionality
+    def test_values_in_expect_condition(hmock_server) -> None:
+        """Expected condition expressions can reference inherited ``.Values``."""
+        templates = {
+            "mocks.yaml": """
+    - key: condition-parent
+      kind: AbstractBehavior
+      values:
+        enabled: yes
+      expect:
+        http:
+          method: GET
+          path: /values-condition
+      actions:
+        - reply_http:
+            status_code: 200
+            body: matched
+    
+    - key: condition-child
+      kind: Behavior
+      extend: condition-parent
+      expect:
+        condition: '{{ .Values.enabled | eq "yes" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(
+                f"{server.base_url}/values-condition",
+                timeout=3,
+            )
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404]>.status_code
+
+.evaluation_tests/test_checkpoint_4.py:478: AssertionError
+________________________ test_no_order_defaults_to_zero ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aa700>
+
+    @pytest.mark.functionality
+    def test_no_order_defaults_to_zero(hmock_server) -> None:
+        """Unordered actions default to order zero in global action sorting."""
+        templates = {
+            "mocks.yaml": """
+    - key: default-order
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /default-order
+      actions:
+        - order: -1
+          redis:
+            - '{{ redisDo "SET" "order_default" "negative" }}'
+        - redis:
+            - '{{ redisDo "SET" "order_default" "default-zero" }}'
+        - order: 1
+          reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "order_default" }}'
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/default-order", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_4.py:509: AssertionError
+_______________ test_parent_actions_precede_child_at_same_order ________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a96c0>
+
+    @pytest.mark.functionality
+    def test_parent_actions_precede_child_at_same_order(hmock_server) -> None:
+        """When inherited and child actions share the same order value, parent actions execute first."""
+        templates = {
+            "mocks.yaml": """
+    - key: parent
+      kind: AbstractBehavior
+      expect:
+        http:
+          method: GET
+          path: /parent-first
+      actions:
+        - order: 0
+          redis:
+            - '{{ redisDo "SET" "pf_key" "parent" }}'
+        - order: 1
+          reply_http:
+            status_code: 200
+            body: '{{ redisDo "GET" "pf_key" }}'
+    
+    - key: child
+      kind: Behavior
+      extend: parent
+      actions:
+        - order: 0
+          redis:
+            - '{{ redisDo "SET" "pf_key" "child" }}'
+    """
+        }
+        with hmock_server(templates=templates) as server:
+            response = requests.get(f"{server.base_url}/parent-first", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_4.py:589: AssertionError
+___________________ test_rejects_merged_multiple_reply_http ____________________
+
+hmock_startup_failure = <function hmock_startup_failure.<locals>._run at 0x76ae710a9760>
+
+    @pytest.mark.functionality
+    def test_rejects_merged_multiple_reply_http(hmock_startup_failure) -> None:
+        """Reject a Behavior whose merged actions contain more than one reply_http."""
+        templates = {
+            "invalid.yaml": """
+    - key: parent-reply
+      kind: AbstractBehavior
+      expect:
+        http:
+          method: GET
+          path: /double-reply
+      actions:
+        - reply_http:
+            status_code: 200
+            body: parent
+    
+    - key: child-reply
+      kind: Behavior
+      extend: parent-reply
+      actions:
+        - reply_http:
+            status_code: 201
+            body: child
+    """
+        }
+>       failure = hmock_startup_failure(templates=templates)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.evaluation_tests/test_checkpoint_4.py:618: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run(
+        *,
+        templates: dict[str, str] | None = None,
+        files: dict[str, str | bytes] | None = None,
+        extra_env: dict[str, str] | None = None,
+        timeout: float = 8.0,
+    ) -> StartupFailure:
+        nonlocal run_id
+        run_id += 1
+        run_dir = tmp_path / f"fail_run_{run_id}"
+        templates_dir = run_dir / "templates"
+        _materialize_templates(templates_dir, templates, files)
+    
+        env = os.environ.copy()
+        env.update(
+            {
+                "HM_TEMPLATES_DIR": str(templates_dir),
+                "HM_HTTP_HOST": "127.0.0.1",
+                "HM_HTTP_PORT": str(_find_free_port()),
+                "HM_ADMIN_HTTP_ENABLED": "false",
+            }
+        )
+        if extra_env:
+            env.update(extra_env)
+    
+        process = subprocess.Popen(
+            entrypoint_argv,
+            cwd=run_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                stdout, stderr = process.communicate(timeout=1)
+                return StartupFailure(
+                    returncode=int(process.returncode or 0),
+                    stdout=stdout,
+                    stderr=stderr,
+                )
+            time.sleep(0.1)
+    
+        _terminate_process(process)
+>       raise AssertionError("Expected startup failure but server kept running")
+E       AssertionError: Expected startup failure but server kept running
+
+.evaluation_tests/conftest.py:342: AssertionError
+________________________ test_template_crud_and_reload _________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a8ae0>
+
+    def test_template_crud_and_reload(hmock_server) -> None:
+        """POST templates, list templates, and delete template key and observe reload visibility."""
+        templates = {
+            "filesystem.yaml": """
+    - key: fs-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /fs
+      actions:
+        - reply_http:
+            status_code: 200
+            body: filesystem
+    """
+        }
+        payload = """
+    - key: dynamic-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /dynamic
+      actions:
+        - reply_http:
+            status_code: 200
+            body: dynamic
+    """
+    
+        with hmock_server(templates=templates) as server:
+            health = requests.get(f"{server.admin_url}/api/v1/health", timeout=3)
+            assert health.status_code == 200
+            assert health.json() == {"status": "OK"}
+    
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:75: AssertionError
+_________________________ test_template_set_lifecycle __________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aade0>
+
+    def test_template_set_lifecycle(hmock_server) -> None:
+        """Create and then delete a template set, requiring set visibility after create and disappearance after delete."""
+        payload = """
+    - key: set-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /set-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: from-set
+    """
+    
+        with hmock_server(templates=_EMPTY_TEMPLATES) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/test-suite",
+                data=payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:129: AssertionError
+_____________________ test_delete_all_preserves_filesystem _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710ab600>
+
+    def test_delete_all_preserves_filesystem(hmock_server) -> None:
+        """DELETE /api/v1/templates removes API-added mocks but leaves filesystem mocks active."""
+        api_payload = """
+    - key: dynamic-one
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /dynamic-one
+      actions:
+        - reply_http:
+            status_code: 200
+            body: one
+    - key: dynamic-two
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /dynamic-two
+      actions:
+        - reply_http:
+            status_code: 200
+            body: two
+    """
+    
+        with hmock_server(templates=_FS_TEMPLATES) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:199: AssertionError
+_________________ test_delete_key_reveals_filesystem_fallback __________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71200040>
+
+    def test_delete_key_reveals_filesystem_fallback(hmock_server) -> None:
+        """Deleting an API template key restores matching filesystem mock behavior."""
+        templates = {
+            "filesystem.yaml": """
+    - key: shared
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /shared
+      actions:
+        - reply_http:
+            status_code: 200
+            body: filesystem
+    """
+        }
+        api_payload = """
+    - key: shared
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /shared
+      actions:
+        - reply_http:
+            status_code: 200
+            body: api
+    """
+    
+        with hmock_server(templates=templates) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:325: AssertionError
+__________________ test_api_templates_persist_across_restart ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710ab060>
+redis_url = 'redis://127.0.0.1:53833'
+
+    def test_api_templates_persist_across_restart(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """API-added templates are persisted and remain active after server restart."""
+        api_payload = """
+    - key: persisted-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /persisted-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: persisted
+    """
+        extra_env = _redis_env(redis_url)
+    
+        with hmock_server(
+            templates=_EMPTY_TEMPLATES,
+            extra_env=extra_env,
+        ) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:455: AssertionError
+__________________________ test_delete_set_isolation ___________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710ab7e0>
+
+    @pytest.mark.functionality
+    def test_delete_set_isolation(hmock_server) -> None:
+        """Deleting one template set leaves other template sets unchanged."""
+        set_a_payload = """
+    - key: set-a-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /set-a-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: a
+    """
+        set_b_payload = """
+    - key: set-b-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /set-b-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: b
+    """
+    
+        with hmock_server(templates=_EMPTY_TEMPLATES) as server:
+            created_a = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/set-a",
+                data=set_a_payload,
+                timeout=3,
+            )
+            created_b = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/set-b",
+                data=set_b_payload,
+                timeout=3,
+            )
+>           assert created_a.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:521: AssertionError
+____________ test_delete_all_clears_persistent_store_across_restart ____________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aba60>
+redis_url = 'redis://127.0.0.1:53833'
+
+    @pytest.mark.functionality
+    def test_delete_all_clears_persistent_store_across_restart(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """DELETE /api/v1/templates clears persisted API templates and they stay deleted after restart."""
+        extra_env = _redis_env(redis_url)
+        payload = """
+    - key: transient-api
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /transient-api
+      actions:
+        - reply_http:
+            status_code: 200
+            body: live
+    """
+    
+        with hmock_server(
+            templates=_EMPTY_TEMPLATES,
+            extra_env=extra_env,
+        ) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:596: AssertionError
+___________________ test_post_templates_updates_existing_key ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aa0c0>
+
+    @pytest.mark.functionality
+    def test_post_templates_updates_existing_key(hmock_server) -> None:
+        """POSTing templates with the same key replaces prior API template with the latest definition."""
+        v1 = """
+    - key: replace-me
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /replace-me
+      actions:
+        - reply_http:
+            status_code: 200
+            body: v1
+    """
+        v2 = v1.replace("body: v1", "body: v2")
+    
+        with hmock_server(templates=_EMPTY_TEMPLATES) as server:
+            first = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=v1,
+                timeout=3,
+            )
+            second = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=v2,
+                timeout=3,
+            )
+>           assert first.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:684: AssertionError
+_____________________ test_template_set_replaces_previous ______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710a9760>
+
+    @pytest.mark.functionality
+    def test_template_set_replaces_previous(hmock_server) -> None:
+        """Second POST to same template_set key replaces the prior set contents entirely."""
+        initial = """
+    - key: suite-a
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /suite-a
+      actions:
+        - reply_http:
+            status_code: 200
+            body: first-a
+    - key: suite-b
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /suite-b
+      actions:
+        - reply_http:
+            status_code: 200
+            body: first-b
+    """
+        replacement = """
+    - key: suite-a
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /suite-a
+      actions:
+        - reply_http:
+            status_code: 200
+            body: second-a
+    """
+    
+        with hmock_server(templates=_EMPTY_TEMPLATES) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/replace-set",
+                data=initial,
+                timeout=3,
+            )
+            replaced = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/replace-set",
+                data=replacement,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:748: AssertionError
+___________________ test_sets_survive_restart_and_delete_all ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71200220>
+redis_url = 'redis://127.0.0.1:53833'
+
+    @pytest.mark.functionality
+    def test_sets_survive_restart_and_delete_all(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """Template sets survive restarts while deleting base templates clears only API templates."""
+        extra_env = _redis_env(redis_url)
+        set_payload = """
+    - key: durable-set
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /durable-set
+      actions:
+        - reply_http:
+            status_code: 200
+            body: set
+    """
+        api_payload = """
+    - key: temporary-api
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /temporary-api
+      actions:
+        - reply_http:
+            status_code: 200
+            body: api
+    """
+    
+        with hmock_server(
+            templates=_EMPTY_TEMPLATES,
+            extra_env=extra_env,
+        ) as server:
+            created_set = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/durable",
+                data=set_payload,
+                timeout=3,
+            )
+            created_api = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+>           assert created_set.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:809: AssertionError
+_____________ test_restart_preserves_fs_and_sets_after_delete_all ______________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae712000e0>
+redis_url = 'redis://127.0.0.1:53833'
+
+    @pytest.mark.functionality
+    def test_restart_preserves_fs_and_sets_after_delete_all(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """DELETE /api/v1/templates clears API mocks but preserves filesystem and template-set mocks across restart."""
+        extra_env = _redis_env(redis_url)
+        api_payload = """
+    - key: api-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /api-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: api
+    """
+        set_payload = """
+    - key: set-route
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /set-route
+      actions:
+        - reply_http:
+            status_code: 200
+            body: set
+    """
+    
+        with hmock_server(
+            templates=_FS_TEMPLATES,
+            extra_env=extra_env,
+        ) as server:
+            created_api = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+            created_set = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/durable",
+                data=set_payload,
+                timeout=3,
+            )
+>           assert created_api.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:890: AssertionError
+________________ test_get_templates_includes_template_set_mocks ________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71200e00>
+
+    @pytest.mark.functionality
+    def test_get_templates_includes_template_set_mocks(hmock_server) -> None:
+        """GET /api/v1/templates includes mocks contributed by active template sets."""
+        set_payload = """
+    - key: set-listed
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /set-listed
+      actions:
+        - reply_http:
+            status_code: 200
+            body: from-set
+    """
+    
+        with hmock_server(templates=_EMPTY_TEMPLATES) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/template_sets/list-set",
+                data=set_payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:996: AssertionError
+__________ test_persisted_api_mock_overrides_filesystem_after_restart __________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71201120>
+redis_url = 'redis://127.0.0.1:53833'
+
+    @pytest.mark.functionality
+    def test_persisted_api_mock_overrides_filesystem_after_restart(
+        hmock_server,
+        redis_url: str,
+    ) -> None:
+        """An API-persisted mock with the same key as a filesystem mock overrides it after restart."""
+        templates = {
+            "filesystem.yaml": """
+    - key: collision
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /collision
+      actions:
+        - reply_http:
+            status_code: 200
+            body: filesystem
+    """
+        }
+        api_payload = """
+    - key: collision
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /collision
+      actions:
+        - reply_http:
+            status_code: 200
+            body: api
+    """
+        extra_env = _redis_env(redis_url)
+    
+        with hmock_server(templates=templates, extra_env=extra_env) as server:
+            created = requests.post(
+                f"{server.admin_url}/api/v1/templates",
+                data=api_payload,
+                timeout=3,
+            )
+>           assert created.status_code == 200
+E           assert 400 == 200
+E            +  where 400 = <Response [400]>.status_code
+
+.evaluation_tests/test_checkpoint_5.py:1053: AssertionError
+_______________________ test_send_binary_post_multipart ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae712020c0>
+webhook_sink = WebhookSink(url='http://127.0.0.1:56351', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae71133700>)
+
+    def test_send_binary_post_multipart(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """send_http POST uploads the binary file as a multipart form field."""
+        binary_payload = b"\x00\x01multipart-body\xfe"
+        templates = {
+            "send-http-binary.yaml": """
+    - key: binary-upload
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /upload
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}'
+            method: POST
+            body_from_binary_file: files/upload.bin
+            binary_file_name: upload.bin
+        - reply_http:
+            status_code: 202
+            body: accepted
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            files={"files/upload.bin": binary_payload},
+            extra_env={"WEBHOOK_URL": f"{webhook_sink.url}/upload"},
+        ) as server:
+            response = requests.get(f"{server.base_url}/upload", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_6.py:243: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae7111d260>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+____________________ test_hot_reload_disabled_ignores_edits ____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae710aa200>
+
+    @pytest.mark.error
+    def test_hot_reload_disabled_ignores_edits(hmock_server) -> None:
+        """Template edits do not affect responses when hot reload is disabled."""
+        template_path = "no-reload.yaml"
+        template_v1 = """
+    - key: no-reload
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /no-reload
+      actions:
+        - reply_http:
+            status_code: 200
+            body: v1
+    """
+        template_v2 = template_v1.replace("body: v1", "body: v2")
+    
+        with hmock_server(
+            templates={template_path: template_v1},
+            extra_env={"HM_TEMPLATES_DIR_HOT_RELOAD": "false"},
+        ) as server:
+            before = requests.get(f"{server.base_url}/no-reload", timeout=3)
+            assert before.status_code == 200
+            assert before.text == "v1"
+    
+            hot_file = server.templates_dir / template_path
+            hot_file.write_text(template_v2, encoding="utf-8")
+            time.sleep(1.2)
+    
+            after = requests.get(f"{server.base_url}/no-reload", timeout=3)
+    
+        assert after.status_code == 200
+>       assert after.text == "v1"
+E       AssertionError: assert 'v2' == 'v1'
+E         
+E         - v1
+E         + v2
+
+.evaluation_tests/test_checkpoint_6.py:288: AssertionError
+________________________ test_send_binary_post_basename ________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71200720>
+webhook_sink = WebhookSink(url='http://127.0.0.1:35957', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae70f724c0>)
+
+    @pytest.mark.functionality
+    def test_send_binary_post_basename(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """send_http POST uses binary_file_name fallback to the file basename."""
+        templates = {
+            "mocks.yaml": """
+    - key: upload-basename
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /upload-basename
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/hook'
+            method: POST
+            body_from_binary_file: files/data.bin
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            files={"files/data.bin": b"abc"},
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/upload-basename", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_6.py:622: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae710aba60>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+______________________ test_send_binary_part_content_type ______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71201c60>
+webhook_sink = WebhookSink(url='http://127.0.0.1:39915', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae7102b980>)
+
+    @pytest.mark.functionality
+    def test_send_binary_part_content_type(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """send_http multipart part defaults to octet-stream and honors overrides."""
+        templates = {
+            "mocks.yaml": """
+    - key: default-part-type
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /default-part-type
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/default'
+            method: POST
+            body_from_binary_file: files/default.bin
+        - reply_http:
+            status_code: 200
+            body: ok
+    
+    - key: overridden-part-type
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /overridden-part-type
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/override'
+            method: POST
+            headers:
+              Content-Type: image/png
+            body_from_binary_file: files/override.bin
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            files={
+                "files/default.bin": b"default",
+                "files/override.bin": b"override",
+            },
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            default_response = requests.get(
+                f"{server.base_url}/default-part-type", timeout=3
+            )
+            override_response = requests.get(
+                f"{server.base_url}/overridden-part-type", timeout=3
+            )
+>           webhook_sink.wait_for_count(2, timeout=5)
+
+.evaluation_tests/test_checkpoint_6.py:684: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae712000e0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 2 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+____________________ test_send_binary_post_nested_basename _____________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x76ae71202700>
+webhook_sink = WebhookSink(url='http://127.0.0.1:33571', _requests=[], _lock=<unlocked _thread.lock object at 0x76ae710e62c0>)
+
+    @pytest.mark.functionality
+    def test_send_binary_post_nested_basename(
+        hmock_server,
+        webhook_sink,
+    ) -> None:
+        """send_http POST uses basename from a deeply nested binary file path."""
+        templates = {
+            "nested.yaml": """
+    - key: nested-basename
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /nested-basename
+      actions:
+        - send_http:
+            url: '{{ env "WEBHOOK_URL" }}/hook'
+            method: POST
+            body_from_binary_file: deep/sub/dir/nested.dat
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+        with hmock_server(
+            templates=templates,
+            files={"deep/sub/dir/nested.dat": b"nested-content"},
+            extra_env={"WEBHOOK_URL": webhook_sink.url},
+        ) as server:
+            response = requests.get(f"{server.base_url}/nested-basename", timeout=3)
+>           webhook_sink.wait_for_count(1, timeout=5)
+
+.evaluation_tests/test_checkpoint_6.py:1147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.evaluation_tests/conftest.py:367: in wait_for_count
+    wait_until(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x76ae712034c0>
+
+    def wait_until(
+        predicate: Callable[[], bool],
+        *,
+        timeout: float = 6.0,
+        interval: float = 0.1,
+        message: str = "condition not met in time",
+    ) -> None:
+        """Poll until predicate returns True or timeout elapses."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            time.sleep(interval)
+>       raise AssertionError(message)
+E       AssertionError: Expected at least 1 webhook request(s)
+
+.evaluation_tests/conftest.py:139: AssertionError
+--------------------------------- JSON report ----------------------------------
+report saved to: .scbench/pytest-report.json
+=========================== short test summary info ============================
+FAILED .evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string - AssertionError: assert 'should-not-match' == 'matched'
+  
+  - matched
+  + should-not-match
+FAILED .evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields - assert None is not None
+FAILED .evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template - RuntimeError: Process exited before port 37477 became ready.
+exit=1
+stdout:
+
+stderr:
+warning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+Traceback (most recent call last):
+  File "/workspace/hmock.py", line 1274, in <module>
+    main()
+  File "/workspace/hmock.py", line 1242, in main
+    _BEHAVIORS = build_mock_set()
+                 ^^^^^^^^^^^^^^^^
+  File "/workspace/hmock.py", line 704, in build_mock_set
+    fs_items  = _load_filesystem_items(templates_dir)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/hmock.py", line 642, in _load_filesystem_items
+    data = yaml.safe_load(f)
+           ^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 125, in safe_load
+    return load(stream, SafeLoader)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 81, in load
+    return loader.get_single_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py", line 49, in get_single_data
+    node = self.get_single_node()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 36, in get_single_node
+    document = self.compose_document()
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 55, in compose_document
+    node = self.compose_node(None, None)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+    node.value.append(self.compose_node(node, index))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+    node.value.append(self.compose_node(node, index))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 127, in compose_mapping_node
+    while not self.check_event(MappingEndEvent):
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 98, in check_event
+    self.current_event = self.state()
+                         ^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 438, in parse_block_mapping_key
+    raise ParserError("while parsing a block mapping", self.marks[-1],
+yaml.parser.ParserError: while parsing a block mapping
+  in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 10, column 9
+expected <block end>, but found '<scalar>'
+  in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 11, column 20
+FAILED .evaluation_tests/test_checkpoint_2.py::test_helper_functions_gjson_regex_and_hmac - assert 404 == 200
+ +  where 404 = <Response [404]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_gjson_non_string_raw_json - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_additional_helper_functions - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_jsonpath_value_and_no_match - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[hmac_sha256] - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[uuidv5] - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_jsonpath_empty_body_and_headers - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_helper_edge_cases - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_gjson_nested_and_array_access - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_gjson_array_wildcard - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_jsonpath_recursive_descent - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_index_ordering - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_no_match - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_is_last_index_returns_false - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_uuidv5_deterministic_across_requests - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_body_from_file_with_helper_functions - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_templated_headers_with_helpers - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_2.py::test_hmac_sha256_empty_inputs - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redis_persists_state_across_requests - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_posts_to_webhook - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redis_array_semicolon_separator - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redis_hash_and_list_ops - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_condition_stateful_routing - assert 404 == 200
+ +  where 404 = <Response [404]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_body_from_file_templates - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_external_redis_mode - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_hdel - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_header_templates - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_inline_body_wins - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redis_state_lost_on_restart - assert '<!DOCTYPE HTML>\n<html lang="en">\n    <head>\n        <meta charset="utf-8">\n        <title>Error response</title>\n    </head>\n    <body>\n        <h1>Error response</h1>\n        <p>Error code: 500</p>\n        <p>Message: body render error: expected token \'end of print statement\', got \'string\'.</p>\n        <p>Error code explanation: 500 - Server got itself in trouble.</p>\n    </body>\n</html>\n' == 'alpha'
+  
+  - alpha
+  + <!DOCTYPE HTML>
+  + <html lang="en">
+  +     <head>
+  +         <meta charset="utf-8">
+  +         <title>Error response</title>
+  +     </head>
+  +     <body>
+  +         <h1>Error response</h1>
+  +         <p>Error code: 500</p>
+  +         <p>Message: body render error: expected token 'end of print statement', got 'string'.</p>
+  +         <p>Error code explanation: 500 - Server got itself in trouble.</p>
+  +     </body>
+  + </html>
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_renders_response_headers - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_mixed_action_ordering - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_missing_key_returns_empty - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_del_multiple_keys - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_list_ops - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_hash_and_keys - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_redisdo_inside_redis_action_items - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_no_body - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_url_template_with_redisdo - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_redis_state - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_action_order_after_inherit - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_rejects_invalid_config[missing_parent_invalid_child] - AssertionError: Expected startup failure but server kept running
+FAILED .evaluation_tests/test_checkpoint_4.py::test_equal_order_preserves_relative - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_values_in_expect_condition - assert 404 == 200
+ +  where 404 = <Response [404]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_no_order_defaults_to_zero - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_parent_actions_precede_child_at_same_order - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_4.py::test_rejects_merged_multiple_reply_http - AssertionError: Expected startup failure but server kept running
+FAILED .evaluation_tests/test_checkpoint_5.py::test_template_crud_and_reload - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_template_set_lifecycle - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_delete_all_preserves_filesystem - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_delete_key_reveals_filesystem_fallback - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_api_templates_persist_across_restart - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_delete_set_isolation - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_delete_all_clears_persistent_store_across_restart - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_post_templates_updates_existing_key - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_template_set_replaces_previous - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_sets_survive_restart_and_delete_all - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_restart_preserves_fs_and_sets_after_delete_all - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_get_templates_includes_template_set_mocks - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_5.py::test_persisted_api_mock_overrides_filesystem_after_restart - assert 400 == 200
+ +  where 400 = <Response [400]>.status_code
+FAILED .evaluation_tests/test_checkpoint_6.py::test_send_binary_post_multipart - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_6.py::test_hot_reload_disabled_ignores_edits - AssertionError: assert 'v2' == 'v1'
+  
+  - v1
+  + v2
+FAILED .evaluation_tests/test_checkpoint_6.py::test_send_binary_post_basename - AssertionError: Expected at least 1 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_6.py::test_send_binary_part_content_type - AssertionError: Expected at least 2 webhook request(s)
+FAILED .evaluation_tests/test_checkpoint_6.py::test_send_binary_post_nested_basename - AssertionError: Expected at least 1 webhook request(s)
+================== 68 failed, 79 passed in 183.29s (0:03:03) ===================

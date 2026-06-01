@@ -1,0 +1,147 @@
+{
+  "ast_grep": {
+    "category_counts": {},
+    "category_weighted": {},
+    "counts": {},
+    "rules_checked": 355,
+    "violation_lines": 0,
+    "violations": 0,
+    "weighted": 0
+  },
+  "classes": {
+    "attribute_counts_mean": 0.25,
+    "attribute_counts_sum": 1,
+    "count": 4,
+    "method_counts_mean": 4.5,
+    "method_counts_sum": 18
+  },
+  "complexity": {
+    "cc_max": 35,
+    "cc_ratings": {
+      "A": 159,
+      "B": 7,
+      "C": 10,
+      "D": 2,
+      "E": 1,
+      "F": 0
+    },
+    "cc_sum": 612,
+    "mi_min": 0.0,
+    "mi_ratings": {
+      "A": 0,
+      "B": 1,
+      "C": 1
+    },
+    "mi_sum": 14.576917759752677,
+    "num_complex": 13
+  },
+  "file_count": 2,
+  "functions": {
+    "cc_concentration": 0.44955346650998823,
+    "cc_extreme_count": 1,
+    "cc_high_count": 12,
+    "cc_max": 35,
+    "cc_mean": 3.885135135135135,
+    "cc_normalized": 0.009272625798901793,
+    "cc_std": 4.551330296145014,
+    "cc_sum": 575,
+    "cc_top20": 0.5321739130434783,
+    "count": 148,
+    "depth_max": 5,
+    "extreme_cc_mean": 35.0,
+    "high_cc_mean": 17.0,
+    "lines_mean": 11.10135135135135,
+    "lines_sum": 1643
+  },
+  "graph": {
+    "cyclic_dependency_mass": 0.0,
+    "dependency_entropy": 0.2870328615320742,
+    "edge_count": 76,
+    "node_count": 57,
+    "propagation_cost": 0.04981203007518797
+  },
+  "lines": {
+    "comments": 143,
+    "loc": 1506,
+    "multi_comment": 0,
+    "single_comment": 129,
+    "total_lines": 1997
+  },
+  "lint": {
+    "counts": {
+      "A002": 2,
+      "ARG001": 6,
+      "BLE001": 5,
+      "C901": 4,
+      "DOC201": 4,
+      "DOC402": 1,
+      "EM101": 1,
+      "EM102": 13,
+      "F841": 1,
+      "FURB101": 2,
+      "FURB110": 1,
+      "FURB113": 1,
+      "FURB118": 12,
+      "FURB171": 1,
+      "INP001": 1,
+      "N802": 1,
+      "PERF203": 2,
+      "PERF401": 1,
+      "PIE810": 1,
+      "PLC0415": 4,
+      "PLC1901": 2,
+      "PLR0911": 3,
+      "PLR0912": 2,
+      "PLR2004": 10,
+      "PLR6201": 2,
+      "PLR6301": 1,
+      "PLW0603": 4,
+      "PLW1514": 3,
+      "PT018": 3,
+      "PTH118": 3,
+      "PTH123": 3,
+      "RUF003": 3,
+      "RUF005": 1,
+      "RUF013": 1,
+      "RUF059": 2,
+      "S101": 120,
+      "S104": 2,
+      "S310": 13,
+      "S701": 1,
+      "SIM105": 1,
+      "SLF001": 103,
+      "TRY003": 14,
+      "TRY004": 2,
+      "UP045": 3
+    },
+    "errors": 366,
+    "fixable": 9
+  },
+  "redundancy": {
+    "clone_lines": 110,
+    "clone_ratio_sum": 0.14578651936068251,
+    "cloned_sloc_lines": 110,
+    "files_with_clones": 2
+  },
+  "source_files": [],
+  "symbols": {
+    "classes": 4,
+    "expressions": 2565,
+    "expressions_top_level": 110,
+    "functions": 130,
+    "globals": 27,
+    "imports": 29,
+    "max_imports": 21,
+    "methods": 18,
+    "statements": 532,
+    "total": 179,
+    "type_aliases": 0,
+    "variables": 27
+  },
+  "verbosity_flagged_sloc_lines": 110,
+  "waste": {
+    "single_use_functions": 114,
+    "trivial_wrappers": 1,
+    "unused_variables": 39
+  }
+}

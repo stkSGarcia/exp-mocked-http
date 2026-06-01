@@ -1,0 +1,3116 @@
+{
+  "created": 1780343331.7122436,
+  "duration": 127.01804733276367,
+  "exitcode": 1,
+  "root": "/workspace",
+  "environment": {},
+  "summary": {
+    "passed": 35,
+    "failed": 43,
+    "total": 78,
+    "collected": 78
+  },
+  "collectors": [
+    {
+      "nodeid": "",
+      "outcome": "passed",
+      "result": [
+        {
+          "nodeid": ".evaluation_tests",
+          "type": "Dir"
+        }
+      ]
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py",
+      "outcome": "passed",
+      "result": [
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_first_matching_condition_wins",
+          "type": "Function",
+          "lineno": 17
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_context_includes_path_query_header",
+          "type": "Function",
+          "lineno": 64
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_rejects_behavior_with_multiple_reply_http",
+          "type": "Function",
+          "lineno": 93
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_loads_yaml_and_yml_files_recursively",
+          "type": "Function",
+          "lineno": 120
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_kind_defaults_to_behavior",
+          "type": "Function",
+          "lineno": 160
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_duplicate_keys_use_last_definition",
+          "type": "Function",
+          "lineno": 183
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string",
+          "type": "Function",
+          "lineno": 220
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_render_error_fallback",
+          "type": "Function",
+          "lineno": 260
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_reply_http_default_headers_and_empty_body",
+          "type": "Function",
+          "lineno": 299
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_action_delays_response",
+          "type": "Function",
+          "lineno": 325
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_no_match_returns_not_found",
+          "type": "Function",
+          "lineno": 355
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_method_and_path_are_both_required",
+          "type": "Function",
+          "lineno": 364
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered",
+          "type": "Function",
+          "lineno": 398
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields",
+          "type": "Function",
+          "lineno": 472
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_empty_condition_renders_httpbody",
+          "type": "Function",
+          "lineno": 509
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_condition",
+          "type": "Function",
+          "lineno": 547
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ns]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0us]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ms]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0s]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0m]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0h]",
+          "type": "Function",
+          "lineno": 581
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_duplicate_key_override_warns",
+          "type": "Function",
+          "lineno": 615
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_rejects_empty_key",
+          "type": "Function",
+          "lineno": 661
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_content_length_reflects_rendered_template",
+          "type": "Function",
+          "lineno": 682
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template",
+          "type": "Function",
+          "lineno": 711
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_non_yaml_files_ignored",
+          "type": "Function",
+          "lineno": 735
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_httpbody_empty_for_get_requests",
+          "type": "Function",
+          "lineno": 761
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_false_string_does_not_match",
+          "type": "Function",
+          "lineno": 785
+        }
+      ]
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py",
+      "outcome": "passed",
+      "result": [
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_template_rendering",
+          "type": "Function",
+          "lineno": 15
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_helper_functions_gjson_regex_and_hmac",
+          "type": "Function",
+          "lineno": 55
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_invalid_json_condition_fallback",
+          "type": "Function",
+          "lineno": 90
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_inline_body_precedence_over_file",
+          "type": "Function",
+          "lineno": 131
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_missing_body_from_file_rejects_startup",
+          "type": "Function",
+          "lineno": 160
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_non_string_raw_json",
+          "type": "Function",
+          "lineno": 182
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_additional_helper_functions",
+          "type": "Function",
+          "lineno": 220
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_value_and_no_match",
+          "type": "Function",
+          "lineno": 261
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[hmac_sha256]",
+          "type": "Function",
+          "lineno": 288
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[uuidv5]",
+          "type": "Function",
+          "lineno": 288
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_cached_across_requests",
+          "type": "Function",
+          "lineno": 329
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_empty_body_and_headers",
+          "type": "Function",
+          "lineno": 357
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_helper_edge_cases",
+          "type": "Function",
+          "lineno": 387
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_empty_body_falls_back_to_file",
+          "type": "Function",
+          "lineno": 431
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_nested_and_array_access",
+          "type": "Function",
+          "lineno": 461
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_array_wildcard",
+          "type": "Function",
+          "lineno": 490
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_recursive_descent",
+          "type": "Function",
+          "lineno": 516
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_index_ordering",
+          "type": "Function",
+          "lineno": 542
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_no_match",
+          "type": "Function",
+          "lineno": 567
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_is_last_index_returns_false",
+          "type": "Function",
+          "lineno": 589
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_uuidv5_deterministic_across_requests",
+          "type": "Function",
+          "lineno": 611
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_with_helper_functions",
+          "type": "Function",
+          "lineno": 635
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_invalid_json_render_error",
+          "type": "Function",
+          "lineno": 658
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_whitespace_body_takes_precedence",
+          "type": "Function",
+          "lineno": 685
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_templated_headers_with_helpers",
+          "type": "Function",
+          "lineno": 709
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_hmac_sha256_empty_inputs",
+          "type": "Function",
+          "lineno": 733
+        }
+      ]
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py",
+      "outcome": "passed",
+      "result": [
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_persists_state_across_requests",
+          "type": "Function",
+          "lineno": 13
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_posts_to_webhook",
+          "type": "Function",
+          "lineno": 50
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_array_semicolon_separator",
+          "type": "Function",
+          "lineno": 92
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_hash_and_list_ops",
+          "type": "Function",
+          "lineno": 121
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_condition_stateful_routing",
+          "type": "Function",
+          "lineno": 158
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_body_from_file_templates",
+          "type": "Function",
+          "lineno": 215
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_response",
+          "type": "Function",
+          "lineno": 265
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_external_redis_mode",
+          "type": "Function",
+          "lineno": 297
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_hdel",
+          "type": "Function",
+          "lineno": 328
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_header_templates",
+          "type": "Function",
+          "lineno": 355
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_inline_body_wins",
+          "type": "Function",
+          "lineno": 393
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_state_lost_on_restart",
+          "type": "Function",
+          "lineno": 429
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_renders_response_headers",
+          "type": "Function",
+          "lineno": 476
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_error_no_abort",
+          "type": "Function",
+          "lineno": 506
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_mixed_action_ordering",
+          "type": "Function",
+          "lineno": 548
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_missing_key_returns_empty",
+          "type": "Function",
+          "lineno": 591
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_del_multiple_keys",
+          "type": "Function",
+          "lineno": 619
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_list_ops",
+          "type": "Function",
+          "lineno": 649
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_hash_and_keys",
+          "type": "Function",
+          "lineno": 676
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_inside_redis_action_items",
+          "type": "Function",
+          "lineno": 702
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_no_body",
+          "type": "Function",
+          "lineno": 729
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_url_template_with_redisdo",
+          "type": "Function",
+          "lineno": 761
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_redis_state",
+          "type": "Function",
+          "lineno": 797
+        }
+      ]
+    },
+    {
+      "nodeid": ".evaluation_tests",
+      "outcome": "passed",
+      "result": [
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_1.py",
+          "type": "Module"
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_2.py",
+          "type": "Module"
+        },
+        {
+          "nodeid": ".evaluation_tests/test_checkpoint_3.py",
+          "type": "Module"
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_first_matching_condition_wins",
+      "lineno": 17,
+      "outcome": "passed",
+      "keywords": [
+        "test_first_matching_condition_wins",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004210361003060825,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 3.336642131995177,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.000193326995940879,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_context_includes_path_query_header",
+      "lineno": 64,
+      "outcome": "passed",
+      "keywords": [
+        "test_context_includes_path_query_header",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011148340126965195,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6185991509992164,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00016239300020970404,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_rejects_behavior_with_multiple_reply_http",
+      "lineno": 93,
+      "outcome": "passed",
+      "keywords": [
+        "test_rejects_behavior_with_multiple_reply_http",
+        "error",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011501679982757196,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7032704720040783,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0003844029997708276,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_loads_yaml_and_yml_files_recursively",
+      "lineno": 120,
+      "outcome": "passed",
+      "keywords": [
+        "test_loads_yaml_and_yml_files_recursively",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.002251067999168299,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6195069640089059,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00012734900519717485,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_kind_defaults_to_behavior",
+      "lineno": 160,
+      "outcome": "passed",
+      "keywords": [
+        "test_kind_defaults_to_behavior",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010124980035470799,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.618400951003423,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00017743099306244403,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_duplicate_keys_use_last_definition",
+      "lineno": 183,
+      "outcome": "passed",
+      "keywords": [
+        "test_duplicate_keys_use_last_definition",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.001218632998643443,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6146361669962062,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0001864869991550222,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string",
+      "lineno": 220,
+      "outcome": "failed",
+      "keywords": [
+        "test_condition_requires_exact_true_string",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0013571809977293015,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6201407010084949,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_1.py",
+          "lineno": 258,
+          "message": "AssertionError: assert 'should-not-match' == 'matched'\n  \n  - matched\n  + should-not-match"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_1.py",
+            "lineno": 258,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124b8fe0>\n\n    @pytest.mark.functionality\n    def test_condition_requires_exact_true_string(hmock_server) -> None:\n        \"\"\"Matches conditions only when rendering resolves exactly to true.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: uppercase-true\n      kind: Behavior\n      expect:\n        condition: '{{ `True` }}'\n        http:\n          method: GET\n          path: /condition-exact\n      actions:\n        - reply_http:\n            status_code: 200\n            body: should-not-match\n    - key: lowercase-true\n      kind: Behavior\n      expect:\n        condition: '{{ `true` }}'\n        http:\n          method: GET\n          path: /condition-exact\n      actions:\n        - reply_http:\n            status_code: 200\n            body: matched\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(\n                f\"{server.base_url}/condition-exact\",\n                timeout=3,\n            )\n    \n        assert response.status_code == 200\n>       assert response.text == \"matched\"\nE       AssertionError: assert 'should-not-match' == 'matched'\nE         \nE         - matched\nE         + should-not-match\n\n.evaluation_tests/test_checkpoint_1.py:258: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00016487001266796142,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_render_error_fallback",
+      "lineno": 260,
+      "outcome": "passed",
+      "keywords": [
+        "test_condition_render_error_fallback",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010886399977607653,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6148620330059202,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00016222499834839255,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_reply_http_default_headers_and_empty_body",
+      "lineno": 299,
+      "outcome": "passed",
+      "keywords": [
+        "test_reply_http_default_headers_and_empty_body",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.000976635012193583,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6127785590069834,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0001607390004210174,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_action_delays_response",
+      "lineno": 325,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_action_delays_response",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011782670044340193,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.0141534430003958,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0002609209914226085,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_no_match_returns_not_found",
+      "lineno": 355,
+      "outcome": "passed",
+      "keywords": [
+        "test_no_match_returns_not_found",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.001880032999906689,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6118071359960595,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00015805500152055174,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_method_and_path_are_both_required",
+      "lineno": 364,
+      "outcome": "passed",
+      "keywords": [
+        "test_method_and_path_are_both_required",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010412910050945356,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6163568979973206,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00023565201263409108,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered",
+      "lineno": 398,
+      "outcome": "failed",
+      "keywords": [
+        "test_template_helpers_registered",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0016385540075134486,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6143142079963582,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_1.py",
+          "lineno": 423,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_1.py",
+            "lineno": 423,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124b9ee0>\n\n    @pytest.mark.functionality\n    def test_template_helpers_registered(\n        hmock_server,\n    ) -> None:\n        \"\"\"Supports extended template helper functions in reply_http templates.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: helper-surface\n      expect:\n        http:\n          method: GET\n          path: /helpers\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ add 1 2 }}|{{ sub 5 2 }}|{{ join \",\" (splitList \"-\" \"a-b\") }}|{{ \"go\" | upper }}|{{ \"abc\" | b64enc }}|{{ env \"HELPER_ENV\" }}|{{ coalesce \"\" \"fallback\" }}|{{ \"a b\" | nospace }}'\n    \"\"\"\n        }\n        with hmock_server(\n            templates=templates,\n            extra_env={\"HELPER_ENV\": \"token\"},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/helpers\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_1.py:423: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00020219699945300817,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields",
+      "lineno": 472,
+      "outcome": "failed",
+      "keywords": [
+        "test_http_log_required_fields",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0009404260053997859,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 8.642834980011685,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_1.py",
+          "lineno": 503,
+          "message": "assert None is not None"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_1.py",
+            "lineno": 503,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124b9760>\n\n    @pytest.mark.functionality\n    def test_http_log_required_fields(hmock_server) -> None:\n        \"\"\"Emits structured HTTP request/response logs with required fields.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: logs\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /logs\n      actions:\n        - reply_http:\n            status_code: 200\n            body: ok\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"HM_LOG_LEVEL\": \"info\", \"PYTHONUNBUFFERED\": \"1\"},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/logs?trace=1\", timeout=3)\n            assert response.status_code == 200\n            assert response.text == \"ok\"\n            assert server.process.stdout is not None\n            payload = _find_http_log_line(server.process.stdout)\n            if payload is None and server.process.stderr is not None:\n                payload = _find_http_log_line(server.process.stderr)\n    \n>       assert payload is not None\nE       assert None is not None\n\n.evaluation_tests/test_checkpoint_1.py:503: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0002731160057010129,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_empty_condition_renders_httpbody",
+      "lineno": 509,
+      "outcome": "passed",
+      "keywords": [
+        "test_empty_condition_renders_httpbody",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011974259978160262,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6162345359916799,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0001998169900616631,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_condition",
+      "lineno": 547,
+      "outcome": "passed",
+      "keywords": [
+        "test_normalizes_whitespace_in_condition",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011550030030775815,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6182067449990427,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00019756000256165862,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ns]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0ns]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0ns",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0013619669916806743,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7255644950055284,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.000318464997690171,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0us]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0us]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0us",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0030043559963814914,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 2.243557331006741,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00028275699878577143,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ms]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0ms]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0ms",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014859539951430634,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8152671540010488,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00017648900393396616,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0s]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0s]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0s",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0015177280001807958,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7168557629920542,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0003160699998261407,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0m]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0m]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0m",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.002447281003696844,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.9184574560058536,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00022767701011616737,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0h]",
+      "lineno": 581,
+      "outcome": "passed",
+      "keywords": [
+        "test_sleep_zero_duration_all_units[0h]",
+        "parametrize",
+        "functionality",
+        "pytestmark",
+        "0h",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014714239950990304,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8155317210039357,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00018376299703959376,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_duplicate_key_override_warns",
+      "lineno": 615,
+      "outcome": "passed",
+      "keywords": [
+        "test_duplicate_key_override_warns",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0012403520086081699,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8157382869976573,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00017427999409846961,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_rejects_empty_key",
+      "lineno": 661,
+      "outcome": "passed",
+      "keywords": [
+        "test_rejects_empty_key",
+        "error",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011241600004723296,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.426341124009923,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0007541610102634877,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_content_length_reflects_rendered_template",
+      "lineno": 682,
+      "outcome": "passed",
+      "keywords": [
+        "test_content_length_reflects_rendered_template",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.003372282997588627,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 2.4926654059963766,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00021997099975124002,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template",
+      "lineno": 711,
+      "outcome": "failed",
+      "keywords": [
+        "test_normalizes_whitespace_in_body_template",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014609990030294284,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.805152579996502,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 109,
+          "message": "RuntimeError: Process exited before port 41699 became ready.\nexit=1\nstdout:\n\nstderr:\nwarning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead\nTraceback (most recent call last):\n  File \"/workspace/hmock.py\", line 709, in <module>\n    main()\n  File \"/workspace/hmock.py\", line 698, in main\n    _BEHAVIORS = load_behaviors(TEMPLATES_DIR)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/hmock.py\", line 455, in load_behaviors\n    data = yaml.safe_load(f)\n           ^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py\", line 125, in safe_load\n    return load(stream, SafeLoader)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py\", line 81, in load\n    return loader.get_single_data()\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py\", line 49, in get_single_data\n    node = self.get_single_node()\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 36, in get_single_node\n    document = self.compose_document()\n               ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 55, in compose_document\n    node = self.compose_node(None, None)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 82, in compose_node\n    node = self.compose_sequence_node(anchor)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 111, in compose_sequence_node\n    node.value.append(self.compose_node(node, index))\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\n    node = self.compose_mapping_node(anchor)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 133, in compose_mapping_node\n    item_value = self.compose_node(node, item_key)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 82, in compose_node\n    node = self.compose_sequence_node(anchor)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 111, in compose_sequence_node\n    node.value.append(self.compose_node(node, index))\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\n    node = self.compose_mapping_node(anchor)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 133, in compose_mapping_node\n    item_value = self.compose_node(node, item_key)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\n    node = self.compose_mapping_node(anchor)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 127, in compose_mapping_node\n    while not self.check_event(MappingEndEvent):\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py\", line 98, in check_event\n    self.current_event = self.state()\n                         ^^^^^^^^^^^^\n  File \"/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py\", line 438, in parse_block_mapping_key\n    raise ParserError(\"while parsing a block mapping\", self.marks[-1],\nyaml.parser.ParserError: while parsing a block mapping\n  in \"/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml\", line 10, column 9\nexpected <block end>, but found '<scalar>'\n  in \"/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml\", line 11, column 20"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_1.py",
+            "lineno": 729,
+            "message": ""
+          },
+          {
+            "path": "/usr/local/lib/python3.12/contextlib.py",
+            "lineno": 137,
+            "message": "in __enter__"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 244,
+            "message": "in _run"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 109,
+            "message": "RuntimeError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124ba5c0>\n\n    @pytest.mark.functionality\n    def test_normalizes_whitespace_in_body_template(hmock_server) -> None:\n        \"\"\"Replaces tab characters with spaces in body templates before rendering.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: ws-body\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /ws-body\n      actions:\n        - reply_http:\n            status_code: 200\n            body: \"{{ \\\"hello\\\"\\t| upper }}\"\n    \"\"\"\n        }\n>       with hmock_server(templates=templates) as server:\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n.evaluation_tests/test_checkpoint_1.py:729: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n/usr/local/lib/python3.12/contextlib.py:137: in __enter__\n    return next(self.gen)\n           ^^^^^^^^^^^^^^\n.evaluation_tests/conftest.py:244: in _run\n    _wait_for_tcp_port(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nhost = '127.0.0.1', port = 41699\n\n    def _wait_for_tcp_port(\n        host: str,\n        port: int,\n        *,\n        process: subprocess.Popen[str],\n        timeout: float,\n    ) -> None:\n        deadline = time.monotonic() + timeout\n        last_error: OSError | None = None\n        while time.monotonic() < deadline:\n            if process.poll() is not None:\n                stdout, stderr = process.communicate(timeout=1)\n>               raise RuntimeError(\n                    f\"Process exited before port {port} became ready.\\n\"\n                    f\"exit={process.returncode}\\n\"\n                    f\"stdout:\\n{stdout}\\n\"\n                    f\"stderr:\\n{stderr}\"\n                )\nE               RuntimeError: Process exited before port 41699 became ready.\nE               exit=1\nE               stdout:\nE               \nE               stderr:\nE               warning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead\nE               Traceback (most recent call last):\nE                 File \"/workspace/hmock.py\", line 709, in <module>\nE                   main()\nE                 File \"/workspace/hmock.py\", line 698, in main\nE                   _BEHAVIORS = load_behaviors(TEMPLATES_DIR)\nE                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/hmock.py\", line 455, in load_behaviors\nE                   data = yaml.safe_load(f)\nE                          ^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py\", line 125, in safe_load\nE                   return load(stream, SafeLoader)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py\", line 81, in load\nE                   return loader.get_single_data()\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py\", line 49, in get_single_data\nE                   node = self.get_single_node()\nE                          ^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 36, in get_single_node\nE                   document = self.compose_document()\nE                              ^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 55, in compose_document\nE                   node = self.compose_node(None, None)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 82, in compose_node\nE                   node = self.compose_sequence_node(anchor)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 111, in compose_sequence_node\nE                   node.value.append(self.compose_node(node, index))\nE                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\nE                   node = self.compose_mapping_node(anchor)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 133, in compose_mapping_node\nE                   item_value = self.compose_node(node, item_key)\nE                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 82, in compose_node\nE                   node = self.compose_sequence_node(anchor)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 111, in compose_sequence_node\nE                   node.value.append(self.compose_node(node, index))\nE                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\nE                   node = self.compose_mapping_node(anchor)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 133, in compose_mapping_node\nE                   item_value = self.compose_node(node, item_key)\nE                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 84, in compose_node\nE                   node = self.compose_mapping_node(anchor)\nE                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py\", line 127, in compose_mapping_node\nE                   while not self.check_event(MappingEndEvent):\nE                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py\", line 98, in check_event\nE                   self.current_event = self.state()\nE                                        ^^^^^^^^^^^^\nE                 File \"/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py\", line 438, in parse_block_mapping_key\nE                   raise ParserError(\"while parsing a block mapping\", self.marks[-1],\nE               yaml.parser.ParserError: while parsing a block mapping\nE                 in \"/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml\", line 10, column 9\nE               expected <block end>, but found '<scalar>'\nE                 in \"/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml\", line 11, column 20\n\n.evaluation_tests/conftest.py:109: RuntimeError"
+      },
+      "teardown": {
+        "duration": 0.00021454700618050992,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_non_yaml_files_ignored",
+      "lineno": 735,
+      "outcome": "passed",
+      "keywords": [
+        "test_non_yaml_files_ignored",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.00101259900839068,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8153142549999757,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00018309400184080005,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_httpbody_empty_for_get_requests",
+      "lineno": 761,
+      "outcome": "passed",
+      "keywords": [
+        "test_httpbody_empty_for_get_requests",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0013963679957669228,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8160735670098802,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.000203996998607181,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_1.py::test_condition_false_string_does_not_match",
+      "lineno": 785,
+      "outcome": "passed",
+      "keywords": [
+        "test_condition_false_string_does_not_match",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_1.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014388269919436425,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8181093250022968,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00025259000540245324,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_template_rendering",
+      "lineno": 15,
+      "outcome": "passed",
+      "keywords": [
+        "test_body_from_file_template_rendering",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0028270769980736077,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8204395579959964,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00016536199836991727,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_helper_functions_gjson_regex_and_hmac",
+      "lineno": 55,
+      "outcome": "failed",
+      "keywords": [
+        "test_helper_functions_gjson_regex_and_hmac",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011248510127188638,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8170217159931781,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 84,
+          "message": "assert 404 == 200\n +  where 404 = <Response [404]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 84,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124bb600>\n\n    def test_helper_functions_gjson_regex_and_hmac(hmock_server) -> None:\n        \"\"\"Helper functions gJsonPath, regexFindFirstSubmatch, and hmacSHA256 work in templates.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: helper-funcs\n      kind: Behavior\n      expect:\n        condition: '{{ .HTTPBody | gJsonPath \"kind\" | eq \"email\" }}'\n        http:\n          method: POST\n          path: /helpers\n      actions:\n        - reply_http:\n            status_code: 200\n            body: >\n              {{ $email := .HTTPBody | gJsonPath \"email\" }}\n              {{ regexFindFirstSubmatch \"(\\\\w+)@\" $email }}|\n              {{ hmacSHA256 \"secret\" \"payload\" }}\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/helpers\",\n                json={\"kind\": \"email\", \"email\": \"alice@example.com\"},\n                timeout=3,\n            )\n    \n>       assert response.status_code == 200\nE       assert 404 == 200\nE        +  where 404 = <Response [404]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:84: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0001713980018394068,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_invalid_json_condition_fallback",
+      "lineno": 90,
+      "outcome": "passed",
+      "keywords": [
+        "test_invalid_json_condition_fallback",
+        "error",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.001314821987762116,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7207189799955813,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.000159440009156242,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_inline_body_precedence_over_file",
+      "lineno": 131,
+      "outcome": "passed",
+      "keywords": [
+        "test_inline_body_precedence_over_file",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0012271690065972507,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7146725880011218,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0002524640003684908,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_missing_body_from_file_rejects_startup",
+      "lineno": 160,
+      "outcome": "passed",
+      "keywords": [
+        "test_missing_body_from_file_rejects_startup",
+        "error",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010531049920246005,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6026384239958134,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00015538801380898803,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_non_string_raw_json",
+      "lineno": 182,
+      "outcome": "failed",
+      "keywords": [
+        "test_gjson_non_string_raw_json",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011669290106510743,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6164944839983946,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 213,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 213,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c0e0>\n\n    @pytest.mark.functionality\n    def test_gjson_non_string_raw_json(hmock_server) -> None:\n        \"\"\"gJsonPath returns raw JSON values, including objects, arrays, and scalars.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: gjson-raw\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /gjson-raw\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ .HTTPBody | gJsonPath \"obj\" }}|{{ .HTTPBody | gJsonPath \"arr\" }}|{{ .HTTPBody | gJsonPath \"count\" }}|{{ .HTTPBody | gJsonPath \"flag\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/gjson-raw\",\n                json={\n                    \"obj\": {\"a\": 1},\n                    \"arr\": [1, 2],\n                    \"count\": 2,\n                    \"flag\": True,\n                },\n                timeout=3,\n            )\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:213: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00018920100410468876,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_additional_helper_functions",
+      "lineno": 220,
+      "outcome": "failed",
+      "keywords": [
+        "test_additional_helper_functions",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011181110021425411,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7207361119944835,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 251,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 251,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124bbb00>\n\n    @pytest.mark.functionality\n    def test_additional_helper_functions(hmock_server) -> None:\n        \"\"\"uuidv5, regexFindAllSubmatch, htmlEscapeString, xmlPath, and isLastIndex render correctly.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: helper-breadth\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /helper-breadth\n      actions:\n        - reply_http:\n            status_code: 200\n            body: >\n              {{ uuidv5 \"seed\" }}|\n              {{ uuidv5 \"seed\" }}|\n              {{ regexFindAllSubmatch \"(\\\\w+)@(\\\\w+)\" \"alice@example\" | join \",\" }}|\n              {{ `<x>&` | htmlEscapeString }}|\n              {{ `<root><name>alpha</name></root>` | xmlPath \"//name\" }}|\n              {{ if isLastIndex 1 (splitList \",\" \"a,b\") }}true{{ else }}false{{ end }}\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(\n                f\"{server.base_url}/helper-breadth\",\n                timeout=3,\n            )\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:251: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00015281399828381836,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_value_and_no_match",
+      "lineno": 261,
+      "outcome": "failed",
+      "keywords": [
+        "test_jsonpath_value_and_no_match",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.000993955007288605,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6173547700018389,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 285,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 285,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c540>\n\n    def test_jsonpath_value_and_no_match(hmock_server) -> None:\n        \"\"\"jsonPath returns extracted value and empty string for missing paths.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: jsonpath\n      expect:\n        http:\n          method: POST\n          path: /jsonpath\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ .HTTPBody | jsonPath \"foo\" }}|{{ .HTTPBody | jsonPath \"missing\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/jsonpath\",\n                json={\"foo\": 123},\n                timeout=3,\n            )\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:285: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00017121499695349485,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[hmac_sha256]",
+      "lineno": 288,
+      "outcome": "failed",
+      "keywords": [
+        "test_known_deterministic_output[hmac_sha256]",
+        "parametrize",
+        "pytestmark",
+        "hmac_sha256",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011660380114335567,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6143977180036018,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 326,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 326,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c900>\nkey = 'hmac', path = '/hmac-known'\nbody_expr = '{{ hmacSHA256 \"secret\" \"payload\" }}'\nexpected = 'b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4'\n\n    @pytest.mark.parametrize(\n        (\"key\", \"path\", \"body_expr\", \"expected\"),\n        [\n            (\n                \"hmac\",\n                \"/hmac-known\",\n                '{{ hmacSHA256 \"secret\" \"payload\" }}',\n                \"b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4\",\n            ),\n            (\n                \"uuid5-known\",\n                \"/uuid5-known\",\n                '{{ uuidv5 \"hello\" }}',\n                \"4d71d03f-f19b-5d9e-8523-9628ba18063c\",\n            ),\n        ],\n        ids=[\"hmac_sha256\", \"uuidv5\"],\n    )\n    def test_known_deterministic_output(hmock_server, key, path, body_expr, expected):\n        \"\"\"hmacSHA256 and uuidv5 helpers emit deterministic expected values.\"\"\"\n        templates = {\n            \"mocks.yaml\": (\n                \"- key: \" + key + \"\\n\"\n                \"  expect:\\n\"\n                \"    http:\\n\"\n                \"      method: GET\\n\"\n                \"      path: \" + path + \"\\n\"\n                \"  actions:\\n\"\n                \"    - reply_http:\\n\"\n                \"        status_code: 200\\n\"\n                \"        body: '\" + body_expr + \"'\\n\"\n            )\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}{path}\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:326: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00022453699784819037,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_known_deterministic_output[uuidv5]",
+      "lineno": 288,
+      "outcome": "failed",
+      "keywords": [
+        "test_known_deterministic_output[uuidv5]",
+        "parametrize",
+        "pytestmark",
+        "uuidv5",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0015767940058140084,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8278446119948057,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 326,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 326,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ccc0>\nkey = 'uuid5-known', path = '/uuid5-known', body_expr = '{{ uuidv5 \"hello\" }}'\nexpected = '4d71d03f-f19b-5d9e-8523-9628ba18063c'\n\n    @pytest.mark.parametrize(\n        (\"key\", \"path\", \"body_expr\", \"expected\"),\n        [\n            (\n                \"hmac\",\n                \"/hmac-known\",\n                '{{ hmacSHA256 \"secret\" \"payload\" }}',\n                \"b82fcb791acec57859b989b430a826488ce2e479fdf92326bd0a2e8375a42ba4\",\n            ),\n            (\n                \"uuid5-known\",\n                \"/uuid5-known\",\n                '{{ uuidv5 \"hello\" }}',\n                \"4d71d03f-f19b-5d9e-8523-9628ba18063c\",\n            ),\n        ],\n        ids=[\"hmac_sha256\", \"uuidv5\"],\n    )\n    def test_known_deterministic_output(hmock_server, key, path, body_expr, expected):\n        \"\"\"hmacSHA256 and uuidv5 helpers emit deterministic expected values.\"\"\"\n        templates = {\n            \"mocks.yaml\": (\n                \"- key: \" + key + \"\\n\"\n                \"  expect:\\n\"\n                \"    http:\\n\"\n                \"      method: GET\\n\"\n                \"      path: \" + path + \"\\n\"\n                \"  actions:\\n\"\n                \"    - reply_http:\\n\"\n                \"        status_code: 200\\n\"\n                \"        body: '\" + body_expr + \"'\\n\"\n            )\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}{path}\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:326: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0003119670000160113,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_cached_across_requests",
+      "lineno": 329,
+      "outcome": "passed",
+      "keywords": [
+        "test_body_from_file_cached_across_requests",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0017137180111603811,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8180890490039019,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00033640299807302654,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_empty_body_and_headers",
+      "lineno": 357,
+      "outcome": "failed",
+      "keywords": [
+        "test_jsonpath_empty_body_and_headers",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.001698300999123603,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8211502820049645,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 383,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 383,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245d4e0>\n\n    def test_jsonpath_empty_body_and_headers(hmock_server) -> None:\n        \"\"\"jsonPath returns empty string when request body data is empty.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: jsonpath-empty\n      expect:\n        http:\n          method: POST\n          path: /jsonpath-empty\n      actions:\n        - reply_http:\n            status_code: 200\n            headers:\n              X-JsonPath: '{{ .HTTPBody | jsonPath \"foo\" }}'\n            body: '{{ .HTTPBody | jsonPath \"foo\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/jsonpath-empty\",\n                data=\"\",\n                timeout=3,\n            )\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:383: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0002154179965145886,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_helper_edge_cases",
+      "lineno": 387,
+      "outcome": "failed",
+      "keywords": [
+        "test_helper_edge_cases",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010662540007615462,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8162188920105109,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 415,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 415,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19124bb600>\n\n    @pytest.mark.functionality\n    def test_helper_edge_cases(hmock_server) -> None:\n        \"\"\"Helper functions return empty outputs for no-match or missing-input edge cases.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: helper-edges\n      expect:\n        http:\n          method: GET\n          path: /helper-edges\n      actions:\n        - reply_http:\n            status_code: 200\n            body: >\n              {{ \"\" | gJsonPath \"foo\" }}|\n              {{ `{\"foo\":\"bar\"}` | gJsonPath \"missing\" }}|\n              {{ regexFindFirstSubmatch \"(foo)\" \"bar\" }}|\n              {{ regexFindFirstSubmatch \"foo\" \"foo\" }}|\n              {{ `\"'<>&` | htmlEscapeString }}|\n              {{ \"\" | xmlPath \"//name\" }}|\n              {{ `<root><item>1</item></root>` | xmlPath \"//missing\" }}\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/helper-edges\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:415: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0002245579962618649,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_empty_body_falls_back_to_file",
+      "lineno": 431,
+      "outcome": "passed",
+      "keywords": [
+        "test_empty_body_falls_back_to_file",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014075640065129846,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.7168681859911885,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00015397499373648316,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_nested_and_array_access",
+      "lineno": 461,
+      "outcome": "failed",
+      "keywords": [
+        "test_gjson_nested_and_array_access",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010973420139634982,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8173366710107075,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 484,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 484,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245cae0>\n\n    @pytest.mark.functionality\n    def test_gjson_nested_and_array_access(hmock_server) -> None:\n        \"\"\"gJsonPath supports nested field paths, array index access, and array count.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: gjson-adv\n      expect:\n        http:\n          method: POST\n          path: /gjson-adv\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ .HTTPBody | gJsonPath \"user.name\" }}|{{ .HTTPBody | gJsonPath \"items.0\" }}|{{ .HTTPBody | gJsonPath \"items.#\" }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/gjson-adv\",\n                json={\"user\": {\"name\": \"alice\"}, \"items\": [\"x\", \"y\", \"z\"]},\n                timeout=3,\n            )\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:484: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00024461100110784173,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_array_wildcard",
+      "lineno": 490,
+      "outcome": "failed",
+      "keywords": [
+        "test_gjson_array_wildcard",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0012912009988212958,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.8183445960021345,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 513,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 513,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c860>\n\n    @pytest.mark.functionality\n    def test_gjson_array_wildcard(hmock_server) -> None:\n        \"\"\"gJsonPath array wildcard extracts sub-fields from all array elements.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: gjson-wild\n      expect:\n        http:\n          method: POST\n          path: /gjson-wild\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ .HTTPBody | gJsonPath \"items.#.id\" }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/gjson-wild\",\n                json={\"items\": [{\"id\": 1}, {\"id\": 2}, {\"id\": 3}]},\n                timeout=3,\n            )\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:513: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00024592099362052977,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_jsonpath_recursive_descent",
+      "lineno": 516,
+      "outcome": "failed",
+      "keywords": [
+        "test_jsonpath_recursive_descent",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0013638420059578493,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.9176936770090833,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 539,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 539,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245d6c0>\n\n    @pytest.mark.functionality\n    def test_jsonpath_recursive_descent(hmock_server) -> None:\n        \"\"\"jsonPath supports recursive descent with double-slash XPath syntax.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: jsonpath-recurse\n      expect:\n        http:\n          method: POST\n          path: /jsonpath-recurse\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ .HTTPBody | jsonPath \"//name\" }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.post(\n                f\"{server.base_url}/jsonpath-recurse\",\n                json={\"nested\": {\"name\": \"deep_value\"}},\n                timeout=3,\n            )\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:539: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00033114899997599423,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_index_ordering",
+      "lineno": 542,
+      "outcome": "failed",
+      "keywords": [
+        "test_regex_find_all_submatch_index_ordering",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0019497369939927012,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.2354761360038538,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 561,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 561,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245da80>\n\n    @pytest.mark.functionality\n    def test_regex_find_all_submatch_index_ordering(hmock_server) -> None:\n        \"\"\"regexFindAllSubmatch returns full match at index 0 and capture groups at index 1+.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: regex-idx\n      expect:\n        http:\n          method: GET\n          path: /regex-idx\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ index (regexFindAllSubmatch \"(\\\\w+)-(\\\\d+)\" \"abc-42\") 0 }}|{{ index (regexFindAllSubmatch \"(\\\\w+)-(\\\\d+)\" \"abc-42\") 1 }}|{{ index (regexFindAllSubmatch \"(\\\\w+)-(\\\\d+)\" \"abc-42\") 2 }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/regex-idx\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:561: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0006140309997135773,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_regex_find_all_submatch_no_match",
+      "lineno": 567,
+      "outcome": "failed",
+      "keywords": [
+        "test_regex_find_all_submatch_no_match",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.002970554996863939,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 2.097078897000756,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 586,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 586,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245de40>\n\n    @pytest.mark.functionality\n    def test_regex_find_all_submatch_no_match(hmock_server) -> None:\n        \"\"\"regexFindAllSubmatch returns an empty result when the pattern does not match.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: regex-nomatch\n      expect:\n        http:\n          method: GET\n          path: /regex-nomatch\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ regexFindAllSubmatch \"(\\\\d+)\" \"no-digits\" | join \",\" }}END'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/regex-nomatch\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:586: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0005548329936573282,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_is_last_index_returns_false",
+      "lineno": 589,
+      "outcome": "failed",
+      "keywords": [
+        "test_is_last_index_returns_false",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.00335106099373661,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.6254771050007548,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 608,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 608,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245e200>\n\n    @pytest.mark.functionality\n    def test_is_last_index_returns_false(hmock_server) -> None:\n        \"\"\"isLastIndex returns false when the index is not the last valid index.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: islast-false\n      expect:\n        http:\n          method: GET\n          path: /islast-false\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ if isLastIndex 0 (splitList \",\" \"a,b,c\") }}true{{ else }}false{{ end }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/islast-false\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:608: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0004414380091475323,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_uuidv5_deterministic_across_requests",
+      "lineno": 611,
+      "outcome": "failed",
+      "keywords": [
+        "test_uuidv5_deterministic_across_requests",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0034074430004693568,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.2357931389997248,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 631,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 631,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245e5c0>\n\n    @pytest.mark.functionality\n    def test_uuidv5_deterministic_across_requests(hmock_server) -> None:\n        \"\"\"uuidv5 produces identical output across separate requests with the same input.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: uuid-across\n      expect:\n        http:\n          method: GET\n          path: /uuid-across\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ uuidv5 \"cross-request\" }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            first = requests.get(f\"{server.base_url}/uuid-across\", timeout=3)\n            second = requests.get(f\"{server.base_url}/uuid-across\", timeout=3)\n>       assert first.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:631: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0005126600008225068,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_body_from_file_with_helper_functions",
+      "lineno": 635,
+      "outcome": "failed",
+      "keywords": [
+        "test_body_from_file_with_helper_functions",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004357821002486162,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.8263475919957273,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 655,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 655,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245e980>\n\n    @pytest.mark.functionality\n    def test_body_from_file_with_helper_functions(hmock_server) -> None:\n        \"\"\"body_from_file templates have access to helper functions like htmlEscapeString.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: file-helpers\n      expect:\n        http:\n          method: GET\n          path: /file-helpers\n      actions:\n        - reply_http:\n            status_code: 200\n            body_from_file: files/helper.tmpl\n    \"\"\"\n        }\n        files = {\"files/helper.tmpl\": '{{ htmlEscapeString \"<b>test</b>\" }}'}\n        with hmock_server(templates=templates, files=files) as server:\n            response = requests.get(f\"{server.base_url}/file-helpers\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:655: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0002351549919694662,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_gjson_invalid_json_render_error",
+      "lineno": 658,
+      "outcome": "passed",
+      "keywords": [
+        "test_gjson_invalid_json_render_error",
+        "error",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0021830170007888228,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.440453406990855,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00035302100877743214,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_whitespace_body_takes_precedence",
+      "lineno": 685,
+      "outcome": "passed",
+      "keywords": [
+        "test_whitespace_body_takes_precedence",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004466058991965838,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.9724036330007948,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0006652570009464398,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_templated_headers_with_helpers",
+      "lineno": 709,
+      "outcome": "failed",
+      "keywords": [
+        "test_templated_headers_with_helpers",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0036364550032885745,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 2.1678389410080854,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 730,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 730,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245f4c0>\n\n    @pytest.mark.functionality\n    def test_templated_headers_with_helpers(hmock_server) -> None:\n        \"\"\"Header template values have access to helper functions like hmacSHA256.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: hdr-helpers\n      expect:\n        http:\n          method: GET\n          path: /hdr-helpers\n      actions:\n        - reply_http:\n            status_code: 200\n            headers:\n              X-Hmac: '{{ hmacSHA256 \"key\" \"data\" }}'\n            body: ok\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/hdr-helpers\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:730: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0003805259912041947,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_2.py::test_hmac_sha256_empty_inputs",
+      "lineno": 733,
+      "outcome": "failed",
+      "keywords": [
+        "test_hmac_sha256_empty_inputs",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_2.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0022276740055531263,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 2.1387624189956114,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_2.py",
+          "lineno": 752,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_2.py",
+            "lineno": 752,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ed40>\n\n    @pytest.mark.functionality\n    def test_hmac_sha256_empty_inputs(hmock_server) -> None:\n        \"\"\"hmacSHA256 produces a hex digest even with empty secret or data strings.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: hmac-empty\n      expect:\n        http:\n          method: GET\n          path: /hmac-empty\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ hmacSHA256 \"\" \"data\" }}|{{ hmacSHA256 \"secret\" \"\" }}'\n    \"\"\"\n        }\n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/hmac-empty\", timeout=3)\n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_2.py:752: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0005695849977200851,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_persists_state_across_requests",
+      "lineno": 13,
+      "outcome": "failed",
+      "keywords": [
+        "test_redis_persists_state_across_requests",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004151322995312512,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.6404630050092237,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 45,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 45,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245f240>\n\n    def test_redis_persists_state_across_requests(hmock_server) -> None:\n        \"\"\"State set via redisDo persists across separate requests to `/state`.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: redis-state\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /state\n      actions:\n        - redis:\n          - '{{ .HTTPHeader.Get \"X-Token\" | redisDo \"SET\" \"session_token\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"session_token\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            first = requests.get(\n                f\"{server.base_url}/state\",\n                headers={\"X-Token\": \"token-a\"},\n                timeout=3,\n            )\n            second = requests.get(\n                f\"{server.base_url}/state\",\n                headers={\"X-Token\": \"token-b\"},\n                timeout=3,\n            )\n    \n>       assert first.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:45: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0004567099967971444,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_posts_to_webhook",
+      "lineno": 50,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_posts_to_webhook",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004777677997481078,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 6.732801837002626,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 83,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ea20>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:54815', _requests=[], _lock=<unlocked _thread.lock object at 0x7c19124c9a40>)\n\n    def test_send_http_posts_to_webhook(hmock_server, webhook_sink) -> None:\n        \"\"\"`send_http` emits an outbound call to the configured webhook URL.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: emit-webhook\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /emit\n      actions:\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}'\n            method: POST\n            headers:\n              Content-Type: application/json\n            body: '{\"path\":\"{{.HTTPPath}}\",\"payload\":\"{{.HTTPBody}}\"}'\n        - reply_http:\n            status_code: 202\n            body: accepted\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"WEBHOOK_URL\": f\"{webhook_sink.url}/hook\"},\n        ) as server:\n            response = requests.post(\n                f\"{server.base_url}/emit\",\n                data=\"hello\",\n                timeout=3,\n            )\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:83: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c191245e8e0>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.24101837500347756,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_array_semicolon_separator",
+      "lineno": 92,
+      "outcome": "failed",
+      "keywords": [
+        "test_redis_array_semicolon_separator",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.002538148997700773,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.8273902669898234,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 118,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 118,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245dda0>\n\n    @pytest.mark.functionality\n    def test_redis_array_semicolon_separator(hmock_server) -> None:\n        \"\"\"Redis array list output is returned as a delimiter-joined string.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: redis-array\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /array\n      actions:\n        - redis:\n          - '{{ redisDo \"DEL\" \"arr\" }}'\n          - '{{ redisDo \"RPUSH\" \"arr\" \"one\" }}'\n          - '{{ redisDo \"RPUSH\" \"arr\" \"two\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"LRANGE\" \"arr\" 0 -1 }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/array\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:118: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00028497200401034206,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_hash_and_list_ops",
+      "lineno": 121,
+      "outcome": "failed",
+      "keywords": [
+        "test_redis_hash_and_list_ops",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0016399000014644116,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.4224154029943747,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 149,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 149,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c900>\n\n    @pytest.mark.functionality\n    def test_redis_hash_and_list_ops(\n        hmock_server,\n    ) -> None:\n        \"\"\"Supported redis commands (`HSET`, `LPUSH`, `HGET`, `LRANGE`, etc.) return expected values.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: redis-commands\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /redis-commands\n      actions:\n        - redis:\n          - '{{ redisDo \"DEL\" \"h\" \"l\" }}'\n          - '{{ redisDo \"HSET\" \"h\" \"f1\" \"v1\" }}'\n          - '{{ redisDo \"LPUSH\" \"l\" \"one\" \"two\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"HGET\" \"h\" \"f1\" }}|{{ redisDo \"HGETALL\" \"h\" }}|{{ redisDo \"LPOP\" \"l\" }}|{{ redisDo \"RPOP\" \"l\" }}|{{ redisDo \"EXISTS\" \"h\" }}|{{ redisDo \"KEYS\" \"*\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/redis-commands\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:149: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0003016989940078929,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_condition_stateful_routing",
+      "lineno": 158,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_condition_stateful_routing",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0022270039917202666,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.5362179469957482,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 212,
+          "message": "assert 404 == 200\n +  where 404 = <Response [404]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 212,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c360>\n\n    @pytest.mark.functionality\n    def test_redisdo_condition_stateful_routing(hmock_server) -> None:\n        \"\"\"Condition matching can branch on state read from redisDo.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: set-flag\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /flags\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"feature_flag\" .HTTPBody }}'\n        - reply_http:\n            status_code: 200\n            body: ok\n    - key: gated\n      kind: Behavior\n      expect:\n        condition: '{{ redisDo \"GET\" \"feature_flag\" | eq \"enabled\" }}'\n        http:\n          method: GET\n          path: /feature\n      actions:\n        - reply_http:\n            status_code: 200\n            body: active\n    - key: gated-fallback\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /feature\n      actions:\n        - reply_http:\n            status_code: 404\n            body: inactive\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            before = requests.get(f\"{server.base_url}/feature\", timeout=3)\n            set_flag = requests.post(\n                f\"{server.base_url}/flags\",\n                data=\"enabled\",\n                timeout=3,\n            )\n            after = requests.get(f\"{server.base_url}/feature\", timeout=3)\n    \n        assert before.status_code == 404\n        assert before.text == \"inactive\"\n        assert set_flag.status_code == 200\n>       assert after.status_code == 200\nE       assert 404 == 200\nE        +  where 404 = <Response [404]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:212: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0007418519962811843,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_body_from_file_templates",
+      "lineno": 215,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_body_from_file_templates",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0030889519985066727,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 6.74095536400273,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 256,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ccc0>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:53219', _requests=[], _lock=<unlocked _thread.lock object at 0x7c19124d40c0>)\n\n    @pytest.mark.functionality\n    def test_send_http_body_from_file_templates(\n        hmock_server,\n        webhook_sink,\n    ) -> None:\n        \"\"\"`send_http` accepts a template-rendered request body from `body_from_file`.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: send-http-from-file\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /emit-file\n      actions:\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}'\n            method: POST\n            body_from_file: files/webhook.json\n            headers:\n              Content-Type: application/json\n        - reply_http:\n            status_code: 200\n            body: accepted\n    \"\"\"\n        }\n        files = {\n            \"files/webhook.json\": '{\"path\":\"{{.HTTPPath}}\",\"body\":\"{{.HTTPBody}}\"}'\n        }\n    \n        with hmock_server(\n            templates=templates,\n            files=files,\n            extra_env={\"WEBHOOK_URL\": f\"{webhook_sink.url}/hook\"},\n        ) as server:\n            response = requests.post(\n                f\"{server.base_url}/emit-file\",\n                data=\"payload\",\n                timeout=3,\n            )\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:256: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c191245cc20>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.24149761999433395,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_response",
+      "lineno": 265,
+      "outcome": "passed",
+      "keywords": [
+        "test_send_http_failure_preserves_response",
+        "error",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.003914159999112599,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.84123221799382,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.0005007790023228154,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_external_redis_mode",
+      "lineno": 297,
+      "outcome": "failed",
+      "keywords": [
+        "test_external_redis_mode",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.10759945800236892,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.522419123997679,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 325,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 325,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ff60>\nredis_url = 'redis://127.0.0.1:55013'\n\n    def test_external_redis_mode(\n        hmock_server,\n        redis_url: str,\n    ) -> None:\n        \"\"\"Redis operations can run against external Redis using `HM_REDIS_TYPE` and `HM_REDIS_URL`.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: external-redis\n      expect:\n        http:\n          method: GET\n          path: /external-redis\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"k\" \"v\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"k\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"HM_REDIS_TYPE\": \"redis\", \"HM_REDIS_URL\": redis_url},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/external-redis\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:325: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00022976800391916186,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_hdel",
+      "lineno": 328,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_hdel",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.00133426500542555,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.52307514900167,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 352,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 352,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bc040>\n\n    @pytest.mark.functionality\n    def test_redisdo_hdel(hmock_server) -> None:\n        \"\"\"`HDEL` removes a hash key so later `HGET` returns an empty value.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: hdel\n      expect:\n        http:\n          method: GET\n          path: /hdel\n      actions:\n        - redis:\n          - '{{ redisDo \"HSET\" \"h\" \"f1\" \"v1\" }}'\n          - '{{ redisDo \"HDEL\" \"h\" \"f1\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"HGET\" \"h\" \"f1\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/hdel\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:352: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00032233000092674047,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_header_templates",
+      "lineno": 355,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_header_templates",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0042463110003154725,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 6.033382901994628,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 387,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bc360>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:51921', _requests=[], _lock=<unlocked _thread.lock object at 0x7c1912a3f400>)\n\n    @pytest.mark.functionality\n    def test_send_http_header_templates(\n        hmock_server,\n        webhook_sink,\n    ) -> None:\n        \"\"\"`send_http` request headers are rendered per-spec using template expressions.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: send-http-headers\n      expect:\n        http:\n          method: GET\n          path: /emit-headers\n      actions:\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}/hook'\n            method: POST\n            headers:\n              X-Path: '{{ .HTTPPath }}'\n            body: ok\n        - reply_http:\n            status_code: 200\n            body: done\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"WEBHOOK_URL\": webhook_sink.url},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/emit-headers\", timeout=3)\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:387: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c19125bc2c0>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.45790162999765016,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_inline_body_wins",
+      "lineno": 393,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_inline_body_wins",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0023919060040498152,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 5.731359769997653,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 423,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245ff60>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:35609', _requests=[], _lock=<unlocked _thread.lock object at 0x7c1912a14980>)\n\n    @pytest.mark.functionality\n    def test_send_http_inline_body_wins(hmock_server, webhook_sink) -> None:\n        \"\"\"Inline `send_http` body takes precedence over `body_from_file`.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: send-http-precedence\n      expect:\n        http:\n          method: GET\n          path: /emit-precedence\n      actions:\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}/hook'\n            method: POST\n            body: inline\n            body_from_file: files/fallback.txt\n        - reply_http:\n            status_code: 200\n            body: ok\n    \"\"\"\n        }\n        files = {\"files/fallback.txt\": \"from-file\"}\n    \n        with hmock_server(\n            templates=templates,\n            files=files,\n            extra_env={\"WEBHOOK_URL\": webhook_sink.url},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/emit-precedence\", timeout=3)\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:423: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c191245fba0>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.26428738300455734,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redis_state_lost_on_restart",
+      "lineno": 429,
+      "outcome": "failed",
+      "keywords": [
+        "test_redis_state_lost_on_restart",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0021072550007374957,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 1.2446507729910081,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 472,
+          "message": "assert '<!DOCTYPE HTML>\\n<html lang=\"en\">\\n    <head>\\n        <meta charset=\"utf-8\">\\n        <title>Error response</title>\\n    </head>\\n    <body>\\n        <h1>Error response</h1>\\n        <p>Error code: 500</p>\\n        <p>Message: body render error: expected token \\'end of print statement\\', got \\'string\\'.</p>\\n        <p>Error code explanation: 500 - Server got itself in trouble.</p>\\n    </body>\\n</html>\\n' == 'alpha'\n  \n  - alpha\n  + <!DOCTYPE HTML>\n  + <html lang=\"en\">\n  +     <head>\n  +         <meta charset=\"utf-8\">\n  +         <title>Error response</title>\n  +     </head>\n  +     <body>\n  +         <h1>Error response</h1>\n  +         <p>Error code: 500</p>\n  +         <p>Message: body render error: expected token 'end of print statement', got 'string'.</p>\n  +         <p>Error code explanation: 500 - Server got itself in trouble.</p>\n  +     </body>\n  + </html>"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 472,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c2c0>\n\n    @pytest.mark.functionality\n    def test_redis_state_lost_on_restart(hmock_server) -> None:\n        \"\"\"In-memory Redis state is cleared when the mock server is restarted.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: remember\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /remember\n      actions:\n        - redis:\n          - '{{ .HTTPBody | redisDo \"SET\" \"remembered\" }}'\n        - reply_http:\n            status_code: 200\n            body: stored\n    - key: read\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /remember\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"remembered\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            stored = requests.post(\n                f\"{server.base_url}/remember\",\n                data=\"alpha\",\n                timeout=3,\n            )\n            before_restart = requests.get(f\"{server.base_url}/remember\", timeout=3)\n    \n        with hmock_server(templates=templates) as server:\n            after_restart = requests.get(f\"{server.base_url}/remember\", timeout=3)\n    \n        assert stored.status_code == 200\n>       assert before_restart.text == \"alpha\"\nE       assert '<!DOCTYPE HTML>\\n<html lang=\"en\">\\n    <head>\\n        <meta charset=\"utf-8\">\\n        <title>Error response</title>\\n    </head>\\n    <body>\\n        <h1>Error response</h1>\\n        <p>Error code: 500</p>\\n        <p>Message: body render error: expected token \\'end of print statement\\', got \\'string\\'.</p>\\n        <p>Error code explanation: 500 - Server got itself in trouble.</p>\\n    </body>\\n</html>\\n' == 'alpha'\nE         \nE         - alpha\nE         + <!DOCTYPE HTML>\nE         + <html lang=\"en\">\nE         +     <head>\nE         +         <meta charset=\"utf-8\">\nE         +         <title>Error response</title>\nE         +     </head>\nE         +     <body>\nE         +         <h1>Error response</h1>\nE         +         <p>Error code: 500</p>\nE         +         <p>Message: body render error: expected token 'end of print statement', got 'string'.</p>\nE         +         <p>Error code explanation: 500 - Server got itself in trouble.</p>\nE         +     </body>\nE         + </html>\n\n.evaluation_tests/test_checkpoint_3.py:472: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0001381470065098256,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_renders_response_headers",
+      "lineno": 476,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_renders_response_headers",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011027199943782762,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6201246669952525,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 502,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 502,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245d6c0>\n\n    @pytest.mark.functionality\n    def test_redisdo_renders_response_headers(hmock_server) -> None:\n        \"\"\"`redisDo` output can be rendered into outbound response headers.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: header-state\n      kind: Behavior\n      expect:\n        http:\n          method: GET\n          path: /header-state\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"header_value\" \"from-redis\" }}'\n        - reply_http:\n            status_code: 200\n            headers:\n              X-Redis-State: '{{ redisDo \"GET\" \"header_value\" }}'\n            body: ok\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/header-state\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:502: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0001703790039755404,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_error_no_abort",
+      "lineno": 506,
+      "outcome": "passed",
+      "keywords": [
+        "test_send_http_error_no_abort",
+        "error",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010644799913279712,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6143614649918163,
+        "outcome": "passed"
+      },
+      "teardown": {
+        "duration": 0.00017131600179709494,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_mixed_action_ordering",
+      "lineno": 548,
+      "outcome": "failed",
+      "keywords": [
+        "test_mixed_action_ordering",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0014263420016504824,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 5.632782161992509,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 585,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245f240>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:50469', _requests=[], _lock=<unlocked _thread.lock object at 0x7c191235d5c0>)\n\n    @pytest.mark.functionality\n    def test_mixed_action_ordering(\n        hmock_server,\n        webhook_sink,\n    ) -> None:\n        \"\"\"A behavior may mix redis, send_http, and reply_http in order.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: ordered-actions\n      kind: Behavior\n      expect:\n        http:\n          method: POST\n          path: /ordered-actions\n      actions:\n        - redis:\n          - '{{ .HTTPBody | gJsonPath \"user\" | redisDo \"SET\" \"last_user\" }}'\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}/ordered'\n            method: POST\n            body: '{{ redisDo \"GET\" \"last_user\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"last_user\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"WEBHOOK_URL\": webhook_sink.url},\n        ) as server:\n            response = requests.post(\n                f\"{server.base_url}/ordered-actions\",\n                json={\"user\": \"alice\"},\n                timeout=3,\n            )\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:585: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c191245e3e0>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.36388681299285963,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_missing_key_returns_empty",
+      "lineno": 591,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_missing_key_returns_empty",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0016582319949520752,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6156148449954344,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 614,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 614,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c860>\n\n    @pytest.mark.functionality\n    def test_redisdo_missing_key_returns_empty(hmock_server) -> None:\n        \"\"\"GET on a non-existent key returns empty string; EXISTS returns '0'.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: missing-key\n      expect:\n        http:\n          method: GET\n          path: /missing-key\n      actions:\n        - redis:\n          - '{{ redisDo \"DEL\" \"never_set\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"never_set\" }}|{{ redisDo \"EXISTS\" \"never_set\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/missing-key\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:614: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00019290400086902082,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_del_multiple_keys",
+      "lineno": 619,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_del_multiple_keys",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011934180074604228,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6153505660040537,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 644,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 644,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bca40>\n\n    @pytest.mark.functionality\n    def test_redisdo_del_multiple_keys(hmock_server) -> None:\n        \"\"\"DEL removes multiple keys in a single command.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: del-multi\n      expect:\n        http:\n          method: GET\n          path: /del-multi\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"a\" \"1\" }}'\n          - '{{ redisDo \"SET\" \"b\" \"2\" }}'\n          - '{{ redisDo \"DEL\" \"a\" \"b\" }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"EXISTS\" \"a\" }}|{{ redisDo \"EXISTS\" \"b\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/del-multi\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:644: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.00017484900308772922,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_list_ops",
+      "lineno": 649,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_empty_list_ops",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0009428310004295781,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6190405289962655,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 670,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 670,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bce00>\n\n    @pytest.mark.functionality\n    def test_redisdo_empty_list_ops(hmock_server) -> None:\n        \"\"\"LPOP, RPOP, and LRANGE on a non-existent list return empty results.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: empty-list\n      expect:\n        http:\n          method: GET\n          path: /empty-list\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"LPOP\" \"no_list\" }}|{{ redisDo \"RPOP\" \"no_list\" }}|{{ redisDo \"LRANGE\" \"no_list\" 0 -1 }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/empty-list\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:670: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0001757809950504452,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_empty_hash_and_keys",
+      "lineno": 676,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_empty_hash_and_keys",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0011498249950818717,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6147675749962218,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 697,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 697,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bd260>\n\n    @pytest.mark.functionality\n    def test_redisdo_empty_hash_and_keys(hmock_server) -> None:\n        \"\"\"HGETALL on non-existent hash and KEYS with no matches return empty strings.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: empty-hash\n      expect:\n        http:\n          method: GET\n          path: /empty-hash\n      actions:\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"HGETALL\" \"no_hash\" }}|{{ redisDo \"KEYS\" \"nonexistent:*\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/empty-hash\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:697: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0002108020125888288,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_redisdo_inside_redis_action_items",
+      "lineno": 702,
+      "outcome": "failed",
+      "keywords": [
+        "test_redisdo_inside_redis_action_items",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0010374830017099157,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.6204404269956285,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 726,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 726,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bd620>\n\n    @pytest.mark.functionality\n    def test_redisdo_inside_redis_action_items(hmock_server) -> None:\n        \"\"\"redisDo can be used inside redis action items with sequential evaluation.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: nested-redis\n      expect:\n        http:\n          method: GET\n          path: /nested-redis\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"src\" \"hello\" }}'\n          - '{{ redisDo \"SET\" \"dst\" (redisDo \"GET\" \"src\") }}'\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"dst\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/nested-redis\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:726: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.0001924110110849142,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_no_body",
+      "lineno": 729,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_no_body",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0016363659960916266,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 5.838264492005692,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 755,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c19125bd9e0>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:53709', _requests=[], _lock=<unlocked _thread.lock object at 0x7c191236e9c0>)\n\n    @pytest.mark.functionality\n    def test_send_http_no_body(hmock_server, webhook_sink) -> None:\n        \"\"\"send_http works without body or body_from_file fields.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: no-body\n      expect:\n        http:\n          method: GET\n          path: /no-body\n      actions:\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}/hook'\n            method: GET\n        - reply_http:\n            status_code: 200\n            body: ok\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"WEBHOOK_URL\": webhook_sink.url},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/no-body\", timeout=3)\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:755: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c19125bd940>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.16011830500792712,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_url_template_with_redisdo",
+      "lineno": 761,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_url_template_with_redisdo",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.004063857995788567,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 5.638946387989563,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/conftest.py",
+          "lineno": 139,
+          "message": "AssertionError: Expected at least 1 webhook request(s)"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 790,
+            "message": ""
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 367,
+            "message": "in wait_for_count"
+          },
+          {
+            "path": ".evaluation_tests/conftest.py",
+            "lineno": 139,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245e3e0>\nwebhook_sink = WebhookSink(url='http://127.0.0.1:43623', _requests=[], _lock=<unlocked _thread.lock object at 0x7c1912bffc00>)\n\n    @pytest.mark.functionality\n    def test_send_http_url_template_with_redisdo(hmock_server, webhook_sink) -> None:\n        \"\"\"send_http URL field is rendered as a template including redisDo expressions.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: url-redis\n      expect:\n        http:\n          method: GET\n          path: /url-redis\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"target_path\" \"/hook\" }}'\n        - send_http:\n            url: '{{ env \"WEBHOOK_URL\" }}{{ redisDo \"GET\" \"target_path\" }}'\n            method: POST\n            body: triggered\n        - reply_http:\n            status_code: 200\n            body: ok\n    \"\"\"\n        }\n    \n        with hmock_server(\n            templates=templates,\n            extra_env={\"WEBHOOK_URL\": webhook_sink.url},\n        ) as server:\n            response = requests.get(f\"{server.base_url}/url-redis\", timeout=3)\n>           webhook_sink.wait_for_count(1, timeout=5)\n\n.evaluation_tests/test_checkpoint_3.py:790: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.evaluation_tests/conftest.py:367: in wait_for_count\n    wait_until(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npredicate = <function WebhookSink.wait_for_count.<locals>.<lambda> at 0x7c191245f240>\n\n    def wait_until(\n        predicate: Callable[[], bool],\n        *,\n        timeout: float = 6.0,\n        interval: float = 0.1,\n        message: str = \"condition not met in time\",\n    ) -> None:\n        \"\"\"Poll until predicate returns True or timeout elapses.\"\"\"\n        deadline = time.monotonic() + timeout\n        while time.monotonic() < deadline:\n            if predicate():\n                return\n            time.sleep(interval)\n>       raise AssertionError(message)\nE       AssertionError: Expected at least 1 webhook request(s)\n\n.evaluation_tests/conftest.py:139: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.34360242600087076,
+        "outcome": "passed"
+      }
+    },
+    {
+      "nodeid": ".evaluation_tests/test_checkpoint_3.py::test_send_http_failure_preserves_redis_state",
+      "lineno": 797,
+      "outcome": "failed",
+      "keywords": [
+        "test_send_http_failure_preserves_redis_state",
+        "functionality",
+        "pytestmark",
+        "test_checkpoint_3.py",
+        ".evaluation_tests",
+        "workspace",
+        ""
+      ],
+      "setup": {
+        "duration": 0.0037261179968481883,
+        "outcome": "passed"
+      },
+      "call": {
+        "duration": 0.617287421002402,
+        "outcome": "failed",
+        "crash": {
+          "path": "/workspace/.evaluation_tests/test_checkpoint_3.py",
+          "lineno": 824,
+          "message": "assert 500 == 200\n +  where 500 = <Response [500]>.status_code"
+        },
+        "traceback": [
+          {
+            "path": ".evaluation_tests/test_checkpoint_3.py",
+            "lineno": 824,
+            "message": "AssertionError"
+          }
+        ],
+        "longrepr": "hmock_server = <function hmock_server.<locals>._run at 0x7c191245c860>\n\n    @pytest.mark.functionality\n    def test_send_http_failure_preserves_redis_state(hmock_server) -> None:\n        \"\"\"Redis state set before a failed send_http remains intact after the failure.\"\"\"\n        templates = {\n            \"mocks.yaml\": \"\"\"\n    - key: redis-then-fail\n      expect:\n        http:\n          method: GET\n          path: /redis-then-fail\n      actions:\n        - redis:\n          - '{{ redisDo \"SET\" \"survivor\" \"yes\" }}'\n        - send_http:\n            url: http://127.0.0.1:1/unreachable\n            method: POST\n            body: fail\n        - reply_http:\n            status_code: 200\n            body: '{{ redisDo \"GET\" \"survivor\" }}'\n    \"\"\"\n        }\n    \n        with hmock_server(templates=templates) as server:\n            response = requests.get(f\"{server.base_url}/redis-then-fail\", timeout=3)\n    \n>       assert response.status_code == 200\nE       assert 500 == 200\nE        +  where 500 = <Response [500]>.status_code\n\n.evaluation_tests/test_checkpoint_3.py:824: AssertionError"
+      },
+      "teardown": {
+        "duration": 0.03291305300081149,
+        "outcome": "passed"
+      }
+    }
+  ]
+}

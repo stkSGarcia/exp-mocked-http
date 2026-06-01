@@ -1,0 +1,139 @@
+{
+  "ast_grep": {
+    "category_counts": {},
+    "category_weighted": {},
+    "counts": {},
+    "rules_checked": 355,
+    "violation_lines": 0,
+    "violations": 0,
+    "weighted": 0
+  },
+  "classes": {
+    "attribute_counts_mean": 0.3333333333333333,
+    "attribute_counts_sum": 1,
+    "count": 3,
+    "method_counts_mean": 2.0,
+    "method_counts_sum": 6
+  },
+  "complexity": {
+    "cc_max": 30,
+    "cc_ratings": {
+      "A": 61,
+      "B": 5,
+      "C": 8,
+      "D": 1,
+      "E": 0,
+      "F": 0
+    },
+    "cc_sum": 297,
+    "mi_min": 14.128943081915313,
+    "mi_ratings": {
+      "A": 1,
+      "B": 1,
+      "C": 0
+    },
+    "mi_sum": 64.9287878668982,
+    "num_complex": 9
+  },
+  "file_count": 2,
+  "functions": {
+    "cc_concentration": 0.5101120857699805,
+    "cc_extreme_count": 0,
+    "cc_high_count": 9,
+    "cc_max": 30,
+    "cc_mean": 5.052631578947368,
+    "cc_normalized": 0.023915447255291006,
+    "cc_std": 5.8992162089297295,
+    "cc_sum": 288,
+    "cc_top20": 0.625,
+    "count": 57,
+    "depth_max": 5,
+    "extreme_cc_mean": 0.0,
+    "high_cc_mean": 17.0,
+    "lines_mean": 14.456140350877194,
+    "lines_sum": 824
+  },
+  "graph": {
+    "cyclic_dependency_mass": 0.0,
+    "dependency_entropy": 0.21864903592921262,
+    "edge_count": 24,
+    "node_count": 27,
+    "propagation_cost": 0.06267806267806268
+  },
+  "lines": {
+    "comments": 96,
+    "loc": 726,
+    "multi_comment": 0,
+    "single_comment": 78,
+    "total_lines": 959
+  },
+  "lint": {
+    "counts": {
+      "A002": 1,
+      "ARG001": 5,
+      "BLE001": 2,
+      "C901": 4,
+      "DOC201": 1,
+      "EM101": 1,
+      "EM102": 9,
+      "FURB101": 2,
+      "FURB110": 1,
+      "FURB113": 1,
+      "FURB118": 12,
+      "INP001": 1,
+      "N802": 1,
+      "PERF401": 1,
+      "PIE810": 1,
+      "PLC0415": 4,
+      "PLC1901": 1,
+      "PLR0911": 2,
+      "PLR0912": 2,
+      "PLR6201": 1,
+      "PLR6301": 1,
+      "PLW0603": 1,
+      "PLW1514": 3,
+      "PT018": 1,
+      "PTH118": 3,
+      "PTH123": 3,
+      "RUF005": 1,
+      "S101": 26,
+      "S104": 1,
+      "S310": 5,
+      "S701": 1,
+      "SIM105": 1,
+      "SLF001": 46,
+      "TRY003": 10,
+      "TRY004": 2,
+      "UP045": 3
+    },
+    "errors": 161,
+    "fixable": 9
+  },
+  "redundancy": {
+    "clone_lines": 52,
+    "clone_ratio_sum": 0.1264720942140297,
+    "cloned_sloc_lines": 52,
+    "files_with_clones": 2
+  },
+  "source_files": [],
+  "symbols": {
+    "classes": 3,
+    "expressions": 1408,
+    "expressions_top_level": 44,
+    "functions": 51,
+    "globals": 15,
+    "imports": 26,
+    "max_imports": 21,
+    "methods": 6,
+    "statements": 281,
+    "total": 75,
+    "type_aliases": 0,
+    "variables": 15
+  },
+  "verbosity_flagged_sloc_lines": 52,
+  "waste": {
+    "single_use_functions": 48,
+    "trivial_wrappers": 1,
+    "unused_variables": 21
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "ast_grep": {
+    "category_counts": {},
+    "category_weighted": {},
+    "counts": {},
+    "rules_checked": 355,
+    "violation_lines": 0,
+    "violations": 0,
+    "weighted": 0
+  },
+  "classes": {
+    "attribute_counts_mean": 0.3333333333333333,
+    "attribute_counts_sum": 1,
+    "count": 3,
+    "method_counts_mean": 2.0,
+    "method_counts_sum": 6
+  },
+  "complexity": {
+    "cc_max": 21,
+    "cc_ratings": {
+      "A": 32,
+      "B": 4,
+      "C": 6,
+      "D": 1,
+      "E": 0,
+      "F": 0
+    },
+    "cc_sum": 193,
+    "mi_min": 22.83024469573833,
+    "mi_ratings": {
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    "mi_sum": 22.83024469573833,
+    "num_complex": 7
+  },
+  "file_count": 1,
+  "functions": {
+    "cc_concentration": 0.48874223602484473,
+    "cc_extreme_count": 0,
+    "cc_high_count": 7,
+    "cc_max": 21,
+    "cc_mean": 6.571428571428571,
+    "cc_normalized": 0.03273997059441294,
+    "cc_std": 6.291844053002394,
+    "cc_sum": 184,
+    "cc_top20": 0.5489130434782609,
+    "count": 28,
+    "depth_max": 5,
+    "extreme_cc_mean": 0.0,
+    "high_cc_mean": 16.142857142857142,
+    "lines_mean": 19.285714285714285,
+    "lines_sum": 540
+  },
+  "graph": {
+    "cyclic_dependency_mass": 0.0,
+    "dependency_entropy": 0.21383894930671693,
+    "edge_count": 19,
+    "node_count": 23,
+    "propagation_cost": 0.06719367588932806
+  },
+  "lines": {
+    "comments": 66,
+    "loc": 469,
+    "multi_comment": 0,
+    "single_comment": 51,
+    "total_lines": 604
+  },
+  "lint": {
+    "counts": {
+      "A002": 1,
+      "ARG001": 1,
+      "BLE001": 1,
+      "C901": 3,
+      "DOC201": 1,
+      "EM102": 7,
+      "FURB101": 1,
+      "FURB110": 1,
+      "FURB118": 12,
+      "N802": 1,
+      "PERF401": 1,
+      "PIE810": 1,
+      "PLC0415": 2,
+      "PLR0911": 1,
+      "PLR0912": 1,
+      "PLR6301": 1,
+      "PLW0603": 1,
+      "PLW1514": 2,
+      "PTH118": 2,
+      "PTH123": 2,
+      "RUF005": 1,
+      "S104": 1,
+      "S701": 1,
+      "SIM105": 1,
+      "SLF001": 2,
+      "TRY003": 7,
+      "TRY004": 2,
+      "UP045": 3
+    },
+    "errors": 61,
+    "fixable": 7
+  },
+  "redundancy": {
+    "clone_lines": 6,
+    "clone_ratio_sum": 0.01279317697228145,
+    "cloned_sloc_lines": 6,
+    "files_with_clones": 1
+  },
+  "source_files": [],
+  "symbols": {
+    "classes": 3,
+    "expressions": 987,
+    "expressions_top_level": 10,
+    "functions": 22,
+    "globals": 12,
+    "imports": 17,
+    "max_imports": 17,
+    "methods": 6,
+    "statements": 201,
+    "total": 43,
+    "type_aliases": 0,
+    "variables": 12
+  },
+  "verbosity_flagged_sloc_lines": 6,
+  "waste": {
+    "single_use_functions": 19,
+    "trivial_wrappers": 1,
+    "unused_variables": 10
+  }
+}

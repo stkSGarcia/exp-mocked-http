@@ -1,0 +1,368 @@
+
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /tmp/uv-cache/archive-v0/vf7kA_UrrsBJVnr2/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.12.13', 'Platform': 'Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.41', 'Packages': {'pytest': '9.0.3', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.13.0', 'json-ctrf': '0.5.0', 'metadata': '3.1.1', 'timeout': '2.4.0', 'json-report': '1.5.0'}}
+rootdir: /workspace
+configfile: pytest.ini
+plugins: anyio-4.13.0, json-ctrf-0.5.0, metadata-3.1.1, timeout-2.4.0, json-report-1.5.0
+timeout: 15.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 29 items
+
+.evaluation_tests/test_checkpoint_1.py::test_first_matching_condition_wins PASSED [  3%]
+.evaluation_tests/test_checkpoint_1.py::test_context_includes_path_query_header PASSED [  6%]
+.evaluation_tests/test_checkpoint_1.py::test_rejects_behavior_with_multiple_reply_http PASSED [ 10%]
+.evaluation_tests/test_checkpoint_1.py::test_loads_yaml_and_yml_files_recursively PASSED [ 13%]
+.evaluation_tests/test_checkpoint_1.py::test_kind_defaults_to_behavior PASSED [ 17%]
+.evaluation_tests/test_checkpoint_1.py::test_duplicate_keys_use_last_definition PASSED [ 20%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string FAILED [ 24%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_render_error_fallback PASSED [ 27%]
+.evaluation_tests/test_checkpoint_1.py::test_reply_http_default_headers_and_empty_body PASSED [ 31%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_action_delays_response PASSED [ 34%]
+.evaluation_tests/test_checkpoint_1.py::test_no_match_returns_not_found PASSED [ 37%]
+.evaluation_tests/test_checkpoint_1.py::test_method_and_path_are_both_required PASSED [ 41%]
+.evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered FAILED [ 44%]
+.evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields FAILED [ 48%]
+.evaluation_tests/test_checkpoint_1.py::test_empty_condition_renders_httpbody PASSED [ 51%]
+.evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_condition PASSED [ 55%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ns] PASSED [ 58%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0us] PASSED [ 62%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0ms] PASSED [ 65%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0s] PASSED [ 68%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0m] PASSED [ 72%]
+.evaluation_tests/test_checkpoint_1.py::test_sleep_zero_duration_all_units[0h] PASSED [ 75%]
+.evaluation_tests/test_checkpoint_1.py::test_duplicate_key_override_warns PASSED [ 79%]
+.evaluation_tests/test_checkpoint_1.py::test_rejects_empty_key PASSED    [ 82%]
+.evaluation_tests/test_checkpoint_1.py::test_content_length_reflects_rendered_template PASSED [ 86%]
+.evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template FAILED [ 89%]
+.evaluation_tests/test_checkpoint_1.py::test_non_yaml_files_ignored PASSED [ 93%]
+.evaluation_tests/test_checkpoint_1.py::test_httpbody_empty_for_get_requests PASSED [ 96%]
+.evaluation_tests/test_checkpoint_1.py::test_condition_false_string_does_not_match PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_condition_requires_exact_true_string ___________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x7ad5398d9bc0>
+
+    @pytest.mark.functionality
+    def test_condition_requires_exact_true_string(hmock_server) -> None:
+        """Matches conditions only when rendering resolves exactly to true."""
+        templates = {
+            "mocks.yaml": """
+    - key: uppercase-true
+      kind: Behavior
+      expect:
+        condition: '{{ `True` }}'
+        http:
+          method: GET
+          path: /condition-exact
+      actions:
+        - reply_http:
+            status_code: 200
+            body: should-not-match
+    - key: lowercase-true
+      kind: Behavior
+      expect:
+        condition: '{{ `true` }}'
+        http:
+          method: GET
+          path: /condition-exact
+      actions:
+        - reply_http:
+            status_code: 200
+            body: matched
+    """
+        }
+    
+        with hmock_server(templates=templates) as server:
+            response = requests.get(
+                f"{server.base_url}/condition-exact",
+                timeout=3,
+            )
+    
+        assert response.status_code == 200
+>       assert response.text == "matched"
+E       AssertionError: assert 'should-not-match' == 'matched'
+E         
+E         - matched
+E         + should-not-match
+
+.evaluation_tests/test_checkpoint_1.py:258: AssertionError
+_______________________ test_template_helpers_registered _______________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x7ad5398db240>
+
+    @pytest.mark.functionality
+    def test_template_helpers_registered(
+        hmock_server,
+    ) -> None:
+        """Supports extended template helper functions in reply_http templates."""
+        templates = {
+            "mocks.yaml": """
+    - key: helper-surface
+      expect:
+        http:
+          method: GET
+          path: /helpers
+      actions:
+        - reply_http:
+            status_code: 200
+            body: '{{ add 1 2 }}|{{ sub 5 2 }}|{{ join "," (splitList "-" "a-b") }}|{{ "go" | upper }}|{{ "abc" | b64enc }}|{{ env "HELPER_ENV" }}|{{ coalesce "" "fallback" }}|{{ "a b" | nospace }}'
+    """
+        }
+        with hmock_server(
+            templates=templates,
+            extra_env={"HELPER_ENV": "token"},
+        ) as server:
+            response = requests.get(f"{server.base_url}/helpers", timeout=3)
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500]>.status_code
+
+.evaluation_tests/test_checkpoint_1.py:423: AssertionError
+________________________ test_http_log_required_fields _________________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x7ad5398d9f80>
+
+    @pytest.mark.functionality
+    def test_http_log_required_fields(hmock_server) -> None:
+        """Emits structured HTTP request/response logs with required fields."""
+        templates = {
+            "mocks.yaml": """
+    - key: logs
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /logs
+      actions:
+        - reply_http:
+            status_code: 200
+            body: ok
+    """
+        }
+    
+        with hmock_server(
+            templates=templates,
+            extra_env={"HM_LOG_LEVEL": "info", "PYTHONUNBUFFERED": "1"},
+        ) as server:
+            response = requests.get(f"{server.base_url}/logs?trace=1", timeout=3)
+            assert response.status_code == 200
+            assert response.text == "ok"
+            assert server.process.stdout is not None
+            payload = _find_http_log_line(server.process.stdout)
+            if payload is None and server.process.stderr is not None:
+                payload = _find_http_log_line(server.process.stderr)
+    
+>       assert payload is not None
+E       assert None is not None
+
+.evaluation_tests/test_checkpoint_1.py:503: AssertionError
+_________________ test_normalizes_whitespace_in_body_template __________________
+
+hmock_server = <function hmock_server.<locals>._run at 0x7ad5398d84a0>
+
+    @pytest.mark.functionality
+    def test_normalizes_whitespace_in_body_template(hmock_server) -> None:
+        """Replaces tab characters with spaces in body templates before rendering."""
+        templates = {
+            "mocks.yaml": """
+    - key: ws-body
+      kind: Behavior
+      expect:
+        http:
+          method: GET
+          path: /ws-body
+      actions:
+        - reply_http:
+            status_code: 200
+            body: "{{ \"hello\"\t| upper }}"
+    """
+        }
+>       with hmock_server(templates=templates) as server:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.evaluation_tests/test_checkpoint_1.py:729: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.12/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+.evaluation_tests/conftest.py:244: in _run
+    _wait_for_tcp_port(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+host = '127.0.0.1', port = 36553
+
+    def _wait_for_tcp_port(
+        host: str,
+        port: int,
+        *,
+        process: subprocess.Popen[str],
+        timeout: float,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        last_error: OSError | None = None
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                stdout, stderr = process.communicate(timeout=1)
+>               raise RuntimeError(
+                    f"Process exited before port {port} became ready.\n"
+                    f"exit={process.returncode}\n"
+                    f"stdout:\n{stdout}\n"
+                    f"stderr:\n{stderr}"
+                )
+E               RuntimeError: Process exited before port 36553 became ready.
+E               exit=1
+E               stdout:
+E               
+E               stderr:
+E               warning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+E               Traceback (most recent call last):
+E                 File "/workspace/hmock.py", line 455, in <module>
+E                   main()
+E                 File "/workspace/hmock.py", line 444, in main
+E                   _BEHAVIORS = load_behaviors(TEMPLATES_DIR)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/hmock.py", line 247, in load_behaviors
+E                   data = yaml.safe_load(f)
+E                          ^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 125, in safe_load
+E                   return load(stream, SafeLoader)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 81, in load
+E                   return loader.get_single_data()
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py", line 49, in get_single_data
+E                   node = self.get_single_node()
+E                          ^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 36, in get_single_node
+E                   document = self.compose_document()
+E                              ^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 55, in compose_document
+E                   node = self.compose_node(None, None)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+E                   node = self.compose_sequence_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+E                   node.value.append(self.compose_node(node, index))
+E                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+E                   item_value = self.compose_node(node, item_key)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+E                   node = self.compose_sequence_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+E                   node.value.append(self.compose_node(node, index))
+E                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+E                   item_value = self.compose_node(node, item_key)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+E                   node = self.compose_mapping_node(anchor)
+E                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 127, in compose_mapping_node
+E                   while not self.check_event(MappingEndEvent):
+E                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 98, in check_event
+E                   self.current_event = self.state()
+E                                        ^^^^^^^^^^^^
+E                 File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 438, in parse_block_mapping_key
+E                   raise ParserError("while parsing a block mapping", self.marks[-1],
+E               yaml.parser.ParserError: while parsing a block mapping
+E                 in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 10, column 9
+E               expected <block end>, but found '<scalar>'
+E                 in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 11, column 20
+
+.evaluation_tests/conftest.py:109: RuntimeError
+--------------------------------- JSON report ----------------------------------
+report saved to: .scbench/pytest-report.json
+=========================== short test summary info ============================
+FAILED .evaluation_tests/test_checkpoint_1.py::test_condition_requires_exact_true_string - AssertionError: assert 'should-not-match' == 'matched'
+  
+  - matched
+  + should-not-match
+FAILED .evaluation_tests/test_checkpoint_1.py::test_template_helpers_registered - assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+FAILED .evaluation_tests/test_checkpoint_1.py::test_http_log_required_fields - assert None is not None
+FAILED .evaluation_tests/test_checkpoint_1.py::test_normalizes_whitespace_in_body_template - RuntimeError: Process exited before port 36553 became ready.
+exit=1
+stdout:
+
+stderr:
+warning: The `tool.uv.dev-dependencies` field (used in `/workspace/pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+Traceback (most recent call last):
+  File "/workspace/hmock.py", line 455, in <module>
+    main()
+  File "/workspace/hmock.py", line 444, in main
+    _BEHAVIORS = load_behaviors(TEMPLATES_DIR)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/hmock.py", line 247, in load_behaviors
+    data = yaml.safe_load(f)
+           ^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 125, in safe_load
+    return load(stream, SafeLoader)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/__init__.py", line 81, in load
+    return loader.get_single_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/constructor.py", line 49, in get_single_data
+    node = self.get_single_node()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 36, in get_single_node
+    document = self.compose_document()
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 55, in compose_document
+    node = self.compose_node(None, None)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+    node.value.append(self.compose_node(node, index))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 111, in compose_sequence_node
+    node.value.append(self.compose_node(node, index))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/composer.py", line 127, in compose_mapping_node
+    while not self.check_event(MappingEndEvent):
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 98, in check_event
+    self.current_event = self.state()
+                         ^^^^^^^^^^^^
+  File "/workspace/.venv/lib/python3.12/site-packages/yaml/parser.py", line 438, in parse_block_mapping_key
+    raise ParserError("while parsing a block mapping", self.marks[-1],
+yaml.parser.ParserError: while parsing a block mapping
+  in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 10, column 9
+expected <block end>, but found '<scalar>'
+  in "/tmp/pytest-of-agent/pytest-0/test_normalizes_whitespace_in_1/run_1/templates/mocks.yaml", line 11, column 20
+======================== 4 failed, 25 passed in 21.93s =========================
