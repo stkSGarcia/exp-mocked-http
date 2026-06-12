@@ -65,6 +65,39 @@ def request(url, method="GET", body=None, headers=None):
         return exc.code, dict(exc.headers), exc.read().decode()
 
 
+def json_request(url, method="GET", value=None):
+    body = None if value is None else json.dumps(value)
+    return request(url, method=method, body=body, headers={"Content-Type": "application/json"})
+
+
+def start_mock_and_admin(templates_dir, logger, redis_store=None):
+    redis_store = redis_store or hmock.MemoryRedisStore()
+    collection = hmock.load_persisted_mock_collection(templates_dir, redis_store, logger)
+    state = hmock.MockState(collection.behaviors, collection.raw_definitions)
+    mock_server = hmock.HMockHTTPServer(("127.0.0.1", 0), state, logger, redis_store)
+    admin_server = hmock.AdminHTTPServer(("127.0.0.1", 0), state, templates_dir, logger, redis_store)
+    mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
+    admin_thread = threading.Thread(target=admin_server.serve_forever, daemon=True)
+    mock_thread.start()
+    admin_thread.start()
+    return (
+        mock_server,
+        mock_thread,
+        f"http://127.0.0.1:{mock_server.server_address[1]}",
+        admin_server,
+        admin_thread,
+        f"http://127.0.0.1:{admin_server.server_address[1]}",
+    )
+
+
+def stop_mock_and_admin(mock_server, mock_thread, admin_server, admin_thread):
+    for server in (mock_server, admin_server):
+        server.shutdown()
+        server.server_close()
+    for thread in (mock_thread, admin_thread):
+        thread.join(timeout=2)
+
+
 def start_capture_server():
     records = []
 
@@ -120,10 +153,31 @@ def test_config_defaults_and_environment_overrides(monkeypatch):
             "HM_LOG_LEVEL": "warn",
             "HM_REDIS_TYPE": "redis",
             "HM_REDIS_URL": "redis://localhost:6380/2",
+            "HM_ADMIN_HTTP_ENABLED": "false",
+            "HM_ADMIN_HTTP_PORT": "7778",
+            "HM_ADMIN_HTTP_HOST": "127.0.0.2",
         }
     )
 
-    assert config == hmock.Config("/tmp/mocks", 7777, "127.0.0.1", "warn", "redis", "redis://localhost:6380/2")
+    assert config == hmock.Config(
+        "/tmp/mocks",
+        7777,
+        "127.0.0.1",
+        "warn",
+        "redis",
+        "redis://localhost:6380/2",
+        False,
+        7778,
+        "127.0.0.2",
+    )
+
+
+def test_admin_config_defaults_enabled():
+    config = hmock.load_config({})
+
+    assert config.admin_http_enabled is True
+    assert config.admin_http_port == 9998
+    assert config.admin_http_host == "0.0.0.0"
 
 
 def test_recursive_yaml_loading_validation_order_and_duplicates(tmp_path, logger, log_stream):
@@ -177,6 +231,65 @@ def test_recursive_yaml_loading_validation_order_and_duplicates(tmp_path, logger
     assert [b.key for b in behaviors] == ["first", "duplicate", "last"]
     assert behaviors[1].path == "/new"
     assert json.loads(log_stream.getvalue().strip())["level"] == "warn"
+
+
+def test_persisted_api_mocks_sets_merge_precedence_and_isolation(tmp_path, logger):
+    write_yaml(
+        tmp_path / "fs.yaml",
+        """
+- key: shared
+  expect:
+    http:
+      method: GET
+      path: /fs
+  actions:
+    - reply_http:
+        status_code: 200
+        body: fs
+""",
+    )
+    store = hmock.MemoryRedisStore()
+    hmock.save_base_api_definitions(
+        store,
+        [
+            {
+                "key": "shared",
+                "expect": {"http": {"method": "GET", "path": "/base"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "base"}}],
+            }
+        ],
+    )
+    hmock.save_template_set(
+        store,
+        "b",
+        [
+            {
+                "key": "set-b",
+                "expect": {"http": {"method": "GET", "path": "/set-b"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "b"}}],
+            }
+        ],
+    )
+    hmock.save_template_set(
+        store,
+        "a",
+        [
+            {
+                "key": "shared",
+                "expect": {"http": {"method": "GET", "path": "/set-a"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "a"}}],
+            }
+        ],
+    )
+
+    collection = hmock.load_persisted_mock_collection(tmp_path, store, logger)
+
+    assert [raw["key"] for raw in collection.raw_definitions] == ["shared", "set-b"]
+    assert [behavior.path for behavior in collection.behaviors] == ["/set-a", "/set-b"]
+
+    hmock.delete_template_set(store, "a")
+    assert sorted(hmock.load_template_sets(store)) == ["b"]
+    assert hmock.load_base_api_definitions(store)[0]["key"] == "shared"
 
 
 def test_validation_rejects_missing_empty_keys_and_multiple_replies():
@@ -584,6 +697,37 @@ def test_redis_do_template_function_and_split_list():
     assert hmock.render_template('{{ redisDo "GET color" }}', ctx) == "blue"
     assert hmock.render_template('{{ redisDo "RPUSH letters a b c" }}', ctx) == "3"
     assert hmock.render_template('{{ range $i, $v := redisDo "LRANGE letters 0 -1" | splitList ";;" }}{{ $v }}{{ end }}', ctx) == "abc"
+
+
+def test_reserved_internal_redis_keyspace_is_blocked_for_templates_and_actions():
+    store = hmock.MemoryRedisStore()
+    store.do("SET __hmock_internal:templates secret")
+    ctx = hmock.build_template_context({}, "", "/", "", {}, hmock.guarded_redis_do(store))
+
+    with pytest.raises(hmock.TemplateError):
+        hmock.render_template('{{ redisDo "GET __hmock_internal:templates" }}', ctx)
+    with pytest.raises(hmock.TemplateError):
+        hmock.render_template('{{ redisDo "KEYS __hmock_internal:*" }}', ctx)
+    with pytest.raises(hmock.TemplateError):
+        hmock.render_template('{{ redisDo "DEL __hmock_internal:templates" }}', ctx)
+
+    assert store.do("GET __hmock_internal:templates") == "secret"
+    assert hmock.render_template('{{ redisDo "SET public ok" }} {{ redisDo "GET public" }}', ctx) == "OK ok"
+
+    protected = behavior(
+        {
+            "key": "protected",
+            "expect": {"http": {"method": "GET", "path": "/protected"}},
+            "actions": [
+                {"redis": ["DEL __hmock_internal:templates"]},
+                {"reply_http": {"status_code": 200, "body": "not reached"}},
+            ],
+        }
+    )
+    request_info = hmock.RequestInfo("GET", "/protected", "/protected", "", "", {}, "")
+    with pytest.raises(hmock.TemplateError):
+        hmock.execute_behavior(protected, request_info, {}, store)
+    assert store.do("GET __hmock_internal:templates") == "secret"
 
 
 def test_values_and_named_templates_render_everywhere(tmp_path, logger, server_factory):
@@ -1153,6 +1297,104 @@ def test_send_http_file_body_and_failures_do_not_affect_inbound_response(tmp_pat
     assert records[0]["path"] == "/file"
     assert records[0]["headers"]["X-From-File"] == "Ada"
     assert records[0]["body"] == "file payload Ada"
+
+
+def test_admin_api_templates_sets_persistence_and_reload(tmp_path, logger):
+    write_yaml(
+        tmp_path / "shared.yaml",
+        """
+- key: shared
+  expect:
+    http:
+      method: GET
+      path: /fs
+  actions:
+    - reply_http:
+        status_code: 200
+        body: fs
+""",
+    )
+    (
+        mock_server,
+        mock_thread,
+        mock_base,
+        admin_server,
+        admin_thread,
+        admin_base,
+    ) = start_mock_and_admin(tmp_path, logger)
+    try:
+        status, _, body = request(admin_base + "/api/v1/health")
+        assert (status, body) == (200, '{"status":"OK"}')
+
+        status, _, body = request(admin_base + "/api/v1/templates")
+        assert status == 200
+        assert [raw["key"] for raw in json.loads(body)] == ["shared"]
+
+        api_shared = [
+            {
+                "key": "shared",
+                "expect": {"http": {"method": "GET", "path": "/api"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "api"}}],
+            }
+        ]
+        assert json_request(admin_base + "/api/v1/templates", method="POST", value=api_shared)[0] == 200
+        assert request(mock_base + "/api")[0::2] == (200, "api")
+        assert request(mock_base + "/fs")[0::2] == (404, "not found")
+
+        invalid = [{"key": "bad", "actions": [{"reply_http": {"status_code": 200}}]}]
+        status, _, body = json_request(admin_base + "/api/v1/templates", method="POST", value=invalid)
+        assert status == 400
+        assert "expect.http.method" in body
+        assert request(mock_base + "/api")[0::2] == (200, "api")
+
+        updated = [
+            {
+                "key": "shared",
+                "expect": {"http": {"method": "GET", "path": "/api"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "api-v2"}}],
+            }
+        ]
+        assert json_request(admin_base + "/api/v1/templates", method="POST", value=updated)[0::2] == (
+            200,
+            json.dumps(updated, separators=(",", ":")),
+        )
+        assert request(mock_base + "/api")[0::2] == (200, "api-v2")
+
+        set_a = [
+            {
+                "key": "set-a",
+                "expect": {"http": {"method": "GET", "path": "/set-a"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "a"}}],
+            }
+        ]
+        set_b = [
+            {
+                "key": "set-b",
+                "expect": {"http": {"method": "GET", "path": "/set-b"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": "b"}}],
+            }
+        ]
+        assert json_request(admin_base + "/api/v1/template_sets/a", method="POST", value=set_a)[0] == 200
+        assert json_request(admin_base + "/api/v1/template_sets/b", method="POST", value=set_b)[0] == 200
+        assert request(mock_base + "/set-a")[0::2] == (200, "a")
+        assert request(mock_base + "/set-b")[0::2] == (200, "b")
+
+        assert request(admin_base + "/api/v1/template_sets/a", method="DELETE")[0] == 204
+        assert request(mock_base + "/set-a")[0::2] == (404, "not found")
+        assert request(mock_base + "/set-b")[0::2] == (200, "b")
+        assert request(admin_base + "/api/v1/template_sets/missing", method="DELETE")[0] == 204
+
+        assert request(admin_base + "/api/v1/templates", method="DELETE")[0] == 204
+        assert request(mock_base + "/api")[0::2] == (404, "not found")
+        assert request(mock_base + "/fs")[0::2] == (200, "fs")
+        assert request(mock_base + "/set-b")[0::2] == (200, "b")
+
+        assert json_request(admin_base + "/api/v1/templates", method="POST", value=api_shared)[0] == 200
+        assert request(admin_base + "/api/v1/templates/shared", method="DELETE")[0] == 204
+        assert request(mock_base + "/fs")[0::2] == (200, "fs")
+        assert request(admin_base + "/api/v1/templates/shared", method="DELETE")[0] == 404
+    finally:
+        stop_mock_and_admin(mock_server, mock_thread, admin_server, admin_thread)
 
 
 def test_build_server_uses_configured_host_port_and_templates(tmp_path, logger):
