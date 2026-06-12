@@ -65,11 +65,11 @@ The system SHALL evaluate matching behaviors in load order and use the first beh
 - **THEN** the behavior SHALL NOT match and later behaviors SHALL still be evaluated
 
 ### Requirement: Action Execution
-The system SHALL execute the selected behavior's actions in their declared order and stop evaluating further behaviors.
+The system SHALL execute the selected behavior's actions in stable ascending `order` and stop evaluating further behaviors.
 
 #### Scenario: Sleep delays next action
 - **WHEN** a selected behavior contains a `sleep` action with a supported duration
-- **THEN** the system SHALL pause for that duration before executing the next action
+- **THEN** the system SHALL pause for that duration before executing the next ordered action
 
 #### Scenario: Unsupported sleep duration is invalid
 - **WHEN** a `sleep` action uses a duration without one of `ns`, `us`, `ms`, `s`, `m`, or `h`
@@ -99,9 +99,29 @@ The system SHALL execute the selected behavior's actions in their declared order
 - **WHEN** a selected behavior executes `send_http` and the outbound request fails
 - **THEN** the system SHALL continue mock action execution and preserve the inbound response produced by the behavior
 
-#### Scenario: Mixed actions execute in declared order
-- **WHEN** a selected behavior mixes `redis`, `send_http`, `sleep`, and `reply_http` actions
-- **THEN** the system SHALL execute those actions in the order declared by the behavior
+#### Scenario: Mixed actions with equal order execute in declared order
+- **WHEN** a selected behavior mixes `redis`, `send_http`, `sleep`, and `reply_http` actions and those actions have the same effective `order`
+- **THEN** the system SHALL execute those actions in the order declared by the effective behavior
+
+#### Scenario: Actions are sorted by ascending order
+- **WHEN** a selected behavior contains actions with different `order` values
+- **THEN** the system SHALL execute lower order values before higher order values
+
+#### Scenario: Missing action order defaults to zero
+- **WHEN** a selected behavior contains an action without `order`
+- **THEN** the system SHALL treat that action's order as `0`
+
+#### Scenario: Negative action order is accepted
+- **WHEN** a selected behavior contains an action with a negative `order`
+- **THEN** the system SHALL execute that action before actions with greater order values
+
+#### Scenario: Equal action order is stable
+- **WHEN** a selected behavior contains multiple actions with the same effective `order`
+- **THEN** the system SHALL preserve those actions' original relative order
+
+#### Scenario: Inherited actions are included in ordering
+- **WHEN** a selected behavior includes actions inherited from a parent and actions declared on the child
+- **THEN** the system SHALL sort all inherited and child actions together by effective `order`
 
 ### Requirement: HTTP Response Defaults
 The system SHALL apply HTTP response defaults and framing for `reply_http` actions.

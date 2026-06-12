@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import dataclasses
 import hashlib
 import html as html_lib
@@ -425,6 +426,15 @@ def parse_yaml_subset(text: str) -> Any:
         return []
 
     def parse_block(index: int, indent: int) -> tuple[Any, int]:
+        def parse_block_scalar(index: int, parent_indent: int, style: str) -> tuple[str, int]:
+            lines: list[str] = []
+            while index < len(raw_lines) and raw_lines[index][0] > parent_indent:
+                lines.append(raw_lines[index][1])
+                index += 1
+            if style == "|":
+                return "\n".join(lines), index
+            return " ".join(lines), index
+
         if index >= len(raw_lines):
             return {}, index
         current_indent, current_text = raw_lines[index]
@@ -444,7 +454,11 @@ def parse_yaml_subset(text: str) -> Any:
                     continue
                 if ":" in rest:
                     key, value = _split_key_value(rest)
-                    item: Any = {key: _parse_scalar(value)}
+                    item: Any = {}
+                    if value in {">", "|"}:
+                        item[key], index = parse_block_scalar(index, indent, value)
+                    else:
+                        item[key] = _parse_scalar(value)
                     if value == "" or value is None:
                         if index < len(raw_lines) and raw_lines[index][0] > indent:
                             nested, index = parse_block(index, raw_lines[index][0])
@@ -471,7 +485,9 @@ def parse_yaml_subset(text: str) -> Any:
                 break
             key, value = _split_key_value(item_text)
             index += 1
-            if value == "" or value is None:
+            if value in {">", "|"}:
+                mapping[key], index = parse_block_scalar(index, item_indent, value)
+            elif value == "" or value is None:
                 if index < len(raw_lines) and raw_lines[index][0] > indent:
                     nested, index = parse_block(index, raw_lines[index][0])
                     mapping[key] = nested
@@ -537,6 +553,8 @@ class Behavior:
     condition: str
     actions: list[dict[str, Any]]
     pattern: PathPattern
+    values: dict[str, Any]
+    templates: dict[str, str]
 
 
 def parse_duration(value: str) -> float:
@@ -571,42 +589,81 @@ def _validate_headers_mapping(headers: Any, field_name: str) -> None:
             raise ValidationError(f"{field_name} must be a string map")
 
 
-def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Behavior:
+VALID_KINDS = {"Behavior", "Template", "AbstractBehavior"}
+ALLOWED_FIELDS = {
+    "Behavior": {"key", "kind", "extend", "expect", "actions", "values"},
+    "Template": {"key", "kind", "template"},
+    "AbstractBehavior": {"key", "kind", "expect", "actions", "values"},
+}
+
+
+def _definition_kind(raw: Any) -> tuple[str, str]:
     if not isinstance(raw, dict):
-        raise ValidationError("behavior must be a mapping")
+        raise ValidationError("definition must be a mapping")
     key = raw.get("key")
     if not isinstance(key, str) or not key:
-        raise ValidationError("behavior key must be a non-empty string")
+        raise ValidationError("definition key must be a non-empty string")
     kind = raw.get("kind", "Behavior")
     if not isinstance(kind, str) or not kind:
-        raise ValidationError(f"behavior {key} kind must be a non-empty string")
-    expect = raw.get("expect", {})
-    if not isinstance(expect, dict):
-        raise ValidationError(f"behavior {key} expect must be a mapping")
-    http = expect.get("http", {})
-    if not isinstance(http, dict):
-        raise ValidationError(f"behavior {key} expect.http must be a mapping")
-    method = http.get("method")
-    path = http.get("path")
-    if not isinstance(method, str) or not method:
-        raise ValidationError(f"behavior {key} expect.http.method is required")
-    if not isinstance(path, str) or not path:
-        raise ValidationError(f"behavior {key} expect.http.path is required")
-    condition = expect.get("condition", "")
-    if condition is None:
-        condition = ""
-    if not isinstance(condition, str):
-        raise ValidationError(f"behavior {key} expect.condition must be a string")
-    actions = raw.get("actions", [])
+        raise ValidationError(f"definition {key} kind must be a non-empty string")
+    if kind not in VALID_KINDS:
+        raise ValidationError(f"definition {key} kind is not supported: {kind}")
+    unknown = set(raw) - ALLOWED_FIELDS[kind]
+    if unknown:
+        fields = ", ".join(sorted(unknown))
+        raise ValidationError(f"{kind} {key} field is not supported: {fields}")
+    if kind == "Template":
+        template = raw.get("template")
+        if not isinstance(template, str):
+            raise ValidationError(f"template {key} template must be a string")
+    if kind in {"Behavior", "AbstractBehavior"} and "values" in raw and not isinstance(raw["values"], dict):
+        raise ValidationError(f"behavior {key} values must be a mapping")
+    return key, kind
+
+
+def _action_name_payload(action: Any, key: str) -> tuple[str, Any]:
+    if not isinstance(action, dict):
+        raise ValidationError(f"behavior {key} action must be a mapping")
+    names = [name for name in action if name != "order"]
+    if len(names) != 1:
+        raise ValidationError(f"behavior {key} action must contain exactly one action")
+    return names[0], action[names[0]]
+
+
+def _action_order(action: dict[str, Any], key: str) -> int:
+    value = action.get("order", 0)
+    if isinstance(value, bool):
+        raise ValidationError(f"behavior {key} action order must be an integer")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"-?\d+", value):
+        return int(value)
+    raise ValidationError(f"behavior {key} action order must be an integer")
+
+
+def _sort_actions(actions: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
+    return [
+        action
+        for _, action in sorted(
+            enumerate(actions),
+            key=lambda item: (_action_order(item[1], key), item[0]),
+        )
+    ]
+
+
+def _validate_actions(
+    actions: Any,
+    key: str,
+    templates_dir: str | Path | None = None,
+) -> list[dict[str, Any]]:
     if actions is None:
         actions = []
     if not isinstance(actions, list):
         raise ValidationError(f"behavior {key} actions must be a list")
     reply_count = 0
     for action in actions:
-        if not isinstance(action, dict) or len(action) != 1:
-            raise ValidationError(f"behavior {key} action must contain exactly one action")
-        name, payload = next(iter(action.items()))
+        name, payload = _action_name_payload(action, key)
+        _action_order(action, key)
         if name == "reply_http":
             if not isinstance(payload, dict):
                 raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
@@ -656,14 +713,68 @@ def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Beha
             raise ValidationError(f"behavior {key} action {name} is not supported")
     if reply_count > 1:
         raise ValidationError(f"behavior {key} has more than one reply_http action")
+    return _sort_actions(actions, key)
+
+
+def _validate_abstract_definition(raw: dict[str, Any], templates_dir: str | Path | None = None) -> None:
+    key, kind = _definition_kind(raw)
+    if kind != "AbstractBehavior":
+        raise ValidationError(f"{kind} {key} cannot be used as an abstract behavior")
+    expect = raw.get("expect", {})
+    if expect is None:
+        expect = {}
+    if not isinstance(expect, dict):
+        raise ValidationError(f"behavior {key} expect must be a mapping")
+    condition = expect.get("condition", "")
+    if condition is not None and not isinstance(condition, str):
+        raise ValidationError(f"behavior {key} expect.condition must be a string")
+    http = expect.get("http", {})
+    if http is not None and not isinstance(http, dict):
+        raise ValidationError(f"behavior {key} expect.http must be a mapping")
+    _validate_actions(raw.get("actions", []), key, templates_dir)
+
+
+def validate_behavior(
+    raw: Any,
+    templates_dir: str | Path | None = None,
+    templates: dict[str, str] | None = None,
+) -> Behavior:
+    key, kind = _definition_kind(raw)
+    if kind != "Behavior":
+        raise ValidationError(f"{kind} {key} cannot be used as a concrete behavior")
+    expect = raw.get("expect", {})
+    if not isinstance(expect, dict):
+        raise ValidationError(f"behavior {key} expect must be a mapping")
+    http = expect.get("http", {})
+    if not isinstance(http, dict):
+        raise ValidationError(f"behavior {key} expect.http must be a mapping")
+    method = http.get("method")
+    path = http.get("path")
+    if not isinstance(method, str) or not method:
+        raise ValidationError(f"behavior {key} expect.http.method is required")
+    if not isinstance(path, str) or not path:
+        raise ValidationError(f"behavior {key} expect.http.path is required")
+    condition = expect.get("condition", "")
+    if condition is None:
+        condition = ""
+    if not isinstance(condition, str):
+        raise ValidationError(f"behavior {key} expect.condition must be a string")
+    values = raw.get("values", {})
+    if values is None:
+        values = {}
+    if not isinstance(values, dict):
+        raise ValidationError(f"behavior {key} values must be a mapping")
+    sorted_actions = _validate_actions(raw.get("actions", []), key, templates_dir)
     return Behavior(
         key=key,
         kind=kind,
         method=method.upper(),
         path=path,
         condition=condition,
-        actions=actions,
+        actions=sorted_actions,
         pattern=PathPattern.compile(path),
+        values=dict(values),
+        templates=dict(templates or {}),
     )
 
 
@@ -676,19 +787,101 @@ def load_mock_file(path: str | Path) -> list[Any]:
     return parsed
 
 
+def _recursive_merge(parent: Any, child: Any) -> Any:
+    if isinstance(parent, dict) and isinstance(child, dict):
+        merged = copy.deepcopy(parent)
+        for key, value in child.items():
+            if key in merged:
+                merged[key] = _recursive_merge(merged[key], value)
+            else:
+                merged[key] = copy.deepcopy(value)
+        return merged
+    return copy.deepcopy(child)
+
+
+def _non_zero(value: Any) -> bool:
+    return value not in (None, "", [], {})
+
+
+def _merge_definitions(parent: dict[str, Any], child: dict[str, Any]) -> dict[str, Any]:
+    merged = copy.deepcopy(parent)
+    for key, value in child.items():
+        if key == "values":
+            parent_values = parent.get("values") if isinstance(parent.get("values"), dict) else {}
+            child_values = value if isinstance(value, dict) else {}
+            merged["values"] = {**copy.deepcopy(parent_values), **copy.deepcopy(child_values)}
+        elif key == "actions":
+            merged["actions"] = copy.deepcopy(parent.get("actions") or []) + copy.deepcopy(value or [])
+        elif key == "expect":
+            merged["expect"] = _recursive_merge(parent.get("expect", {}), value or {})
+        elif _non_zero(value):
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _resolve_behavior_definition(
+    key: str,
+    definitions: dict[str, dict[str, Any]],
+    stack: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    if key in stack:
+        chain = " -> ".join((*stack, key))
+        raise ValidationError(f"behavior inheritance cycle: {chain}")
+    raw = copy.deepcopy(definitions[key])
+    parent_key = raw.get("extend")
+    if parent_key is None or parent_key == "":
+        return raw
+    if not isinstance(parent_key, str):
+        raise ValidationError(f"behavior {key} extend must be a string")
+    if parent_key not in definitions:
+        return raw
+    parent = definitions[parent_key]
+    _, parent_kind = _definition_kind(parent)
+    if parent_kind not in {"Behavior", "AbstractBehavior"}:
+        raise ValidationError(f"behavior {key} cannot extend {parent_kind} {parent_key}")
+    if parent_kind == "Behavior":
+        parent = _resolve_behavior_definition(parent_key, definitions, (*stack, key))
+    else:
+        parent = copy.deepcopy(parent)
+    merged = _merge_definitions(parent, raw)
+    merged["kind"] = raw.get("kind", "Behavior")
+    merged["key"] = key
+    return merged
+
+
 def load_behaviors(templates_dir: str | Path, logger: JsonLogger | None = None) -> list[Behavior]:
     logger = logger or JsonLogger("error")
-    by_key: dict[str, Behavior] = {}
+    raw_by_key: dict[str, dict[str, Any]] = {}
     order: list[str] = []
     for path in discover_yaml_files(templates_dir):
         for raw in load_mock_file(path):
-            behavior = validate_behavior(raw, templates_dir)
-            if behavior.key in by_key:
-                order.remove(behavior.key)
-                logger.warn("duplicate mock key override", key=behavior.key, file=str(path))
-            by_key[behavior.key] = behavior
-            order.append(behavior.key)
-    return [by_key[key] for key in order]
+            key, kind = _definition_kind(raw)
+            if kind == "AbstractBehavior":
+                _validate_abstract_definition(raw)
+            if key in raw_by_key:
+                order.remove(key)
+                logger.warn("duplicate mock key override", key=key, file=str(path))
+            raw_by_key[key] = copy.deepcopy(raw)
+            raw_by_key[key].setdefault("kind", "Behavior")
+            order.append(key)
+
+    templates: dict[str, str] = {
+        key: raw["template"]
+        for key, raw in raw_by_key.items()
+        if raw.get("kind", "Behavior") == "Template"
+    }
+    behaviors: list[Behavior] = []
+    for key in order:
+        raw = raw_by_key[key]
+        _, kind = _definition_kind(raw)
+        if kind == "Template":
+            continue
+        if kind == "AbstractBehavior":
+            _validate_abstract_definition(raw, templates_dir)
+            continue
+        effective = _resolve_behavior_definition(key, raw_by_key)
+        behaviors.append(validate_behavior(effective, templates_dir, templates))
+    return behaviors
 
 
 class HeaderMap:
@@ -716,6 +909,8 @@ def build_template_context(
     query: str,
     path_params: dict[str, str] | None = None,
     redis_do: Callable[[str], str] | None = None,
+    values: dict[str, Any] | None = None,
+    templates: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     path_params = path_params or {}
     context: dict[str, Any] = {
@@ -725,9 +920,12 @@ def build_template_context(
         "HTTPQueryString": query,
         "HTTPPathParams": ValueMap(path_params),
         "HTTPURL": ValueMap(path_params),
+        "Values": dict(values or {}),
     }
     if redis_do is not None:
         context["redisDo"] = redis_do
+    if templates is not None:
+        context["__templates"] = templates
     return context
 
 
@@ -840,7 +1038,7 @@ def _parse_range(value: str) -> tuple[str | None, str, str]:
     return parts[0], parts[1], expr.strip()
 
 
-def render_template(source: str, context: dict[str, Any]) -> str:
+def render_template(source: str, context: Any) -> str:
     tokens = _tokenize_template(source)
     nodes, _, stop = _parse_template_nodes(tokens)
     if stop is not None:
@@ -940,11 +1138,13 @@ def _eval_command(command: str, context: dict[str, Any], locals_: dict[str, Any]
     if not tokens:
         return ""
     if len(tokens) == 1:
-        if tokens[0] in FUNCTIONS or callable(context.get(tokens[0])):
+        if tokens[0] in FUNCTIONS or callable(_context_get(context, tokens[0])):
             return _call_function(tokens[0], [], context)
         return _eval_atom(tokens[0], context, locals_)
     first = tokens[0]
-    if first in FUNCTIONS or callable(context.get(first)):
+    if first == "template":
+        return _render_named_template([_eval_atom(token, context, locals_) for token in tokens[1:]], context)
+    if first in FUNCTIONS or callable(_context_get(context, first)):
         return _call_function(first, [_eval_atom(token, context, locals_) for token in tokens[1:]], context)
     value = _eval_atom(first, context, locals_)
     if callable(value):
@@ -972,11 +1172,26 @@ def _eval_atom(token: str, context: dict[str, Any], locals_: dict[str, Any]) -> 
     return token
 
 
-def _resolve_path(path: str, context: dict[str, Any]) -> Any:
+def _context_get(context: Any, name: str) -> Any:
+    if isinstance(context, dict):
+        return context.get(name)
+    return getattr(context, name, None)
+
+
+def _resolve_path(path: str, context: Any) -> Any:
+    if path == "":
+        return context
     parts = path.split(".") if path else []
-    if not parts or parts[0] not in context:
+    if not parts:
+        return context
+    if isinstance(context, dict):
+        if parts[0] not in context:
+            raise TemplateError(f"undefined variable .{path}")
+        value: Any = context[parts[0]]
+    elif hasattr(context, parts[0]):
+        value = getattr(context, parts[0])
+    else:
         raise TemplateError(f"undefined variable .{path}")
-    value: Any = context[parts[0]]
     for part in parts[1:]:
         if isinstance(value, dict):
             if part not in value:
@@ -987,6 +1202,24 @@ def _resolve_path(path: str, context: dict[str, Any]) -> Any:
         else:
             raise TemplateError(f"undefined variable .{path}")
     return value
+
+
+def _render_named_template(args: list[Any], context: Any) -> str:
+    if len(args) != 2:
+        raise TemplateError("template expects name and context")
+    name = args[0]
+    if not isinstance(name, str):
+        raise TemplateError("template name must be a string")
+    templates = _context_get(context, "__templates")
+    if not isinstance(templates, dict) or name not in templates:
+        raise TemplateError(f"undefined template {name}")
+    nested_context = args[1]
+    if isinstance(nested_context, dict):
+        next_context = dict(nested_context)
+        next_context.setdefault("__templates", templates)
+    else:
+        next_context = nested_context
+    return render_template(templates[name], next_context)
 
 
 def _truthy(value: Any) -> bool:
@@ -1041,8 +1274,9 @@ def _compare(a: Any, b: Any, op: str) -> bool:
 def _call_function(name: str, args: list[Any], context: dict[str, Any] | None = None) -> Any:
     if name in FUNCTIONS:
         return FUNCTIONS[name](*args)
-    if context is not None and callable(context.get(name)):
-        return context[name](*args)
+    value = _context_get(context, name) if context is not None else None
+    if callable(value):
+        return value(*args)
     raise TemplateError(f"undefined function {name}")
 
 
@@ -1380,6 +1614,8 @@ def find_behavior(
             request.query,
             params,
             redis_store.do if redis_store is not None else None,
+            behavior.values,
+            behavior.templates,
         )
         try:
             if render_template(behavior.condition, context) == "true":
@@ -1418,10 +1654,19 @@ def execute_behavior(
     logger: JsonLogger | None = None,
 ) -> ResponseInfo:
     redis_store = redis_store or MemoryRedisStore()
-    context = build_template_context(request.headers, request.body, request.path, request.query, params, redis_store.do)
+    context = build_template_context(
+        request.headers,
+        request.body,
+        request.path,
+        request.query,
+        params,
+        redis_store.do,
+        behavior.values,
+        behavior.templates,
+    )
     response: ResponseInfo | None = None
     for action in behavior.actions:
-        name, payload = next(iter(action.items()))
+        name, payload = _action_name_payload(action, behavior.key)
         if name == "sleep":
             time.sleep(parse_duration(str(payload["duration"])))
         elif name == "redis":

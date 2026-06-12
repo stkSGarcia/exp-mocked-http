@@ -204,6 +204,188 @@ def test_validation_rejects_missing_empty_keys_and_multiple_replies():
         )
 
 
+def test_kind_field_values_and_action_order_validation(tmp_path, logger):
+    write_yaml(
+        tmp_path / "defs.yaml",
+        """
+- key: body-template
+  kind: Template
+  template: >
+    value {{ .value }}
+- key: abstract-base
+  kind: AbstractBehavior
+  values:
+    value: base
+  expect:
+    http:
+      method: GET
+      path: /base
+  actions:
+    - reply_http:
+        status_code: 200
+- key: concrete
+  values:
+    value: child
+  expect:
+    http:
+      method: GET
+      path: /concrete
+  actions:
+    - order: -1
+      redis:
+        - SET seen yes
+    - reply_http:
+        status_code: 200
+""",
+    )
+
+    behaviors = hmock.load_behaviors(tmp_path, logger)
+
+    assert [b.key for b in behaviors] == ["concrete"]
+    assert behaviors[0].values == {"value": "child"}
+    assert behaviors[0].templates == {"body-template": "value {{ .value }}"}
+    assert [next(key for key in action if key != "order") for action in behaviors[0].actions] == ["redis", "reply_http"]
+
+    invalid_definitions = [
+        "- key: nope\n  kind: Nope\n",
+        "- key: bad-template\n  kind: Template\n  template: ok\n  expect: {}\n",
+        "- key: bad-behavior\n  kind: Behavior\n  template: nope\n",
+        "- key: bad-abstract\n  kind: AbstractBehavior\n  extend: other\n",
+        "- key: bad-values\n  kind: Behavior\n  values: nope\n",
+        """
+- key: bad-order
+  expect:
+    http:
+      method: GET
+      path: /bad
+  actions:
+    - order: soon
+      reply_http:
+        status_code: 200
+""",
+        """
+- key: too-many-actions
+  expect:
+    http:
+      method: GET
+      path: /bad
+  actions:
+    - order: 1
+      redis:
+        - SET a b
+      reply_http:
+        status_code: 200
+""",
+    ]
+    for index, text in enumerate(invalid_definitions):
+        invalid_dir = tmp_path / f"invalid-{index}"
+        write_yaml(invalid_dir / "bad.yaml", text)
+        with pytest.raises(hmock.ValidationError):
+            hmock.load_behaviors(invalid_dir, logger)
+
+
+def test_behavior_inheritance_merges_values_expect_actions_and_detects_cycles(tmp_path, logger):
+    write_yaml(
+        tmp_path / "defs.yaml",
+        """
+- key: purple-teapot
+  kind: Behavior
+  extend: teapot
+  values:
+    color: purple
+  expect:
+    http:
+      path: /purple
+  actions:
+    - order: -10
+      redis:
+        - SET color "{{ .Values.color }}"
+- key: teapot
+  kind: AbstractBehavior
+  values:
+    color: blue
+    size: large
+  expect:
+    condition: '{{ .HTTPHeader.Get "X-Token" | eq .Values.token }}'
+    http:
+      method: GET
+      path: /teapot
+  actions:
+    - reply_http:
+        status_code: 418
+        body: '{{ .Values.color }} {{ .Values.size }}'
+""",
+    )
+
+    behaviors = hmock.load_behaviors(tmp_path, logger)
+
+    assert len(behaviors) == 1
+    behavior = behaviors[0]
+    assert behavior.key == "purple-teapot"
+    assert behavior.method == "GET"
+    assert behavior.path == "/purple"
+    assert behavior.condition == '{{ .HTTPHeader.Get "X-Token" | eq .Values.token }}'
+    assert behavior.values == {"color": "purple", "size": "large"}
+    assert [next(key for key in action if key != "order") for action in behavior.actions] == ["redis", "reply_http"]
+
+    write_yaml(
+        tmp_path / "missing-parent.yaml",
+        """
+- key: standalone
+  extend: missing
+  expect:
+    http:
+      method: GET
+      path: /standalone
+  actions:
+    - reply_http:
+        status_code: 200
+""",
+    )
+    assert [b.key for b in hmock.load_behaviors(tmp_path, logger)] == ["purple-teapot", "standalone"]
+
+    incomplete_dir = tmp_path / "incomplete"
+    write_yaml(
+        incomplete_dir / "bad.yaml",
+        """
+- key: incomplete
+  extend: missing
+  actions:
+    - reply_http:
+        status_code: 200
+""",
+    )
+    with pytest.raises(hmock.ValidationError):
+        hmock.load_behaviors(incomplete_dir, logger)
+
+    cycle_dir = tmp_path / "cycle"
+    write_yaml(
+        cycle_dir / "cycle.yaml",
+        """
+- key: a
+  extend: b
+  expect:
+    http:
+      method: GET
+      path: /a
+  actions:
+    - reply_http:
+        status_code: 200
+- key: b
+  extend: a
+  expect:
+    http:
+      method: GET
+      path: /b
+  actions:
+    - reply_http:
+        status_code: 200
+""",
+    )
+    with pytest.raises(hmock.ValidationError):
+        hmock.load_behaviors(cycle_dir, logger)
+
+
 def test_stateful_action_validation_and_send_http_body_file_snapshot(tmp_path, logger):
     body_file = tmp_path / "callbacks" / "body.txt"
     body_file.parent.mkdir()
@@ -404,6 +586,63 @@ def test_redis_do_template_function_and_split_list():
     assert hmock.render_template('{{ range $i, $v := redisDo "LRANGE letters 0 -1" | splitList ";;" }}{{ $v }}{{ end }}', ctx) == "abc"
 
 
+def test_values_and_named_templates_render_everywhere(tmp_path, logger, server_factory):
+    target, target_thread, records, target_base = start_capture_server()
+    try:
+        write_yaml(
+            tmp_path / "values.yaml",
+            f"""
+- key: color-template
+  kind: Template
+  template: '{{{{ .color }}}}:{{{{ .size }}}}'
+- key: path-template
+  kind: Template
+  template: '{{{{ .HTTPPath }}}}'
+- key: values-everywhere
+  values:
+    color: purple
+    size: large
+    token: t123
+  expect:
+    condition: '{{{{ .HTTPHeader.Get "X-Token" | eq .Values.token }}}}'
+    http:
+      method: POST
+      path: /values
+  actions:
+    - redis:
+        - SET color "{{{{ .Values.color }}}}"
+    - send_http:
+        url: {target_base}/callback/{{{{ .Values.color }}}}
+        method: POST
+        body: '{{{{ template "color-template" .Values }}}}'
+        headers:
+          X-Color: '{{{{ .Values.color }}}}'
+    - reply_http:
+        status_code: 200
+        headers:
+          X-Path: '{{{{ template "path-template" . }}}}'
+        body: '{{{{ redisDo "GET color" }}}} {{{{ template "color-template" .Values }}}}'
+""",
+        )
+        _, base = server_factory(hmock.load_behaviors(tmp_path, logger))
+
+        assert request(base + "/values", method="POST", headers={"X-Token": "bad"})[0::2] == (404, "not found")
+        status, headers, body = request(base + "/values?x=1", method="POST", headers={"X-Token": "t123"})
+    finally:
+        stop_server(target, target_thread)
+
+    assert (status, body) == (200, "purple purple:large")
+    assert headers["X-Path"] == "/values?x=1"
+    assert len(records) == 1
+    assert records[0]["path"] == "/callback/purple"
+    assert records[0]["headers"]["X-Color"] == "purple"
+    assert records[0]["body"] == "purple:large"
+
+    ctx = hmock.build_template_context({}, "", "/", "", {}, templates={})
+    with pytest.raises(hmock.TemplateError):
+        hmock.render_template('{{ template "missing" . }}', ctx)
+
+
 def test_body_from_file_loading_validation_and_snapshot(tmp_path, logger):
     body_file = tmp_path / "responses" / "body.txt"
     body_file.parent.mkdir()
@@ -519,6 +758,65 @@ def test_http_matching_actions_defaults_and_unmatched(server_factory):
     status, headers, body = request(base + "/items/42", method="POST")
     assert (status, body) == (202, "")
     assert headers["Content-Length"] == "0"
+
+
+def test_action_order_defaults_negative_values_stability_and_inheritance(tmp_path, logger):
+    direct = behavior(
+        {
+            "key": "ordered",
+            "expect": {"http": {"method": "GET", "path": "/ordered"}},
+            "actions": [
+                {"order": 5, "reply_http": {"status_code": 200}},
+                {"redis": ["SET first default"]},
+                {"order": -1, "sleep": {"duration": "1ms"}},
+                {"order": 0, "redis": ["SET second explicit"]},
+            ],
+        }
+    )
+    assert [next(key for key in action if key != "order") for action in direct.actions] == [
+        "sleep",
+        "redis",
+        "redis",
+        "reply_http",
+    ]
+    assert direct.actions[1]["redis"] == ["SET first default"]
+    assert direct.actions[2]["redis"] == ["SET second explicit"]
+
+    write_yaml(
+        tmp_path / "ordered.yaml",
+        """
+- key: child
+  extend: base
+  expect:
+    http:
+      method: GET
+      path: /ordered
+  actions:
+    - order: -5
+      redis:
+        - SET child first
+    - order: 0
+      reply_http:
+        status_code: 200
+- key: base
+  kind: AbstractBehavior
+  actions:
+    - order: 0
+      redis:
+        - SET base middle
+    - order: 10
+      redis:
+        - SET base last
+""",
+    )
+
+    inherited = hmock.load_behaviors(tmp_path, logger)[0]
+    assert [action[next(key for key in action if key != "order")] for action in inherited.actions] == [
+        ["SET child first"],
+        ["SET base middle"],
+        {"status_code": 200},
+        ["SET base last"],
+    ]
 
 
 def test_file_backed_body_http_rendering_and_precedence(tmp_path, logger, server_factory):
