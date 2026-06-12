@@ -2,16 +2,20 @@ import io
 import json
 import hashlib
 import hmac
+import subprocess
 import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
+import yaml
 
 import hmock
+import omctl
 
 
 @pytest.fixture(autouse=True)
@@ -37,8 +41,10 @@ def test_config_defaults_and_overrides():
     assert hmock.load_config({}) == hmock.Config()
     config = hmock.load_config({
         "HM_TEMPLATES_DIR": "/tmp/mocks",
+        "HM_TEMPLATES_DIR_HOT_RELOAD": "false",
         "HM_HTTP_PORT": "1234",
         "HM_HTTP_HOST": "127.0.0.1",
+        "HM_CORS_ENABLED": "true",
         "HM_ADMIN_HTTP_ENABLED": "false",
         "HM_ADMIN_HTTP_PORT": "4321",
         "HM_ADMIN_HTTP_HOST": "127.0.0.2",
@@ -47,8 +53,10 @@ def test_config_defaults_and_overrides():
         "HM_REDIS_URL": "redis://example.test:6380/2",
     })
     assert config.templates_dir == "/tmp/mocks"
+    assert config.templates_dir_hot_reload is False
     assert config.http_port == 1234
     assert config.http_host == "127.0.0.1"
+    assert config.cors_enabled is True
     assert config.admin_http_enabled is False
     assert config.admin_http_port == 4321
     assert config.admin_http_host == "127.0.0.2"
@@ -60,6 +68,10 @@ def test_config_defaults_and_overrides():
         hmock.load_config({"HM_REDIS_TYPE": "bad"})
     with pytest.raises(ValueError, match="HM_ADMIN_HTTP_ENABLED"):
         hmock.load_config({"HM_ADMIN_HTTP_ENABLED": "sometimes"})
+    with pytest.raises(ValueError, match="HM_TEMPLATES_DIR_HOT_RELOAD"):
+        hmock.load_config({"HM_TEMPLATES_DIR_HOT_RELOAD": "sometimes"})
+    with pytest.raises(ValueError, match="HM_CORS_ENABLED"):
+        hmock.load_config({"HM_CORS_ENABLED": "sometimes"})
     with pytest.raises(ValueError):
         hmock.load_config({"HM_ADMIN_HTTP_PORT": "not-a-port"})
 
@@ -583,18 +595,74 @@ def test_file_backed_body_rejects_outside_or_missing_paths(tmp_path):
         hmock.load_behaviors(str(tmp_path))
 
 
+def test_binary_reply_loading_precedence_snapshot_and_validation(tmp_path):
+    binary = tmp_path / "payload.bin"
+    original = b"\x00\xff{{not rendered}}\x10"
+    binary.write_bytes(original)
+    definitions = [{
+        "key": "binary",
+        "actions": [{
+            "reply_http": {
+                "status_code": 200,
+                "body": "",
+                "body_from_binary_file": "payload.bin",
+                "binary_file_name": "report.bin",
+            },
+        }],
+    }, {
+        "key": "inline",
+        "actions": [{
+            "reply_http": {
+                "status_code": 200,
+                "body": "inline",
+                "body_from_binary_file": "payload.bin",
+                "binary_file_name": "ignored.bin",
+            },
+        }],
+    }]
+    behaviors = hmock.assemble_behaviors(definitions, str(tmp_path))
+    binary.write_bytes(b"changed")
+
+    response = hmock.execute_actions(behaviors[0]["actions"], {})
+    inline = hmock.execute_actions(behaviors[1]["actions"], {})
+
+    assert response.body == original
+    assert response.headers["Content-Length"] == str(len(original))
+    assert response.headers["Content-Disposition"] == 'inline; filename="report.bin"'
+    assert inline.body == b"inline"
+    assert "Content-Disposition" not in inline.headers
+
+    with pytest.raises(ValueError, match="body_from_binary_file must resolve inside"):
+        hmock.assemble_behaviors([{
+            "key": "outside",
+            "actions": [{"reply_http": {
+                "status_code": 200,
+                "body_from_binary_file": "../outside.bin",
+            }}],
+        }], str(tmp_path))
+    with pytest.raises(ValueError, match="cannot read body_from_binary_file"):
+        hmock.assemble_behaviors([{
+            "key": "missing",
+            "actions": [{"reply_http": {
+                "status_code": 200,
+                "body_from_binary_file": "missing.bin",
+            }}],
+        }], str(tmp_path))
+
+
 class RecordingHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
     def _record(self):
         length = int(self.headers.get("Content-Length", "0") or "0")
-        body = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
+        raw_body = self.rfile.read(length) if length else b""
         self.server.records.append({
             "method": self.command,
             "path": self.path,
             "headers": dict(self.headers.items()),
-            "body": body,
+            "body": raw_body.decode("utf-8", errors="replace"),
+            "raw_body": raw_body,
         })
         self.send_response(202)
         self.end_headers()
@@ -683,6 +751,55 @@ def test_send_http_renders_fields_file_bodies_precedence_and_failures(tmp_path, 
     assert recording_server.records[1]["path"] == "/inline"
     assert recording_server.records[1]["body"] == "inline abc"
     assert "send_http request failed" in stream.getvalue()
+
+
+def test_send_http_binary_multipart_raw_and_inline_precedence(tmp_path, recording_server):
+    payload = b"\x00\xffbinary\r\nbytes"
+    (tmp_path / "asset.bin").write_bytes(payload)
+    port = recording_server.server_address[1]
+    behaviors = hmock.assemble_behaviors([{
+        "key": "binary-send",
+        "actions": [
+            {"send_http": {
+                "url": f"http://127.0.0.1:{port}/multipart",
+                "method": "POST",
+                "headers": {"Content-Type": "image/png", "X-Test": "yes"},
+                "body_from_binary_file": "asset.bin",
+                "binary_file_name": "upload.png",
+            }},
+            {"send_http": {
+                "url": f"http://127.0.0.1:{port}/raw",
+                "method": "PUT",
+                "body_from_binary_file": "asset.bin",
+            }},
+            {"send_http": {
+                "url": f"http://127.0.0.1:{port}/multipart-defaults",
+                "method": "POST",
+                "body_from_binary_file": "asset.bin",
+            }},
+            {"send_http": {
+                "url": f"http://127.0.0.1:{port}/inline",
+                "method": "PUT",
+                "body": "text wins",
+                "body_from_binary_file": "asset.bin",
+            }},
+        ],
+    }], str(tmp_path))
+
+    hmock.execute_actions(behaviors[0]["actions"], {})
+
+    multipart, raw, multipart_defaults, inline = recording_server.records
+    assert multipart["method"] == "POST"
+    assert multipart["headers"]["X-Test"] == "yes"
+    assert multipart["headers"]["Content-Type"].startswith("multipart/form-data; boundary=")
+    assert b'name="file"; filename="upload.png"' in multipart["raw_body"]
+    assert b"Content-Type: image/png" in multipart["raw_body"]
+    assert payload in multipart["raw_body"]
+    assert raw["method"] == "PUT"
+    assert raw["raw_body"] == payload
+    assert b'name="file"; filename="asset.bin"' in multipart_defaults["raw_body"]
+    assert b"Content-Type: application/octet-stream" in multipart_defaults["raw_body"]
+    assert inline["raw_body"] == b"text wins"
 
 
 def test_persisted_definition_loading_precedence_and_restart(tmp_path):
@@ -778,12 +895,14 @@ def test_persisted_definitions_share_composition_and_file_validation(tmp_path):
         )
 
 
-def _http_request(url, method="GET", data=None, raw_data=None):
+def _http_request(url, method="GET", data=None, raw_data=None, content_type=None):
     headers = {}
     body = raw_data
     if data is not None:
         body = json.dumps(data).encode("utf-8")
         headers["Content-Type"] = "application/json"
+    if content_type is not None:
+        headers["Content-Type"] = content_type
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(request) as response:
@@ -891,6 +1010,32 @@ def test_admin_template_set_isolation_and_validation(admin_server):
     assert _http_request(f"{root}/api/v1/template_sets/absent", "DELETE") == (204, None)
 
 
+def test_admin_accepts_yaml_and_rejects_invalid_yaml_atomically(admin_server):
+    httpd, _, backend, _ = admin_server
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    definition = {"key": "yaml-base", "actions": []}
+    payload = yaml.safe_dump([definition]).encode("utf-8")
+
+    assert _http_request(
+        f"{root}/api/v1/templates",
+        "POST",
+        raw_data=payload,
+        content_type="application/yaml",
+    ) == (200, [definition])
+    assert hmock.load_persisted_base(backend) == [definition]
+
+    status, error = _http_request(
+        f"{root}/api/v1/template_sets/bad",
+        "POST",
+        raw_data=b"- key: broken\n  actions: [",
+        content_type="application/x-yaml",
+    )
+    assert status == 400
+    assert "invalid YAML" in error["error"]
+    assert hmock.load_persisted_sets(backend) == {}
+    assert hmock.load_persisted_base(backend) == [definition]
+
+
 def test_admin_mutations_are_immediately_visible_and_preserve_filesystem_mock(admin_server):
     httpd, config, backend, tmp_path = admin_server
     (tmp_path / "filesystem.yaml").write_text("""
@@ -976,6 +1121,123 @@ def test_mock_request_uses_one_runtime_generation():
         server_thread.join(timeout=2)
 
 
+def _wait_until(predicate, timeout=2.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        time.sleep(0.01)
+    raise AssertionError("condition was not met before timeout")
+
+
+def _response_body(path):
+    state = hmock.runtime_snapshot()
+    context = hmock.build_context("GET", path, "", {}, "")
+    behavior, params = hmock.find_behavior(state.behaviors, "GET", path, context)
+    if behavior is None:
+        return None
+    context["HTTPParams"] = params
+    context["HTTPPathParams"] = params
+    context["Values"] = behavior.get("values") or {}
+    return hmock.execute_actions(behavior["actions"], context).body
+
+
+def test_hot_reload_create_edit_delete_invalid_and_fixture_changes(tmp_path):
+    template = tmp_path / "mock.yaml"
+    fixture = tmp_path / "body.txt"
+    fixture.write_text("fixture one", encoding="utf-8")
+    template.write_text("""
+key: reload
+expect:
+  http:
+    method: GET
+    path: /reload
+actions:
+  - reply_http:
+      status_code: 200
+      body_from_file: body.txt
+""", encoding="utf-8")
+    backend = hmock.MemoryRedisBackend()
+    config = hmock.Config(templates_dir=str(tmp_path))
+    hmock.reload_runtime(config, backend)
+    stop, thread = hmock.start_hot_reload_worker(config, backend, interval=0.01)
+    try:
+        assert _response_body("/reload") == b"fixture one"
+        fixture.write_text("fixture two", encoding="utf-8")
+        _wait_until(lambda: _response_body("/reload") == b"fixture two")
+
+        template.write_text("broken: [", encoding="utf-8")
+        time.sleep(0.05)
+        assert _response_body("/reload") == b"fixture two"
+
+        template.write_text("""
+key: edited
+expect:
+  http:
+    method: GET
+    path: /edited
+actions:
+  - reply_http:
+      status_code: 200
+      body: edited
+""", encoding="utf-8")
+        _wait_until(lambda: _response_body("/edited") == b"edited")
+        assert _response_body("/reload") is None
+
+        created = tmp_path / "created.yml"
+        created.write_text("""
+key: created
+expect:
+  http:
+    method: GET
+    path: /created
+actions:
+  - reply_http:
+      status_code: 200
+      body: created
+""", encoding="utf-8")
+        _wait_until(lambda: _response_body("/created") == b"created")
+        created.unlink()
+        _wait_until(lambda: _response_body("/created") is None)
+    finally:
+        stop.set()
+        thread.join(timeout=2)
+
+
+def test_disabled_hot_reload_defers_filesystem_until_admin_boundary(tmp_path):
+    template = tmp_path / "mock.yaml"
+    template.write_text("""
+key: value
+expect:
+  http:
+    method: GET
+    path: /value
+actions:
+  - reply_http:
+      status_code: 200
+      body: old
+""", encoding="utf-8")
+    backend = hmock.MemoryRedisBackend()
+    config = hmock.Config(
+        templates_dir=str(tmp_path),
+        templates_dir_hot_reload=False,
+    )
+    hmock.reload_runtime(config, backend)
+    stop, thread = hmock.start_hot_reload_worker(config, backend, interval=0.01)
+    assert stop is None
+    assert thread is None
+
+    template.write_text(template.read_text(encoding="utf-8").replace("body: old", "body: new"))
+    time.sleep(0.05)
+    assert _response_body("/value") == b"old"
+    hmock.mutate_base_templates(
+        config,
+        submitted=[{"key": "admin-boundary", "actions": []}],
+        backend=backend,
+    )
+    assert _response_body("/value") == b"new"
+
+
 @pytest.fixture()
 def server():
     behaviors = hmock.assemble_behaviors([
@@ -1011,6 +1273,188 @@ def test_http_server_match_and_unmatched_404(server):
         urllib.request.urlopen(f"http://127.0.0.1:{port}/missing")
     assert exc.value.code == 404
     assert exc.value.read() == b"not found"
+
+
+def test_cors_headers_preflight_and_mock_precedence():
+    state = hmock.compile_runtime([
+        {
+            "key": "get",
+            "expect": {"http": {"method": "GET", "path": "/cors"}},
+            "actions": [{"reply_http": {
+                "status_code": 200,
+                "headers": {"access-control-allow-origin": "https://client.example"},
+                "body": "ok",
+            }}],
+        },
+        {
+            "key": "options",
+            "expect": {"http": {"method": "OPTIONS", "path": "/explicit"}},
+            "actions": [{"reply_http": {"status_code": 202, "body": "explicit"}}],
+        },
+    ])
+    hmock.install_runtime(state)
+    config = hmock.Config(http_host="127.0.0.1", http_port=0, cors_enabled=True)
+    httpd = hmock.create_server(config, backend=hmock.MemoryRedisBackend())
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        with urllib.request.urlopen(f"{root}/cors") as response:
+            assert response.headers["access-control-allow-origin"] == "https://client.example"
+            assert response.headers.get_all("Access-Control-Allow-Origin") == [
+                "https://client.example",
+            ]
+            assert response.headers["Access-Control-Allow-Methods"] == "*"
+            assert response.headers["Access-Control-Allow-Headers"] == "*"
+            assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(f"{root}/missing")
+        assert exc.value.code == 404
+        assert exc.value.headers["Access-Control-Allow-Origin"] == "*"
+
+        request = urllib.request.Request(f"{root}/preflight", method="OPTIONS")
+        with urllib.request.urlopen(request) as response:
+            assert response.status == 200
+            assert response.read() == b""
+            assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+        request = urllib.request.Request(f"{root}/explicit", method="OPTIONS")
+        with urllib.request.urlopen(request) as response:
+            assert response.status == 202
+            assert response.read() == b"explicit"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+
+
+def test_unmatched_options_is_404_when_cors_disabled():
+    hmock.install_runtime(hmock.RuntimeState([], [], {}))
+    config = hmock.Config(http_host="127.0.0.1", http_port=0, cors_enabled=False)
+    httpd = hmock.create_server(config, backend=hmock.MemoryRedisBackend())
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{httpd.server_address[1]}/preflight",
+            method="OPTIONS",
+        )
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(request)
+        assert exc.value.code == 404
+        assert "Access-Control-Allow-Origin" not in exc.value.headers
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+
+
+def test_omctl_push_delete_and_failures(tmp_path, admin_server, monkeypatch, capsys):
+    httpd, _, backend, _ = admin_server
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (tmp_path / "a.yaml").write_text("key: first\nactions: []\n", encoding="utf-8")
+    (nested / "b.yml").write_text("- key: second\n  actions: []\n", encoding="utf-8")
+
+    assert omctl.main(["push", "-d", str(tmp_path), "-u", root]) == 0
+    assert [item["key"] for item in hmock.load_persisted_base(backend)] == ["first", "second"]
+    assert omctl.main([
+        "push",
+        "-d",
+        str(tmp_path),
+        "-u",
+        root,
+        "-k",
+        "set/key",
+    ]) == 0
+    assert "set/key" in hmock.load_persisted_sets(backend)
+    assert omctl.main(["delete", "-u", root, "-k", "set/key"]) == 0
+    assert hmock.load_persisted_sets(backend) == {}
+
+    (tmp_path / "broken.yaml").write_text("broken: [", encoding="utf-8")
+    called = False
+
+    def unexpected_request(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(omctl, "_request", unexpected_request)
+    assert omctl.main(["push", "-d", str(tmp_path), "-u", root]) == 1
+    assert called is False
+    assert "omctl:" in capsys.readouterr().err
+
+
+def test_omctl_defaults_help_and_unexpected_status(tmp_path, monkeypatch, capsys):
+    parser = omctl.build_parser()
+    push = parser.parse_args(["push"])
+    assert push.directory == "./demo_templates"
+    assert push.url == "http://localhost:9998"
+    delete = parser.parse_args(["delete", "-k", "demo"])
+    assert delete.url == "http://localhost:9998"
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["delete"])
+    with pytest.raises(SystemExit) as exc:
+        omctl.main(["--help"])
+    assert exc.value.code == 0
+    help_output = capsys.readouterr().out
+    assert "push" in help_output
+    assert "delete" in help_output
+
+    (tmp_path / "mock.yaml").write_text("key: demo\nactions: []\n", encoding="utf-8")
+
+    def fail_request(*args, **kwargs):
+        raise RuntimeError("unexpected status")
+
+    monkeypatch.setattr(omctl, "_request", fail_request)
+    assert omctl.main(["push", "-d", str(tmp_path)]) == 1
+    assert "unexpected status" in capsys.readouterr().err
+
+
+def test_installed_omctl_entry_point_against_admin_server(tmp_path, admin_server):
+    httpd, _, backend, _ = admin_server
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    (tmp_path / "mock.yaml").write_text("key: installed\nactions: []\n", encoding="utf-8")
+    executable = str(Path(__file__).with_name(".venv") / "bin" / "omctl")
+
+    help_result = subprocess.run(
+        [executable, "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert help_result.returncode == 0
+    assert "push" in help_result.stdout
+    assert "delete" in help_result.stdout
+
+    push_result = subprocess.run(
+        [
+            executable,
+            "push",
+            "-d",
+            str(tmp_path),
+            "-u",
+            root,
+            "-k",
+            "installed-set",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert push_result.returncode == 0, push_result.stderr
+    assert "installed-set" in hmock.load_persisted_sets(backend)
+
+    delete_result = subprocess.run(
+        [executable, "delete", "-u", root, "-k", "installed-set"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert delete_result.returncode == 0, delete_result.stderr
+    assert hmock.load_persisted_sets(backend) == {}
 
 
 def test_structured_logging_filters_and_fields():

@@ -32,8 +32,10 @@ from jinja2 import Environment, StrictUndefined
 
 
 DEFAULT_TEMPLATES_DIR = "./templates"
+DEFAULT_TEMPLATES_DIR_HOT_RELOAD = True
 DEFAULT_HTTP_PORT = 9999
 DEFAULT_HTTP_HOST = "0.0.0.0"
+DEFAULT_CORS_ENABLED = False
 DEFAULT_ADMIN_HTTP_ENABLED = True
 DEFAULT_ADMIN_HTTP_PORT = 9998
 DEFAULT_ADMIN_HTTP_HOST = "0.0.0.0"
@@ -42,6 +44,7 @@ DEFAULT_REDIS_TYPE = "memory"
 DEFAULT_REDIS_URL = "redis://redis:6379"
 SUPPORTED_REDIS_TYPES = {"memory", "redis"}
 OUTBOUND_HTTP_TIMEOUT_SECONDS = 2.0
+HOT_RELOAD_INTERVAL_SECONDS = 0.1
 INTERNAL_REDIS_PREFIX = "__hmock_internal:"
 INTERNAL_TEMPLATES_KEY = f"{INTERNAL_REDIS_PREFIX}templates"
 INTERNAL_TEMPLATE_SETS_KEY = f"{INTERNAL_REDIS_PREFIX}template_sets"
@@ -74,8 +77,10 @@ ALLOWED_FIELDS_BY_KIND = {
 @dataclass(frozen=True)
 class Config:
     templates_dir: str = DEFAULT_TEMPLATES_DIR
+    templates_dir_hot_reload: bool = DEFAULT_TEMPLATES_DIR_HOT_RELOAD
     http_port: int = DEFAULT_HTTP_PORT
     http_host: str = DEFAULT_HTTP_HOST
+    cors_enabled: bool = DEFAULT_CORS_ENABLED
     admin_http_enabled: bool = DEFAULT_ADMIN_HTTP_ENABLED
     admin_http_port: int = DEFAULT_ADMIN_HTTP_PORT
     admin_http_host: str = DEFAULT_ADMIN_HTTP_HOST
@@ -132,8 +137,19 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
         raise ValueError(f"HM_REDIS_TYPE must be one of: {', '.join(sorted(SUPPORTED_REDIS_TYPES))}")
     return Config(
         templates_dir=env.get("HM_TEMPLATES_DIR", DEFAULT_TEMPLATES_DIR),
+        templates_dir_hot_reload=_parse_bool(
+            env.get(
+                "HM_TEMPLATES_DIR_HOT_RELOAD",
+                str(DEFAULT_TEMPLATES_DIR_HOT_RELOAD),
+            ),
+            "HM_TEMPLATES_DIR_HOT_RELOAD",
+        ),
         http_port=int(env.get("HM_HTTP_PORT", str(DEFAULT_HTTP_PORT))),
         http_host=env.get("HM_HTTP_HOST", DEFAULT_HTTP_HOST),
+        cors_enabled=_parse_bool(
+            env.get("HM_CORS_ENABLED", str(DEFAULT_CORS_ENABLED)),
+            "HM_CORS_ENABLED",
+        ),
         admin_http_enabled=_parse_bool(
             env.get("HM_ADMIN_HTTP_ENABLED", str(DEFAULT_ADMIN_HTTP_ENABLED)),
             "HM_ADMIN_HTTP_ENABLED",
@@ -577,6 +593,7 @@ def _prepare_actions(
         if "reply_http" in prepared_action:
             reply_config = dict(prepared_action.get("reply_http") or {})
             _prepare_body_from_file(reply_config, templates_dir, source)
+            _prepare_body_from_binary_file(reply_config, templates_dir, source)
             prepared_action["reply_http"] = reply_config
         if "redis" in prepared_action:
             redis_items = prepared_action.get("redis")
@@ -593,6 +610,7 @@ def _prepare_actions(
             if headers is not None and not isinstance(headers, dict):
                 raise ValueError(f"{source}: send_http.headers must be a string map")
             _prepare_body_from_file(send_config, templates_dir, source)
+            _prepare_body_from_binary_file(send_config, templates_dir, source)
             prepared_action["send_http"] = send_config
         prepared.append(prepared_action)
     return prepared
@@ -626,14 +644,52 @@ def _prepare_body_from_file(
 
 
 def _load_body_from_file(templates_dir: str, relative_path: str, source: str) -> str:
-    root = Path(templates_dir).resolve()
-    target = (root / relative_path).resolve()
-    if not target.is_relative_to(root):
-        raise ValueError(f"{source}: body_from_file must resolve inside HM_TEMPLATES_DIR")
+    target = _resolve_body_file(
+        templates_dir,
+        relative_path,
+        source,
+        "body_from_file",
+    )
     try:
         return target.read_text(encoding="utf-8")
     except OSError as exc:
         raise ValueError(f"{source}: cannot read body_from_file {relative_path!r}: {exc}") from exc
+
+
+def _prepare_body_from_binary_file(
+    config: dict[str, Any],
+    templates_dir: Optional[str],
+    source: str,
+) -> None:
+    body_from_binary_file = config.get("body_from_binary_file")
+    if body_from_binary_file not in (None, "") and templates_dir is not None:
+        relative_path = str(body_from_binary_file)
+        target = _resolve_body_file(
+            templates_dir,
+            relative_path,
+            source,
+            "body_from_binary_file",
+        )
+        try:
+            config["_body_from_binary_file_content"] = target.read_bytes()
+        except OSError as exc:
+            raise ValueError(
+                f"{source}: cannot read body_from_binary_file {relative_path!r}: {exc}"
+            ) from exc
+        config["_body_from_binary_file_name"] = target.name
+
+
+def _resolve_body_file(
+    templates_dir: str,
+    relative_path: str,
+    source: str,
+    field_name: str,
+) -> Path:
+    root = Path(templates_dir).resolve()
+    target = (root / relative_path).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError(f"{source}: {field_name} must resolve inside HM_TEMPLATES_DIR")
+    return target
 
 
 def compile_runtime(
@@ -850,6 +906,84 @@ def reload_runtime(config: Config, backend: Optional[RedisBackend] = None) -> Ru
     return state
 
 
+def templates_tree_fingerprint(
+    templates_dir: str,
+) -> tuple[tuple[str, int, int, str], ...]:
+    root = Path(templates_dir)
+    if not root.exists():
+        return ()
+    entries: list[tuple[str, int, int, str]] = []
+    for path in sorted(root.rglob("*")):
+        try:
+            if not path.is_file():
+                continue
+            stat = path.stat()
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            continue
+        entries.append((
+            path.relative_to(root).as_posix(),
+            stat.st_mtime_ns,
+            stat.st_size,
+            digest,
+        ))
+    return tuple(entries)
+
+
+def run_hot_reload_worker(
+    config: Config,
+    backend: RedisBackend,
+    stop_event: threading.Event,
+    interval: float = HOT_RELOAD_INTERVAL_SECONDS,
+    initial_fingerprint: Optional[tuple[tuple[str, int, int, str], ...]] = None,
+) -> None:
+    previous = (
+        templates_tree_fingerprint(config.templates_dir)
+        if initial_fingerprint is None
+        else initial_fingerprint
+    )
+    while not stop_event.wait(interval):
+        current = templates_tree_fingerprint(config.templates_dir)
+        if current == previous:
+            continue
+        previous = current
+        try:
+            with _MUTATION_LOCK:
+                state = build_runtime(config, backend=backend)
+                install_runtime(state)
+            log_json(
+                "info",
+                "reloaded behaviors",
+                count=len(state.behaviors),
+                templates_dir=config.templates_dir,
+            )
+        except Exception as exc:
+            log_json(
+                "error",
+                "template hot reload failed",
+                error=str(exc),
+                templates_dir=config.templates_dir,
+            )
+
+
+def start_hot_reload_worker(
+    config: Config,
+    backend: RedisBackend,
+    interval: float = HOT_RELOAD_INTERVAL_SECONDS,
+) -> tuple[Optional[threading.Event], Optional[threading.Thread]]:
+    if not config.templates_dir_hot_reload:
+        return None, None
+    stop_event = threading.Event()
+    initial_fingerprint = templates_tree_fingerprint(config.templates_dir)
+    thread = threading.Thread(
+        target=run_hot_reload_worker,
+        args=(config, backend, stop_event, interval, initial_fingerprint),
+        daemon=True,
+    )
+    thread.start()
+    return stop_event, thread
+
+
 def normalize_definition_payload(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, dict):
         data = [data]
@@ -1053,8 +1187,17 @@ def build_http_response(config: dict[str, Any], context: dict[str, Any]) -> Resp
         rendered_headers[str(name)] = render(str(value), context)
     if not any(name.lower() == "content-type" for name in rendered_headers):
         rendered_headers["Content-Type"] = "application/json"
-    body_text = render(_select_body_template(config) or "", context)
-    body = body_text.encode("utf-8")
+    binary_body = _select_binary_body(config)
+    if binary_body is not None:
+        body = binary_body
+        binary_file_name = config.get("binary_file_name")
+        if binary_file_name not in (None, ""):
+            rendered_headers["Content-Disposition"] = (
+                f'inline; filename="{str(binary_file_name)}"'
+            )
+    else:
+        body_text = render(_select_body_template(config) or "", context)
+        body = body_text.encode("utf-8")
     rendered_headers["Content-Length"] = str(len(body))
     return Response(status_code, rendered_headers, body)
 
@@ -1067,8 +1210,30 @@ def send_http_request(config: dict[str, Any], context: dict[str, Any]) -> None:
             str(name): render(str(value), context)
             for name, value in (config.get("headers") or {}).items()
         }
-        body_template = _select_body_template(config)
-        data = None if body_template is None else render(body_template, context).encode("utf-8")
+        binary_body = _select_binary_body(config)
+        if binary_body is not None and method == "POST":
+            part_content_type = _pop_header(headers, "Content-Type") or "application/octet-stream"
+            configured_name = config.get("binary_file_name")
+            file_name = (
+                str(configured_name)
+                if configured_name not in (None, "")
+                else str(config.get("_body_from_binary_file_name") or "file")
+            )
+            data, multipart_content_type = encode_multipart_file(
+                binary_body,
+                file_name,
+                part_content_type,
+            )
+            headers["Content-Type"] = multipart_content_type
+        elif binary_body is not None:
+            data = binary_body
+        else:
+            body_template = _select_body_template(config)
+            data = (
+                None
+                if body_template is None
+                else render(body_template, context).encode("utf-8")
+            )
         request = urllib.request.Request(url, data=data, headers=headers, method=method)
         with urllib.request.urlopen(request, timeout=OUTBOUND_HTTP_TIMEOUT_SECONDS) as response:
             response.read()
@@ -1091,6 +1256,39 @@ def _select_body_template(config: dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _select_binary_body(config: dict[str, Any]) -> Optional[bytes]:
+    body = config.get("body")
+    if body is not None and str(body) != "":
+        return None
+    value = config.get("_body_from_binary_file_content")
+    return value if isinstance(value, bytes) else None
+
+
+def _pop_header(headers: dict[str, str], name: str) -> Optional[str]:
+    expected = name.lower()
+    for header_name in list(headers):
+        if header_name.lower() == expected:
+            return headers.pop(header_name)
+    return None
+
+
+def encode_multipart_file(
+    content: bytes,
+    file_name: str,
+    content_type: str,
+) -> tuple[bytes, str]:
+    boundary = f"hmock-{uuid.uuid4().hex}"
+    safe_name = file_name.replace("\\", "\\\\").replace('"', '\\"')
+    prefix = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{safe_name}"\r\n'
+        f"Content-Type: {content_type}\r\n"
+        "\r\n"
+    ).encode("utf-8")
+    body = prefix + content + f"\r\n--{boundary}--\r\n".encode("ascii")
+    return body, f"multipart/form-data; boundary={boundary}"
+
+
 def not_found_response() -> Response:
     body = b"not found"
     return Response(404, {"Content-Type": "text/plain", "Content-Length": str(len(body))}, body)
@@ -1107,6 +1305,26 @@ def json_response(status_code: int, data: Any) -> Response:
 
 def no_content_response() -> Response:
     return Response(204, {"Content-Length": "0"}, b"")
+
+
+def empty_response(status_code: int = 200) -> Response:
+    return Response(status_code, {"Content-Length": "0"}, b"")
+
+
+CORS_DEFAULT_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Credentials": "true",
+}
+
+
+def apply_cors_headers(response: Response) -> Response:
+    existing = {name.lower() for name in response.headers}
+    for name, value in CORS_DEFAULT_HEADERS.items():
+        if name.lower() not in existing:
+            response.headers[name] = value
+    return response
 
 
 def error_response(status_code: int, message: str) -> Response:
@@ -1128,6 +1346,10 @@ class MockRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         return
 
+    @property
+    def config(self) -> Config:
+        return getattr(self.server, "config", Config())
+
     def _dispatch(self, include_body: bool = True) -> None:
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
@@ -1139,7 +1361,10 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         try:
             behavior, params = find_behavior(state.behaviors, self.command, path, context)
             if behavior is None:
-                response = not_found_response()
+                if self.command == "OPTIONS" and self.config.cors_enabled:
+                    response = empty_response()
+                else:
+                    response = not_found_response()
             else:
                 context["HTTPParams"] = params
                 context["HTTPPathParams"] = params
@@ -1147,6 +1372,8 @@ class MockRequestHandler(BaseHTTPRequestHandler):
                 response = execute_actions(behavior.get("actions") or [], context)
         finally:
             del _REQUEST_RUNTIME.named_templates
+        if self.config.cors_enabled:
+            apply_cors_headers(response)
         send_response(self, response, include_body=include_body)
         log_json(
             "info",
@@ -1199,13 +1426,21 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
     def backend(self) -> RedisBackend:
         return self.server.redis_backend  # type: ignore[attr-defined]
 
-    def _read_json_definitions(self) -> list[dict[str, Any]]:
+    def _read_definitions(self) -> list[dict[str, Any]]:
         length = int(self.headers.get("Content-Length", "0") or "0")
         raw = self.rfile.read(length) if length else b""
+        content_type = self.headers.get_content_type()
         try:
-            data = json.loads(raw.decode("utf-8"))
+            text = raw.decode("utf-8")
+            if content_type in {"application/yaml", "application/x-yaml"}:
+                data = yaml.safe_load(text)
+            else:
+                data = json.loads(text)
         except (UnicodeDecodeError, ValueError) as exc:
-            raise ValueError(f"invalid JSON request body: {exc}") from exc
+            format_name = "YAML" if content_type in {"application/yaml", "application/x-yaml"} else "JSON"
+            raise ValueError(f"invalid {format_name} request body: {exc}") from exc
+        except yaml.YAMLError as exc:
+            raise ValueError(f"invalid YAML request body: {exc}") from exc
         return normalize_definition_payload(data)
 
     def _dispatch(self) -> None:
@@ -1233,7 +1468,7 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
             return json_response(200, runtime_snapshot().definitions)
         if path == "/api/v1/templates":
             if self.command == "POST":
-                submitted = self._read_json_definitions()
+                submitted = self._read_definitions()
                 mutate_base_templates(self.config, submitted=submitted, backend=self.backend)
                 return json_response(200, submitted)
             if self.command == "DELETE":
@@ -1256,7 +1491,7 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
             if not set_key:
                 return not_found_response()
             if self.command == "POST":
-                submitted = self._read_json_definitions()
+                submitted = self._read_definitions()
                 mutate_template_set(
                     self.config,
                     set_key,
@@ -1291,7 +1526,9 @@ def create_server(
     if backend is None:
         backend = create_redis_backend(config)
     _REDIS_BACKEND = backend
-    return ThreadingHTTPServer((config.http_host, config.http_port), MockRequestHandler)
+    server = ThreadingHTTPServer((config.http_host, config.http_port), MockRequestHandler)
+    server.config = config  # type: ignore[attr-defined]
+    return server
 
 
 def create_admin_server(
@@ -1327,6 +1564,7 @@ def main() -> None:
     state = reload_runtime(config, _REDIS_BACKEND)
     log_json("info", "loaded behaviors", count=len(state.behaviors), templates_dir=config.templates_dir)
     server = create_server(config, backend=_REDIS_BACKEND)
+    reload_stop, reload_thread = start_hot_reload_worker(config, _REDIS_BACKEND)
     admin_server, admin_thread = start_admin_server(config, _REDIS_BACKEND)
     if admin_server is not None:
         log_json(
@@ -1341,6 +1579,10 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if reload_stop is not None:
+            reload_stop.set()
+        if reload_thread is not None:
+            reload_thread.join(timeout=2)
         server.server_close()
         if admin_server is not None:
             admin_server.shutdown()
