@@ -1,17 +1,13 @@
 ---
-name: openspec-archive-change
-description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
-license: MIT
-compatibility: Requires openspec CLI.
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.3.1"
+name: "OPSX: Archive"
+description: Archive a completed change in the experimental workflow
+category: Workflow
+tags: [workflow, archive, experimental]
 ---
 
 Archive a completed change in the experimental workflow.
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name after `/opsx:archive` (e.g., `/opsx:archive add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
 
@@ -34,7 +30,7 @@ Archive a completed change in the experimental workflow.
 
    **If any artifacts are not `done`:**
    - Display warning listing incomplete artifacts
-   - Use **AskUserQuestion tool** to confirm user wants to proceed
+   - Prompt user for confirmation to continue
    - Proceed if user confirms
 
 3. **Check task completion status**
@@ -45,7 +41,7 @@ Archive a completed change in the experimental workflow.
 
    **If incomplete tasks found:**
    - Display warning showing count of incomplete tasks
-   - Use **AskUserQuestion tool** to confirm user wants to proceed
+   - Prompt user for confirmation to continue
    - Proceed if user confirms
 
    **If no tasks file exists:** Proceed without task-related warning.
@@ -81,6 +77,39 @@ Archive a completed change in the experimental workflow.
 **KG:** ✓ Delta specs indexed (Capability → DeltaSpec → Requirement → Scenario)
 
 All artifacts complete. All tasks complete.
+```
+
+**Output On Success With Warnings**
+
+```
+## Archive Complete (with warnings)
+
+**Change:** <change-name>
+**Schema:** <schema-name>
+**Archived to:** the archive path derived from `planningHome.changesDir`/YYYY-MM-DD-<name>/
+**KG:** ✓ Delta specs indexed
+
+**Warnings:**
+- Archived with 2 incomplete artifacts
+- Archived with 3 incomplete tasks
+
+Review the archive if this was not intentional.
+```
+
+**Output On Error (Archive Exists)**
+
+```
+## Archive Failed
+
+**Change:** <change-name>
+**Target:** openspec/changes/archive/YYYY-MM-DD-<name>/
+
+Target archive directory already exists.
+
+**Options:**
+1. Rename the existing archive
+2. Delete the existing archive if it's a duplicate
+3. Wait until a different date to archive
 ```
 
 **Guardrails**

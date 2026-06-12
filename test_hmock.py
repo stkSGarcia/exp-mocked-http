@@ -18,13 +18,19 @@ import hmock
 def reset_redis_backend():
     old_backend = hmock._REDIS_BACKEND
     old_templates = hmock._NAMED_TEMPLATES
+    old_behaviors = hmock._BEHAVIORS
+    old_definitions = hmock._ACTIVE_DEFINITIONS
     hmock._REDIS_BACKEND = hmock.MemoryRedisBackend()
     hmock._NAMED_TEMPLATES = {}
+    hmock._BEHAVIORS = []
+    hmock._ACTIVE_DEFINITIONS = []
     try:
         yield
     finally:
         hmock._REDIS_BACKEND = old_backend
         hmock._NAMED_TEMPLATES = old_templates
+        hmock._BEHAVIORS = old_behaviors
+        hmock._ACTIVE_DEFINITIONS = old_definitions
 
 
 def test_config_defaults_and_overrides():
@@ -33,6 +39,9 @@ def test_config_defaults_and_overrides():
         "HM_TEMPLATES_DIR": "/tmp/mocks",
         "HM_HTTP_PORT": "1234",
         "HM_HTTP_HOST": "127.0.0.1",
+        "HM_ADMIN_HTTP_ENABLED": "false",
+        "HM_ADMIN_HTTP_PORT": "4321",
+        "HM_ADMIN_HTTP_HOST": "127.0.0.2",
         "HM_LOG_LEVEL": "debug",
         "HM_REDIS_TYPE": "redis",
         "HM_REDIS_URL": "redis://example.test:6380/2",
@@ -40,12 +49,34 @@ def test_config_defaults_and_overrides():
     assert config.templates_dir == "/tmp/mocks"
     assert config.http_port == 1234
     assert config.http_host == "127.0.0.1"
+    assert config.admin_http_enabled is False
+    assert config.admin_http_port == 4321
+    assert config.admin_http_host == "127.0.0.2"
     assert config.log_level == "debug"
     assert config.redis_type == "redis"
     assert config.redis_url == "redis://example.test:6380/2"
 
     with pytest.raises(ValueError, match="HM_REDIS_TYPE"):
         hmock.load_config({"HM_REDIS_TYPE": "bad"})
+    with pytest.raises(ValueError, match="HM_ADMIN_HTTP_ENABLED"):
+        hmock.load_config({"HM_ADMIN_HTTP_ENABLED": "sometimes"})
+    with pytest.raises(ValueError):
+        hmock.load_config({"HM_ADMIN_HTTP_PORT": "not-a-port"})
+
+
+def test_disabled_admin_server_does_not_start(monkeypatch):
+    called = False
+
+    def unexpected_create(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(hmock, "create_admin_server", unexpected_create)
+    server, thread = hmock.start_admin_server(hmock.Config(admin_http_enabled=False))
+
+    assert server is None
+    assert thread is None
+    assert called is False
 
 
 def test_redis_backend_factory_uses_configured_type():
@@ -439,6 +470,32 @@ def test_redis_do_template_contexts_and_redis_action_order():
     assert response.body == b"42:42"
 
 
+def test_redis_do_blocks_reserved_keyspace_before_backend_execution():
+    class RecordingBackend(hmock.RedisBackend):
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, args):
+            self.calls.append(args)
+            return "OK"
+
+    backend = RecordingBackend()
+    hmock._REDIS_BACKEND = backend
+
+    for command in [
+        "GET __hmock_internal:templates",
+        "HGET __hmock_internal:template_sets demo",
+        "KEYS __hmock_internal:*",
+        "DEL public __hmock_internal:templates",
+    ]:
+        with pytest.raises(hmock.TemplateRenderError, match="reserved"):
+            hmock.render(f'{{{{ redisDo "{command}" }}}}', {})
+
+    assert backend.calls == []
+    assert hmock.render('{{ redisDo "GET public" }}', {}) == "OK"
+    assert backend.calls == [["GET", "public"]]
+
+
 def test_reply_http_and_sleep_actions():
     ctx = hmock.build_context("GET", "/hello", "", {"X-Name": "Ada"}, "")
     start = time.monotonic()
@@ -626,6 +683,297 @@ def test_send_http_renders_fields_file_bodies_precedence_and_failures(tmp_path, 
     assert recording_server.records[1]["path"] == "/inline"
     assert recording_server.records[1]["body"] == "inline abc"
     assert "send_http request failed" in stream.getvalue()
+
+
+def test_persisted_definition_loading_precedence_and_restart(tmp_path):
+    (tmp_path / "mocks.yaml").write_text("""
+- key: filesystem-only
+  actions: []
+- key: duplicate
+  actions:
+    - reply_http:
+        status_code: 200
+        body: filesystem
+""", encoding="utf-8")
+    backend = hmock.MemoryRedisBackend()
+    config = hmock.Config(templates_dir=str(tmp_path))
+    hmock.save_persisted_base([
+        {"key": "base-only", "actions": []},
+        {
+            "key": "duplicate",
+            "actions": [{"reply_http": {"status_code": 200, "body": "base"}}],
+        },
+    ], backend)
+    hmock.save_persisted_set("z-set", [
+        {
+            "key": "duplicate",
+            "actions": [{"reply_http": {"status_code": 200, "body": "z-set"}}],
+        },
+    ], backend)
+    hmock.save_persisted_set("a-set", [
+        {"key": "set-only", "actions": []},
+        {
+            "key": "duplicate",
+            "actions": [{"reply_http": {"status_code": 200, "body": "a-set"}}],
+        },
+    ], backend)
+
+    state = hmock.reload_runtime(config, backend)
+    keys = [definition["key"] for definition in state.definitions]
+    duplicate = next(behavior for behavior in state.behaviors if behavior["key"] == "duplicate")
+    response = hmock.execute_actions(duplicate["actions"], {})
+
+    assert keys == ["filesystem-only", "base-only", "set-only", "duplicate"]
+    assert response.body == b"z-set"
+
+    hmock.install_runtime(hmock.RuntimeState([], [], {}))
+    restarted = hmock.reload_runtime(config, backend)
+    assert [definition["key"] for definition in restarted.definitions] == keys
+
+
+def test_persisted_definitions_share_composition_and_file_validation(tmp_path):
+    (tmp_path / "mocks.yaml").write_text("""
+- key: greeting
+  kind: Template
+  template: "hello {{.name}}"
+- key: base
+  kind: AbstractBehavior
+  expect:
+    http:
+      method: GET
+      path: /hello
+  actions:
+    - reply_http:
+        status_code: 200
+        body: '{{ template "greeting" .Values }}'
+""", encoding="utf-8")
+    backend = hmock.MemoryRedisBackend()
+    config = hmock.Config(templates_dir=str(tmp_path))
+    hmock.save_persisted_base([
+        {"key": "child", "extend": "base", "values": {"name": "Ada"}},
+    ], backend)
+
+    state = hmock.reload_runtime(config, backend)
+    context = hmock.build_context("GET", "/hello", "", {}, "")
+    behavior, params = hmock.find_behavior(state.behaviors, "GET", "/hello", context)
+    context["HTTPParams"] = params
+    context["HTTPPathParams"] = params
+    context["Values"] = behavior["values"]
+    assert hmock.execute_actions(behavior["actions"], context).body == b"hello Ada"
+
+    with pytest.raises(ValueError, match="inside HM_TEMPLATES_DIR"):
+        hmock.build_runtime(
+            config,
+            [{
+                "key": "bad-file",
+                "actions": [{
+                    "reply_http": {
+                        "status_code": 200,
+                        "body_from_file": "../outside.txt",
+                    },
+                }],
+            }],
+            {},
+            backend,
+        )
+
+
+def _http_request(url, method="GET", data=None, raw_data=None):
+    headers = {}
+    body = raw_data
+    if data is not None:
+        body = json.dumps(data).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request) as response:
+            raw = response.read()
+            return response.status, json.loads(raw) if raw else None
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        return exc.code, json.loads(raw) if raw and exc.headers.get_content_type() == "application/json" else raw
+
+
+@pytest.fixture()
+def admin_server(tmp_path):
+    backend = hmock.MemoryRedisBackend()
+    config = hmock.Config(
+        templates_dir=str(tmp_path),
+        admin_http_host="127.0.0.1",
+        admin_http_port=0,
+    )
+    hmock._REDIS_BACKEND = backend
+    hmock.reload_runtime(config, backend)
+    httpd = hmock.create_admin_server(config, backend)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield httpd, config, backend, tmp_path
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+
+
+def test_admin_health_base_templates_and_atomic_validation(admin_server):
+    httpd, config, backend, _ = admin_server
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    first = {
+        "key": "first",
+        "expect": {"http": {"method": "GET", "path": "/first"}},
+        "actions": [{"reply_http": {"status_code": 200, "body": "one"}}],
+    }
+    second = {"key": "second", "actions": []}
+
+    assert _http_request(f"{root}/api/v1/health") == (200, {"status": "OK"})
+    assert _http_request(f"{root}/api/v1/templates") == (200, [])
+    assert _http_request(f"{root}/api/v1/templates", "POST", [first, second]) == (
+        200,
+        [first, second],
+    )
+    assert [item["key"] for item in hmock.load_persisted_base(backend)] == ["first", "second"]
+    assert [item["key"] for item in _http_request(f"{root}/api/v1/templates")[1]] == [
+        "first",
+        "second",
+    ]
+
+    replacement = dict(first)
+    replacement["actions"] = [{"reply_http": {"status_code": 201, "body": "updated"}}]
+    assert _http_request(f"{root}/api/v1/templates", "POST", replacement) == (200, [replacement])
+    assert [item["key"] for item in hmock.load_persisted_base(backend)] == ["second", "first"]
+
+    status, error = _http_request(
+        f"{root}/api/v1/templates",
+        "POST",
+        [{"key": "invalid", "actions": "not-a-list"}],
+    )
+    assert status == 400
+    assert "actions" in error["error"]
+    assert [item["key"] for item in hmock.load_persisted_base(backend)] == ["second", "first"]
+    status, error = _http_request(
+        f"{root}/api/v1/templates",
+        "POST",
+        raw_data=b"{broken",
+    )
+    assert status == 400
+    assert "invalid JSON" in error["error"]
+    assert _http_request(f"{root}/api/v1/templates/missing", "DELETE")[0] == 404
+    assert _http_request(f"{root}/api/v1/templates/second", "DELETE") == (204, None)
+    assert [item["key"] for item in hmock.load_persisted_base(backend)] == ["first"]
+    assert _http_request(f"{root}/api/v1/templates", "DELETE") == (204, None)
+    assert hmock.load_persisted_base(backend) == []
+
+
+def test_admin_template_set_isolation_and_validation(admin_server):
+    httpd, config, backend, _ = admin_server
+    root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    base = {"key": "base", "actions": []}
+    set_a = {"key": "set-a", "actions": []}
+    set_b = {"key": "set-b", "actions": []}
+
+    assert _http_request(f"{root}/api/v1/templates", "POST", base) == (200, [base])
+    assert _http_request(f"{root}/api/v1/template_sets/a", "POST", [set_a]) == (200, [set_a])
+    assert _http_request(f"{root}/api/v1/template_sets/b", "POST", [set_b]) == (200, [set_b])
+    assert set(hmock.load_persisted_sets(backend)) == {"a", "b"}
+
+    status, error = _http_request(
+        f"{root}/api/v1/template_sets/a",
+        "POST",
+        [{"key": "invalid", "actions": {}}],
+    )
+    assert status == 400
+    assert "actions" in error["error"]
+    assert hmock.load_persisted_sets(backend)["a"] == [set_a]
+
+    assert _http_request(f"{root}/api/v1/template_sets/a", "DELETE") == (204, None)
+    assert hmock.load_persisted_sets(backend) == {"b": [set_b]}
+    assert hmock.load_persisted_base(backend) == [base]
+    assert _http_request(f"{root}/api/v1/template_sets/absent", "DELETE") == (204, None)
+
+
+def test_admin_mutations_are_immediately_visible_and_preserve_filesystem_mock(admin_server):
+    httpd, config, backend, tmp_path = admin_server
+    (tmp_path / "filesystem.yaml").write_text("""
+key: shared
+expect:
+  http:
+    method: GET
+    path: /filesystem
+actions:
+  - reply_http:
+      status_code: 200
+      body: filesystem
+""", encoding="utf-8")
+    hmock.reload_runtime(config, backend)
+    mock_server = ThreadingHTTPServer(("127.0.0.1", 0), hmock.MockRequestHandler)
+    mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
+    mock_thread.start()
+    admin_root = f"http://127.0.0.1:{httpd.server_address[1]}"
+    mock_root = f"http://127.0.0.1:{mock_server.server_address[1]}"
+    api_definition = {
+        "key": "shared",
+        "expect": {"http": {"method": "GET", "path": "/api"}},
+        "actions": [{"reply_http": {"status_code": 200, "body": "api"}}],
+    }
+    try:
+        assert _http_request(f"{admin_root}/api/v1/templates", "POST", api_definition)[0] == 200
+        with urllib.request.urlopen(f"{mock_root}/api") as response:
+            assert response.read() == b"api"
+
+        assert _http_request(f"{admin_root}/api/v1/templates/shared", "DELETE") == (204, None)
+        with urllib.request.urlopen(f"{mock_root}/filesystem") as response:
+            assert response.read() == b"filesystem"
+        active = _http_request(f"{admin_root}/api/v1/templates")[1]
+        assert [(item["key"], item["expect"]["http"]["path"]) for item in active] == [
+            ("shared", "/filesystem"),
+        ]
+    finally:
+        mock_server.shutdown()
+        mock_server.server_close()
+        mock_thread.join(timeout=2)
+
+
+def test_mock_request_uses_one_runtime_generation():
+    old_state = hmock.compile_runtime([
+        {"key": "message", "kind": "Template", "template": "old"},
+        {
+            "key": "slow",
+            "expect": {"http": {"method": "GET", "path": "/slow"}},
+            "actions": [
+                {"sleep": {"duration": "100ms"}},
+                {"reply_http": {"status_code": 200, "body": '{{ template "message" . }}'}},
+            ],
+        },
+    ])
+    new_state = hmock.compile_runtime([
+        {"key": "message", "kind": "Template", "template": "new"},
+        {
+            "key": "slow",
+            "expect": {"http": {"method": "GET", "path": "/slow"}},
+            "actions": [{"reply_http": {"status_code": 200, "body": '{{ template "message" . }}'}}],
+        },
+    ])
+    hmock.install_runtime(old_state)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), hmock.MockRequestHandler)
+    server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    server_thread.start()
+    result = {}
+
+    def request_slow():
+        with urllib.request.urlopen(f"http://127.0.0.1:{httpd.server_address[1]}/slow") as response:
+            result["body"] = response.read()
+
+    request_thread = threading.Thread(target=request_slow)
+    request_thread.start()
+    time.sleep(0.03)
+    hmock.install_runtime(new_state)
+    request_thread.join(timeout=2)
+    try:
+        assert result["body"] == b"old"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        server_thread.join(timeout=2)
 
 
 @pytest.fixture()

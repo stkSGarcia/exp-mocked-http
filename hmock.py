@@ -34,11 +34,17 @@ from jinja2 import Environment, StrictUndefined
 DEFAULT_TEMPLATES_DIR = "./templates"
 DEFAULT_HTTP_PORT = 9999
 DEFAULT_HTTP_HOST = "0.0.0.0"
+DEFAULT_ADMIN_HTTP_ENABLED = True
+DEFAULT_ADMIN_HTTP_PORT = 9998
+DEFAULT_ADMIN_HTTP_HOST = "0.0.0.0"
 DEFAULT_LOG_LEVEL = "info"
 DEFAULT_REDIS_TYPE = "memory"
 DEFAULT_REDIS_URL = "redis://redis:6379"
 SUPPORTED_REDIS_TYPES = {"memory", "redis"}
 OUTBOUND_HTTP_TIMEOUT_SECONDS = 2.0
+INTERNAL_REDIS_PREFIX = "__hmock_internal:"
+INTERNAL_TEMPLATES_KEY = f"{INTERNAL_REDIS_PREFIX}templates"
+INTERNAL_TEMPLATE_SETS_KEY = f"{INTERNAL_REDIS_PREFIX}template_sets"
 
 LOG_LEVELS = {
     "debug": logging.DEBUG,
@@ -49,6 +55,10 @@ LOG_LEVELS = {
 
 _BEHAVIORS: list[dict[str, Any]] = []
 _NAMED_TEMPLATES: dict[str, str] = {}
+_ACTIVE_DEFINITIONS: list[dict[str, Any]] = []
+_RUNTIME_LOCK = threading.RLock()
+_MUTATION_LOCK = threading.RLock()
+_REQUEST_RUNTIME = threading.local()
 
 KIND_BEHAVIOR = "Behavior"
 KIND_TEMPLATE = "Template"
@@ -66,6 +76,9 @@ class Config:
     templates_dir: str = DEFAULT_TEMPLATES_DIR
     http_port: int = DEFAULT_HTTP_PORT
     http_host: str = DEFAULT_HTTP_HOST
+    admin_http_enabled: bool = DEFAULT_ADMIN_HTTP_ENABLED
+    admin_http_port: int = DEFAULT_ADMIN_HTTP_PORT
+    admin_http_host: str = DEFAULT_ADMIN_HTTP_HOST
     log_level: str = DEFAULT_LOG_LEVEL
     redis_type: str = DEFAULT_REDIS_TYPE
     redis_url: str = DEFAULT_REDIS_URL
@@ -76,6 +89,13 @@ class Response:
     status_code: int
     headers: dict[str, str]
     body: bytes
+
+
+@dataclass(frozen=True)
+class RuntimeState:
+    definitions: list[dict[str, Any]]
+    behaviors: list[dict[str, Any]]
+    named_templates: dict[str, str]
 
 
 class TemplateRenderError(RuntimeError):
@@ -114,10 +134,25 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
         templates_dir=env.get("HM_TEMPLATES_DIR", DEFAULT_TEMPLATES_DIR),
         http_port=int(env.get("HM_HTTP_PORT", str(DEFAULT_HTTP_PORT))),
         http_host=env.get("HM_HTTP_HOST", DEFAULT_HTTP_HOST),
+        admin_http_enabled=_parse_bool(
+            env.get("HM_ADMIN_HTTP_ENABLED", str(DEFAULT_ADMIN_HTTP_ENABLED)),
+            "HM_ADMIN_HTTP_ENABLED",
+        ),
+        admin_http_port=int(env.get("HM_ADMIN_HTTP_PORT", str(DEFAULT_ADMIN_HTTP_PORT))),
+        admin_http_host=env.get("HM_ADMIN_HTTP_HOST", DEFAULT_ADMIN_HTTP_HOST),
         log_level=log_level,
         redis_type=redis_type,
         redis_url=env.get("HM_REDIS_URL", DEFAULT_REDIS_URL),
     )
+
+
+def _parse_bool(value: Any, name: str) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
 
 
 def setup_logger(level_name: str, stream: Any = None) -> logging.Logger:
@@ -306,6 +341,7 @@ _REDIS_BACKEND: RedisBackend = MemoryRedisBackend()
 
 def redis_do(command: Any) -> str:
     args = parse_redis_command(str(command))
+    _reject_internal_redis_keys(args)
     return format_redis_result(_REDIS_BACKEND.execute(args))
 
 
@@ -329,18 +365,45 @@ def format_redis_result(value: Any) -> str:
 
 
 def execute_redis_command(command: str) -> str:
-    return redis_do(command)
+    args = parse_redis_command(command)
+    return format_redis_result(_REDIS_BACKEND.execute(args))
+
+
+def redis_command_keys(args: list[str]) -> list[str]:
+    if not args:
+        return []
+    command = args[0].upper()
+    if command in {
+        "SET", "GET", "RPUSH", "LPUSH", "LRANGE", "LPOP", "RPOP",
+        "HSET", "HGET", "HGETALL", "HDEL", "KEYS",
+    }:
+        return args[1:2]
+    if command in {"DEL", "EXISTS"}:
+        return args[1:]
+    return []
+
+
+def _reject_internal_redis_keys(args: list[str]) -> None:
+    for key in redis_command_keys(args):
+        if key.startswith(INTERNAL_REDIS_PREFIX):
+            raise ValueError(f"Redis keyspace {INTERNAL_REDIS_PREFIX}* is reserved")
 
 
 def render_named_template(name: Any, template_context: Any) -> str:
     key = str(name)
-    if key not in _NAMED_TEMPLATES:
+    request_templates = getattr(_REQUEST_RUNTIME, "named_templates", None)
+    if request_templates is None:
+        with _RUNTIME_LOCK:
+            template = _NAMED_TEMPLATES.get(key)
+    else:
+        template = request_templates.get(key)
+    if template is None:
         raise TemplateRenderError(f"unknown template: {key}")
     if isinstance(template_context, dict):
         context = dict(template_context)
     else:
         context = {"Value": template_context}
-    return render(_NAMED_TEMPLATES[key], context)
+    return render(template, context)
 
 
 def _require_arity(args: list[str], expected: int) -> None:
@@ -573,8 +636,10 @@ def _load_body_from_file(templates_dir: str, relative_path: str, source: str) ->
         raise ValueError(f"{source}: cannot read body_from_file {relative_path!r}: {exc}") from exc
 
 
-def assemble_behaviors(items: list[dict[str, Any]], templates_dir: Optional[str] = None) -> list[dict[str, Any]]:
-    global _NAMED_TEMPLATES
+def compile_runtime(
+    items: list[dict[str, Any]],
+    templates_dir: Optional[str] = None,
+) -> RuntimeState:
     definitions: dict[str, dict[str, Any]] = {}
     ordered_keys: list[str] = []
     for index, item in enumerate(items):
@@ -586,7 +651,7 @@ def assemble_behaviors(items: list[dict[str, Any]], templates_dir: Optional[str]
         definitions[key] = definition
         ordered_keys.append(key)
 
-    _NAMED_TEMPLATES = {
+    named_templates = {
         key: str(definitions[key]["template"])
         for key in ordered_keys
         if definitions[key]["kind"] == KIND_TEMPLATE
@@ -624,7 +689,33 @@ def assemble_behaviors(items: list[dict[str, Any]], templates_dir: Optional[str]
         if definition["kind"] != KIND_BEHAVIOR:
             continue
         active.append(_validate_behavior(resolve(key), f"mock {key!r}", templates_dir))
-    return active
+    effective_definitions = [copy.deepcopy(definitions[key]) for key in ordered_keys]
+    return RuntimeState(effective_definitions, active, named_templates)
+
+
+def install_runtime(state: RuntimeState) -> None:
+    global _ACTIVE_DEFINITIONS, _BEHAVIORS, _NAMED_TEMPLATES
+    with _RUNTIME_LOCK:
+        _ACTIVE_DEFINITIONS = copy.deepcopy(state.definitions)
+        _BEHAVIORS = state.behaviors
+        _NAMED_TEMPLATES = state.named_templates
+
+
+def runtime_snapshot() -> RuntimeState:
+    with _RUNTIME_LOCK:
+        return RuntimeState(
+            copy.deepcopy(_ACTIVE_DEFINITIONS),
+            list(_BEHAVIORS),
+            dict(_NAMED_TEMPLATES),
+        )
+
+
+def assemble_behaviors(items: list[dict[str, Any]], templates_dir: Optional[str] = None) -> list[dict[str, Any]]:
+    state = compile_runtime(items, templates_dir)
+    global _NAMED_TEMPLATES
+    with _RUNTIME_LOCK:
+        _NAMED_TEMPLATES = state.named_templates
+    return state.behaviors
 
 
 def _merge_behavior_definitions(parent: dict[str, Any], child: dict[str, Any]) -> dict[str, Any]:
@@ -663,6 +754,175 @@ def _is_non_zero(value: Any) -> bool:
 
 def load_behaviors(templates_dir: str) -> list[dict[str, Any]]:
     return assemble_behaviors(load_yaml_objects(templates_dir), templates_dir)
+
+
+def _decode_definition_list(value: Any, source: str) -> list[dict[str, Any]]:
+    if value in (None, ""):
+        return []
+    try:
+        data = json.loads(str(value))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{source}: invalid persisted JSON: {exc}") from exc
+    if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+        raise ValueError(f"{source}: persisted value must be an array of objects")
+    return [dict(item) for item in data]
+
+
+def load_persisted_base(backend: Optional[RedisBackend] = None) -> list[dict[str, Any]]:
+    backend = _REDIS_BACKEND if backend is None else backend
+    return _decode_definition_list(
+        backend.execute(["GET", INTERNAL_TEMPLATES_KEY]),
+        INTERNAL_TEMPLATES_KEY,
+    )
+
+
+def save_persisted_base(definitions: list[dict[str, Any]], backend: Optional[RedisBackend] = None) -> None:
+    backend = _REDIS_BACKEND if backend is None else backend
+    backend.execute([
+        "SET",
+        INTERNAL_TEMPLATES_KEY,
+        json.dumps(definitions, separators=(",", ":")),
+    ])
+
+
+def load_persisted_sets(backend: Optional[RedisBackend] = None) -> dict[str, list[dict[str, Any]]]:
+    backend = _REDIS_BACKEND if backend is None else backend
+    raw = backend.execute(["HGETALL", INTERNAL_TEMPLATE_SETS_KEY]) or []
+    if not isinstance(raw, list) or len(raw) % 2:
+        raise ValueError(f"{INTERNAL_TEMPLATE_SETS_KEY}: invalid persisted hash response")
+    sets: dict[str, list[dict[str, Any]]] = {}
+    for index in range(0, len(raw), 2):
+        key = str(raw[index])
+        sets[key] = _decode_definition_list(raw[index + 1], f"template set {key!r}")
+    return sets
+
+
+def save_persisted_set(
+    set_key: str,
+    definitions: list[dict[str, Any]],
+    backend: Optional[RedisBackend] = None,
+) -> None:
+    backend = _REDIS_BACKEND if backend is None else backend
+    backend.execute([
+        "HSET",
+        INTERNAL_TEMPLATE_SETS_KEY,
+        set_key,
+        json.dumps(definitions, separators=(",", ":")),
+    ])
+
+
+def delete_persisted_set(set_key: str, backend: Optional[RedisBackend] = None) -> None:
+    backend = _REDIS_BACKEND if backend is None else backend
+    backend.execute(["HDEL", INTERNAL_TEMPLATE_SETS_KEY, set_key])
+
+
+def merged_definition_items(
+    config: Config,
+    base_definitions: Optional[list[dict[str, Any]]] = None,
+    template_sets: Optional[dict[str, list[dict[str, Any]]]] = None,
+    backend: Optional[RedisBackend] = None,
+) -> list[dict[str, Any]]:
+    backend = _REDIS_BACKEND if backend is None else backend
+    base = load_persisted_base(backend) if base_definitions is None else base_definitions
+    sets = load_persisted_sets(backend) if template_sets is None else template_sets
+    items = load_yaml_objects(config.templates_dir)
+    items.extend(copy.deepcopy(base))
+    for set_key in sorted(sets):
+        items.extend(copy.deepcopy(sets[set_key]))
+    return items
+
+
+def build_runtime(
+    config: Config,
+    base_definitions: Optional[list[dict[str, Any]]] = None,
+    template_sets: Optional[dict[str, list[dict[str, Any]]]] = None,
+    backend: Optional[RedisBackend] = None,
+) -> RuntimeState:
+    return compile_runtime(
+        merged_definition_items(config, base_definitions, template_sets, backend),
+        config.templates_dir,
+    )
+
+
+def reload_runtime(config: Config, backend: Optional[RedisBackend] = None) -> RuntimeState:
+    state = build_runtime(config, backend=backend)
+    install_runtime(state)
+    return state
+
+
+def normalize_definition_payload(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+        raise ValueError("request body must be a mock object or an array of mock objects")
+    return [dict(item) for item in data]
+
+
+def _upsert_definitions(
+    current: list[dict[str, Any]],
+    submitted: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    submitted_keys: list[str] = []
+    submitted_by_key: dict[str, dict[str, Any]] = {}
+    for index, item in enumerate(submitted):
+        definition = _validate_definition(item, f"submitted mock {index + 1}")
+        key = definition["key"]
+        if key in submitted_by_key:
+            submitted_keys.remove(key)
+        submitted_by_key[key] = dict(item)
+        submitted_keys.append(key)
+    result = [dict(item) for item in current if item.get("key") not in submitted_by_key]
+    result.extend(submitted_by_key[key] for key in submitted_keys)
+    return result
+
+
+def mutate_base_templates(
+    config: Config,
+    submitted: Optional[list[dict[str, Any]]] = None,
+    delete_key: Optional[str] = None,
+    delete_all: bool = False,
+    backend: Optional[RedisBackend] = None,
+) -> bool:
+    backend = _REDIS_BACKEND if backend is None else backend
+    with _MUTATION_LOCK:
+        current = load_persisted_base(backend)
+        sets = load_persisted_sets(backend)
+        if delete_all:
+            candidate: list[dict[str, Any]] = []
+        elif delete_key is not None:
+            if not any(str(item.get("key")) == delete_key for item in current):
+                return False
+            candidate = [item for item in current if str(item.get("key")) != delete_key]
+        else:
+            candidate = _upsert_definitions(current, submitted or [])
+        state = build_runtime(config, candidate, sets, backend)
+        save_persisted_base(candidate, backend)
+        install_runtime(state)
+        return True
+
+
+def mutate_template_set(
+    config: Config,
+    set_key: str,
+    submitted: Optional[list[dict[str, Any]]] = None,
+    delete: bool = False,
+    backend: Optional[RedisBackend] = None,
+) -> None:
+    backend = _REDIS_BACKEND if backend is None else backend
+    with _MUTATION_LOCK:
+        base = load_persisted_base(backend)
+        sets = load_persisted_sets(backend)
+        candidate_sets = copy.deepcopy(sets)
+        if delete:
+            candidate_sets.pop(set_key, None)
+        else:
+            candidate_sets[set_key] = [dict(item) for item in submitted or []]
+        state = build_runtime(config, base, candidate_sets, backend)
+        if delete:
+            delete_persisted_set(set_key, backend)
+        else:
+            save_persisted_set(set_key, candidate_sets[set_key], backend)
+        install_runtime(state)
 
 
 def _compile_path(pattern: str) -> re.Pattern[str]:
@@ -836,6 +1096,23 @@ def not_found_response() -> Response:
     return Response(404, {"Content-Type": "text/plain", "Content-Length": str(len(body))}, body)
 
 
+def json_response(status_code: int, data: Any) -> Response:
+    body = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    return Response(
+        status_code,
+        {"Content-Type": "application/json", "Content-Length": str(len(body))},
+        body,
+    )
+
+
+def no_content_response() -> Response:
+    return Response(204, {"Content-Length": "0"}, b"")
+
+
+def error_response(status_code: int, message: str) -> Response:
+    return json_response(status_code, {"error": message})
+
+
 def send_response(handler: BaseHTTPRequestHandler, response: Response, include_body: bool = True) -> None:
     handler.send_response(response.status_code)
     for name, value in response.headers.items():
@@ -857,14 +1134,19 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         raw_path = self.path or "/"
         path, _, query = raw_path.partition("?")
         context = build_context(self.command, raw_path, query, dict(self.headers.items()), body)
-        behavior, params = find_behavior(_BEHAVIORS, self.command, path, context)
-        if behavior is None:
-            response = not_found_response()
-        else:
-            context["HTTPParams"] = params
-            context["HTTPPathParams"] = params
-            context["Values"] = behavior.get("values") or {}
-            response = execute_actions(behavior.get("actions") or [], context)
+        state = runtime_snapshot()
+        _REQUEST_RUNTIME.named_templates = state.named_templates
+        try:
+            behavior, params = find_behavior(state.behaviors, self.command, path, context)
+            if behavior is None:
+                response = not_found_response()
+            else:
+                context["HTTPParams"] = params
+                context["HTTPPathParams"] = params
+                context["Values"] = behavior.get("values") or {}
+                response = execute_actions(behavior.get("actions") or [], context)
+        finally:
+            del _REQUEST_RUNTIME.named_templates
         send_response(self, response, include_body=include_body)
         log_json(
             "info",
@@ -903,11 +1185,138 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         raise AttributeError(name)
 
 
-def create_server(config: Config, behaviors: list[dict[str, Any]]) -> ThreadingHTTPServer:
+class AdminRequestHandler(BaseHTTPRequestHandler):
+    server_version = "hmock-admin/0.1"
+
+    def log_message(self, format: str, *args: Any) -> None:
+        return
+
+    @property
+    def config(self) -> Config:
+        return self.server.config  # type: ignore[attr-defined]
+
+    @property
+    def backend(self) -> RedisBackend:
+        return self.server.redis_backend  # type: ignore[attr-defined]
+
+    def _read_json_definitions(self) -> list[dict[str, Any]]:
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw = self.rfile.read(length) if length else b""
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise ValueError(f"invalid JSON request body: {exc}") from exc
+        return normalize_definition_payload(data)
+
+    def _dispatch(self) -> None:
+        path = urllib.parse.urlsplit(self.path or "/").path
+        try:
+            response = self._route(path)
+        except ValueError as exc:
+            response = error_response(400, str(exc))
+        except Exception as exc:
+            log_json("error", "admin request failed", error=str(exc), path=path, method=self.command)
+            response = error_response(500, str(exc))
+        send_response(self, response)
+        log_json(
+            "info",
+            "admin http request",
+            http_path=path,
+            http_method=self.command,
+            http_res={"status_code": response.status_code},
+        )
+
+    def _route(self, path: str) -> Response:
+        if self.command == "GET" and path == "/api/v1/health":
+            return json_response(200, {"status": "OK"})
+        if self.command == "GET" and path == "/api/v1/templates":
+            return json_response(200, runtime_snapshot().definitions)
+        if path == "/api/v1/templates":
+            if self.command == "POST":
+                submitted = self._read_json_definitions()
+                mutate_base_templates(self.config, submitted=submitted, backend=self.backend)
+                return json_response(200, submitted)
+            if self.command == "DELETE":
+                mutate_base_templates(self.config, delete_all=True, backend=self.backend)
+                return no_content_response()
+        template_prefix = "/api/v1/templates/"
+        if self.command == "DELETE" and path.startswith(template_prefix):
+            template_key = urllib.parse.unquote(path[len(template_prefix):])
+            if not template_key:
+                return not_found_response()
+            deleted = mutate_base_templates(
+                self.config,
+                delete_key=template_key,
+                backend=self.backend,
+            )
+            return no_content_response() if deleted else error_response(404, "template not found")
+        set_prefix = "/api/v1/template_sets/"
+        if path.startswith(set_prefix):
+            set_key = urllib.parse.unquote(path[len(set_prefix):])
+            if not set_key:
+                return not_found_response()
+            if self.command == "POST":
+                submitted = self._read_json_definitions()
+                mutate_template_set(
+                    self.config,
+                    set_key,
+                    submitted=submitted,
+                    backend=self.backend,
+                )
+                return json_response(200, submitted)
+            if self.command == "DELETE":
+                mutate_template_set(self.config, set_key, delete=True, backend=self.backend)
+                return no_content_response()
+        return not_found_response()
+
+    def do_GET(self) -> None:
+        self._dispatch()
+
+    def do_POST(self) -> None:
+        self._dispatch()
+
+    def do_DELETE(self) -> None:
+        self._dispatch()
+
+
+def create_server(
+    config: Config,
+    behaviors: Optional[list[dict[str, Any]]] = None,
+    backend: Optional[RedisBackend] = None,
+) -> ThreadingHTTPServer:
     global _BEHAVIORS, _REDIS_BACKEND
-    _BEHAVIORS = behaviors
-    _REDIS_BACKEND = create_redis_backend(config)
+    if behaviors is not None:
+        with _RUNTIME_LOCK:
+            _BEHAVIORS = behaviors
+    if backend is None:
+        backend = create_redis_backend(config)
+    _REDIS_BACKEND = backend
     return ThreadingHTTPServer((config.http_host, config.http_port), MockRequestHandler)
+
+
+def create_admin_server(
+    config: Config,
+    backend: Optional[RedisBackend] = None,
+) -> ThreadingHTTPServer:
+    server = ThreadingHTTPServer(
+        (config.admin_http_host, config.admin_http_port),
+        AdminRequestHandler,
+    )
+    server.config = config  # type: ignore[attr-defined]
+    server.redis_backend = _REDIS_BACKEND if backend is None else backend  # type: ignore[attr-defined]
+    return server
+
+
+def start_admin_server(
+    config: Config,
+    backend: Optional[RedisBackend] = None,
+) -> tuple[Optional[ThreadingHTTPServer], Optional[threading.Thread]]:
+    if not config.admin_http_enabled:
+        return None, None
+    server = create_admin_server(config, backend)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
 
 
 def main() -> None:
@@ -915,14 +1324,29 @@ def main() -> None:
     config = load_config()
     LOGGER = setup_logger(config.log_level)
     _REDIS_BACKEND = create_redis_backend(config)
-    behaviors = load_behaviors(config.templates_dir)
-    log_json("info", "loaded behaviors", count=len(behaviors), templates_dir=config.templates_dir)
-    server = create_server(config, behaviors)
+    state = reload_runtime(config, _REDIS_BACKEND)
+    log_json("info", "loaded behaviors", count=len(state.behaviors), templates_dir=config.templates_dir)
+    server = create_server(config, backend=_REDIS_BACKEND)
+    admin_server, admin_thread = start_admin_server(config, _REDIS_BACKEND)
+    if admin_server is not None:
+        log_json(
+            "info",
+            "admin listening",
+            host=config.admin_http_host,
+            port=config.admin_http_port,
+        )
     log_json("info", "listening", host=config.http_host, port=config.http_port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        server.server_close()
+        if admin_server is not None:
+            admin_server.shutdown()
+            admin_server.server_close()
+        if admin_thread is not None:
+            admin_thread.join(timeout=2)
 
 
 _TOKEN_RE = re.compile(
