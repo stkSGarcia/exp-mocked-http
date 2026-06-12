@@ -10,12 +10,16 @@ import os
 import posixpath
 import re
 import shlex
+import socket
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable
+from fnmatch import fnmatch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -30,6 +34,10 @@ class TemplateError(HMockError):
     pass
 
 
+class RedisError(TemplateError):
+    pass
+
+
 class ValidationError(HMockError):
     pass
 
@@ -40,6 +48,8 @@ class Config:
     http_port: int = 9999
     http_host: str = "0.0.0.0"
     log_level: str = "info"
+    redis_type: str = "memory"
+    redis_url: str = "redis://redis:6379"
 
 
 def load_config(env: dict[str, str] | None = None) -> Config:
@@ -49,6 +59,8 @@ def load_config(env: dict[str, str] | None = None) -> Config:
         http_port=int(env.get("HM_HTTP_PORT", "9999")),
         http_host=env.get("HM_HTTP_HOST", "0.0.0.0"),
         log_level=env.get("HM_LOG_LEVEL", "info").lower(),
+        redis_type=env.get("HM_REDIS_TYPE", "memory").lower(),
+        redis_url=env.get("HM_REDIS_URL", "redis://redis:6379"),
     )
 
 
@@ -82,6 +94,254 @@ class JsonLogger:
 
     def error(self, message: str, **fields: Any) -> None:
         self.log("error", message, **fields)
+
+
+def _split_command(command: str) -> list[str]:
+    try:
+        return shlex.split(command)
+    except ValueError as exc:
+        raise RedisError(f"invalid Redis command: {command}") from exc
+
+
+def _parse_redis_command(command: str) -> list[str]:
+    parts = _split_command(command)
+    if not parts:
+        raise RedisError("Redis command is empty")
+    parts[0] = parts[0].upper()
+    name = parts[0]
+    argc = len(parts) - 1
+    if name in {"GET", "LPOP", "RPOP", "HGETALL", "KEYS"} and argc != 1:
+        raise RedisError(f"{name} expects 1 argument")
+    if name == "SET" and argc != 2:
+        raise RedisError("SET expects 2 arguments")
+    if name in {"RPUSH", "LPUSH"} and argc < 2:
+        raise RedisError(f"{name} expects at least 2 arguments")
+    if name == "LRANGE" and argc != 3:
+        raise RedisError("LRANGE expects 3 arguments")
+    if name == "HGET" and argc != 2:
+        raise RedisError("HGET expects 2 arguments")
+    if name == "HSET" and (argc < 3 or argc % 2 != 1):
+        raise RedisError("HSET expects a key and field/value pairs")
+    if name == "HDEL" and argc < 2:
+        raise RedisError("HDEL expects a key and at least one field")
+    if name in {"DEL", "EXISTS"} and argc < 1:
+        raise RedisError(f"{name} expects at least 1 argument")
+    if name not in {
+        "SET",
+        "GET",
+        "RPUSH",
+        "LPUSH",
+        "LRANGE",
+        "LPOP",
+        "RPOP",
+        "HSET",
+        "HGET",
+        "HGETALL",
+        "HDEL",
+        "DEL",
+        "EXISTS",
+        "KEYS",
+    }:
+        raise RedisError(f"unsupported Redis command: {name}")
+    return parts
+
+
+def _format_redis_result(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return ";;".join("" if item is None else str(item) for item in value)
+    return str(value)
+
+
+class MemoryRedisStore:
+    def __init__(self) -> None:
+        self._values: dict[str, Any] = {}
+        self._lock = threading.Lock()
+
+    def do(self, command: str) -> str:
+        parts = _parse_redis_command(command)
+        name = parts[0]
+        args = parts[1:]
+        with self._lock:
+            if name == "SET":
+                self._values[args[0]] = args[1]
+                return "OK"
+            if name == "GET":
+                return _format_redis_result(self._get_string(args[0]))
+            if name == "RPUSH":
+                items = self._list_for_write(args[0])
+                items.extend(args[1:])
+                return str(len(items))
+            if name == "LPUSH":
+                items = self._list_for_write(args[0])
+                for value in args[1:]:
+                    items.insert(0, value)
+                return str(len(items))
+            if name == "LRANGE":
+                return _format_redis_result(self._lrange(args[0], int(args[1]), int(args[2])))
+            if name == "LPOP":
+                items = self._list_for_read(args[0])
+                return _format_redis_result(items.pop(0) if items else None)
+            if name == "RPOP":
+                items = self._list_for_read(args[0])
+                return _format_redis_result(items.pop() if items else None)
+            if name == "HSET":
+                return str(self._hset(args[0], args[1:]))
+            if name == "HGET":
+                return _format_redis_result(self._hash_for_read(args[0]).get(args[1]))
+            if name == "HGETALL":
+                flat: list[str] = []
+                for field, value in self._hash_for_read(args[0]).items():
+                    flat.extend([field, value])
+                return _format_redis_result(flat)
+            if name == "HDEL":
+                mapping = self._hash_for_read(args[0])
+                removed = 0
+                for field in args[1:]:
+                    if field in mapping:
+                        removed += 1
+                        del mapping[field]
+                return str(removed)
+            if name == "DEL":
+                removed = 0
+                for key in args:
+                    if key in self._values:
+                        removed += 1
+                        del self._values[key]
+                return str(removed)
+            if name == "EXISTS":
+                return str(sum(1 for key in args if key in self._values))
+            if name == "KEYS":
+                return _format_redis_result(sorted(key for key in self._values if fnmatch(key, args[0])))
+        raise RedisError(f"unsupported Redis command: {name}")
+
+    def _get_string(self, key: str) -> str | None:
+        value = self._values.get(key)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise RedisError(f"WRONGTYPE for key {key}")
+        return value
+
+    def _list_for_write(self, key: str) -> list[str]:
+        value = self._values.setdefault(key, [])
+        if not isinstance(value, list):
+            raise RedisError(f"WRONGTYPE for key {key}")
+        return value
+
+    def _list_for_read(self, key: str) -> list[str]:
+        value = self._values.get(key, [])
+        if not isinstance(value, list):
+            raise RedisError(f"WRONGTYPE for key {key}")
+        return value
+
+    def _lrange(self, key: str, start: int, stop: int) -> list[str]:
+        items = self._list_for_read(key)
+        if start < 0:
+            start = len(items) + start
+        if stop < 0:
+            stop = len(items) + stop
+        start = max(start, 0)
+        stop = min(stop, len(items) - 1)
+        if stop < start or not items:
+            return []
+        return items[start : stop + 1]
+
+    def _hash_for_write(self, key: str) -> dict[str, str]:
+        value = self._values.setdefault(key, {})
+        if not isinstance(value, dict):
+            raise RedisError(f"WRONGTYPE for key {key}")
+        return value
+
+    def _hash_for_read(self, key: str) -> dict[str, str]:
+        value = self._values.get(key, {})
+        if not isinstance(value, dict):
+            raise RedisError(f"WRONGTYPE for key {key}")
+        return value
+
+    def _hset(self, key: str, pairs: list[str]) -> int:
+        mapping = self._hash_for_write(key)
+        added = 0
+        for index in range(0, len(pairs), 2):
+            field = pairs[index]
+            if field not in mapping:
+                added += 1
+            mapping[field] = pairs[index + 1]
+        return added
+
+
+class ExternalRedisStore:
+    def __init__(self, url: str, timeout: float = 3.0) -> None:
+        parsed = urlsplit(url)
+        if parsed.scheme != "redis":
+            raise ValidationError("HM_REDIS_URL must use redis://")
+        self.host = parsed.hostname or "localhost"
+        self.port = parsed.port or 6379
+        self.username = parsed.username
+        self.password = parsed.password
+        self.db = int(parsed.path.strip("/") or "0")
+        self.timeout = timeout
+
+    def do(self, command: str) -> str:
+        parts = _parse_redis_command(command)
+        with socket.create_connection((self.host, self.port), timeout=self.timeout) as conn:
+            reader = conn.makefile("rb")
+            if self.password is not None:
+                auth = ["AUTH", self.password]
+                if self.username is not None:
+                    auth = ["AUTH", self.username, self.password]
+                self._send(conn, auth)
+                self._read(reader)
+            if self.db:
+                self._send(conn, ["SELECT", str(self.db)])
+                self._read(reader)
+            self._send(conn, parts)
+            return _format_redis_result(self._read(reader))
+
+    def _send(self, conn: socket.socket, parts: list[str]) -> None:
+        payload = [f"*{len(parts)}\r\n".encode()]
+        for part in parts:
+            data = str(part).encode()
+            payload.append(f"${len(data)}\r\n".encode())
+            payload.append(data + b"\r\n")
+        conn.sendall(b"".join(payload))
+
+    def _read(self, reader: Any) -> Any:
+        prefix = reader.read(1)
+        if not prefix:
+            raise RedisError("empty Redis response")
+        line = reader.readline().rstrip(b"\r\n")
+        if prefix == b"+":
+            return line.decode()
+        if prefix == b"-":
+            raise RedisError(line.decode())
+        if prefix == b":":
+            return int(line)
+        if prefix == b"$":
+            length = int(line)
+            if length == -1:
+                return None
+            data = reader.read(length)
+            reader.read(2)
+            return data.decode()
+        if prefix == b"*":
+            length = int(line)
+            if length == -1:
+                return None
+            return [self._read(reader) for _ in range(length)]
+        raise RedisError(f"unknown Redis response prefix: {prefix!r}")
+
+
+RedisStore = MemoryRedisStore | ExternalRedisStore
+
+
+def build_redis_store(config: Config) -> RedisStore:
+    if config.redis_type == "memory":
+        return MemoryRedisStore()
+    if config.redis_type == "redis":
+        return ExternalRedisStore(config.redis_url)
+    raise ValidationError("HM_REDIS_TYPE must be memory or redis")
 
 
 def _strip_comment(line: str) -> str:
@@ -289,16 +549,26 @@ def parse_duration(value: str) -> float:
     return amount * factors[unit]
 
 
-def _resolve_body_file(templates_dir: str | Path, body_from_file: str) -> str:
+def _resolve_body_file(templates_dir: str | Path, body_from_file: str, field_name: str = "reply_http.body_from_file") -> str:
     root = Path(templates_dir).resolve()
     path = (root / body_from_file).resolve()
     try:
         path.relative_to(root)
     except ValueError as exc:
-        raise ValidationError("reply_http.body_from_file must stay within templates directory") from exc
+        raise ValidationError(f"{field_name} must stay within templates directory") from exc
     if not path.is_file():
-        raise ValidationError(f"reply_http.body_from_file not found: {body_from_file}")
+        raise ValidationError(f"{field_name} not found: {body_from_file}")
     return path.read_text()
+
+
+def _validate_headers_mapping(headers: Any, field_name: str) -> None:
+    if headers is None:
+        return
+    if not isinstance(headers, dict):
+        raise ValidationError(f"{field_name} must be a mapping")
+    for key, value in headers.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValidationError(f"{field_name} must be a string map")
 
 
 def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Behavior:
@@ -337,15 +607,13 @@ def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Beha
         if not isinstance(action, dict) or len(action) != 1:
             raise ValidationError(f"behavior {key} action must contain exactly one action")
         name, payload = next(iter(action.items()))
-        if not isinstance(payload, dict):
-            raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
         if name == "reply_http":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
             reply_count += 1
             if "status_code" not in payload or not isinstance(payload["status_code"], int):
                 raise ValidationError(f"behavior {key} reply_http.status_code is required")
-            headers = payload.get("headers", {})
-            if headers is not None and not isinstance(headers, dict):
-                raise ValidationError(f"behavior {key} reply_http.headers must be a mapping")
+            _validate_headers_mapping(payload.get("headers", {}), f"behavior {key} reply_http.headers")
             body_from_file = payload.get("body_from_file")
             if body_from_file is not None:
                 if not isinstance(body_from_file, str) or not body_from_file:
@@ -353,9 +621,37 @@ def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Beha
                 if templates_dir is not None:
                     payload["body_from_file_content"] = _resolve_body_file(templates_dir, body_from_file)
         elif name == "sleep":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
             if "duration" not in payload:
                 raise ValidationError(f"behavior {key} sleep.duration is required")
             parse_duration(str(payload["duration"]))
+        elif name == "redis":
+            if not isinstance(payload, list):
+                raise ValidationError(f"behavior {key} redis action payload must be an array")
+            for item in payload:
+                if not isinstance(item, str):
+                    raise ValidationError(f"behavior {key} redis action items must be strings")
+        elif name == "send_http":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
+            if not isinstance(payload.get("url"), str) or not payload.get("url"):
+                raise ValidationError(f"behavior {key} send_http.url is required")
+            if not isinstance(payload.get("method"), str) or not payload.get("method"):
+                raise ValidationError(f"behavior {key} send_http.method is required")
+            _validate_headers_mapping(payload.get("headers", {}), f"behavior {key} send_http.headers")
+            if "body" in payload and payload["body"] is not None and not isinstance(payload["body"], str):
+                raise ValidationError(f"behavior {key} send_http.body must be a string")
+            body_from_file = payload.get("body_from_file")
+            if body_from_file is not None:
+                if not isinstance(body_from_file, str) or not body_from_file:
+                    raise ValidationError(f"behavior {key} send_http.body_from_file must be a non-empty string")
+                if templates_dir is not None:
+                    payload["send_http_body_from_file_content"] = _resolve_body_file(
+                        templates_dir,
+                        body_from_file,
+                        "send_http.body_from_file",
+                    )
         else:
             raise ValidationError(f"behavior {key} action {name} is not supported")
     if reply_count > 1:
@@ -419,9 +715,10 @@ def build_template_context(
     path: str,
     query: str,
     path_params: dict[str, str] | None = None,
+    redis_do: Callable[[str], str] | None = None,
 ) -> dict[str, Any]:
     path_params = path_params or {}
-    return {
+    context: dict[str, Any] = {
         "HTTPHeader": HeaderMap(headers),
         "HTTPBody": body,
         "HTTPPath": path,
@@ -429,6 +726,9 @@ def build_template_context(
         "HTTPPathParams": ValueMap(path_params),
         "HTTPURL": ValueMap(path_params),
     }
+    if redis_do is not None:
+        context["redisDo"] = redis_do
+    return context
 
 
 def preprocess_template(source: str) -> str:
@@ -631,7 +931,7 @@ def _eval_expr(expr: str, context: dict[str, Any], locals_: dict[str, Any]) -> A
         func = tokens[0]
         args = [_eval_atom(token, context, locals_) for token in tokens[1:]]
         args.append(value)
-        value = _call_function(func, args)
+        value = _call_function(func, args, context)
     return value
 
 
@@ -640,12 +940,12 @@ def _eval_command(command: str, context: dict[str, Any], locals_: dict[str, Any]
     if not tokens:
         return ""
     if len(tokens) == 1:
-        if tokens[0] in FUNCTIONS:
-            return _call_function(tokens[0], [])
+        if tokens[0] in FUNCTIONS or callable(context.get(tokens[0])):
+            return _call_function(tokens[0], [], context)
         return _eval_atom(tokens[0], context, locals_)
     first = tokens[0]
-    if first in FUNCTIONS:
-        return _call_function(first, [_eval_atom(token, context, locals_) for token in tokens[1:]])
+    if first in FUNCTIONS or callable(context.get(first)):
+        return _call_function(first, [_eval_atom(token, context, locals_) for token in tokens[1:]], context)
     value = _eval_atom(first, context, locals_)
     if callable(value):
         return value(*[_eval_atom(token, context, locals_) for token in tokens[1:]])
@@ -738,10 +1038,12 @@ def _compare(a: Any, b: Any, op: str) -> bool:
     raise TemplateError(f"unknown comparison {op}")
 
 
-def _call_function(name: str, args: list[Any]) -> Any:
-    if name not in FUNCTIONS:
-        raise TemplateError(f"undefined function {name}")
-    return FUNCTIONS[name](*args)
+def _call_function(name: str, args: list[Any], context: dict[str, Any] | None = None) -> Any:
+    if name in FUNCTIONS:
+        return FUNCTIONS[name](*args)
+    if context is not None and callable(context.get(name)):
+        return context[name](*args)
+    raise TemplateError(f"undefined function {name}")
 
 
 def _printf(fmt: Any, *args: Any) -> str:
@@ -1058,7 +1360,11 @@ class ResponseInfo:
     body: str
 
 
-def find_behavior(behaviors: list[Behavior], request: RequestInfo) -> tuple[Behavior, dict[str, str]] | tuple[None, dict[str, str]]:
+def find_behavior(
+    behaviors: list[Behavior],
+    request: RequestInfo,
+    redis_store: RedisStore | None = None,
+) -> tuple[Behavior, dict[str, str]] | tuple[None, dict[str, str]]:
     for behavior in behaviors:
         if behavior.method != request.method.upper():
             continue
@@ -1067,7 +1373,14 @@ def find_behavior(behaviors: list[Behavior], request: RequestInfo) -> tuple[Beha
             continue
         if not behavior.condition:
             return behavior, params
-        context = build_template_context(request.headers, request.body, request.path, request.query, params)
+        context = build_template_context(
+            request.headers,
+            request.body,
+            request.path,
+            request.query,
+            params,
+            redis_store.do if redis_store is not None else None,
+        )
         try:
             if render_template(behavior.condition, context) == "true":
                 return behavior, params
@@ -1076,13 +1389,46 @@ def find_behavior(behaviors: list[Behavior], request: RequestInfo) -> tuple[Beha
     return None, {}
 
 
-def execute_behavior(behavior: Behavior, request: RequestInfo, params: dict[str, str]) -> ResponseInfo:
-    context = build_template_context(request.headers, request.body, request.path, request.query, params)
+def _send_http(payload: dict[str, Any], context: dict[str, Any], logger: JsonLogger | None = None) -> None:
+    url = render_template(str(payload["url"]), context)
+    method = render_template(str(payload["method"]), context).upper()
+    headers = {
+        str(key): render_template(str(value), context)
+        for key, value in (payload.get("headers") or {}).items()
+    }
+    body_source = payload.get("body")
+    if body_source is None or body_source == "":
+        body_source = payload.get("send_http_body_from_file_content")
+    body = render_template(str(body_source), context) if body_source is not None else None
+    data = body.encode() if body is not None else None
+    request = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=3) as response:
+            response.read()
+    except Exception as exc:
+        if logger is not None:
+            logger.warn("send_http request failed", url=url, method=method, error=str(exc))
+
+
+def execute_behavior(
+    behavior: Behavior,
+    request: RequestInfo,
+    params: dict[str, str],
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+) -> ResponseInfo:
+    redis_store = redis_store or MemoryRedisStore()
+    context = build_template_context(request.headers, request.body, request.path, request.query, params, redis_store.do)
     response: ResponseInfo | None = None
     for action in behavior.actions:
         name, payload = next(iter(action.items()))
         if name == "sleep":
             time.sleep(parse_duration(str(payload["duration"])))
+        elif name == "redis":
+            for command_template in payload:
+                redis_store.do(render_template(command_template, context))
+        elif name == "send_http":
+            _send_http(payload, context, logger)
         elif name == "reply_http":
             body_source = payload.get("body")
             if body_source is None or body_source == "":
@@ -1150,9 +1496,13 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             headers={key: value for key, value in self.headers.items()},
             body=body,
         )
-        behavior, params = find_behavior(self.server.behaviors, request)
+        behavior, params = find_behavior(self.server.behaviors, request, self.server.redis_store)
         try:
-            response = execute_behavior(behavior, request, params) if behavior else not_found_response()
+            response = (
+                execute_behavior(behavior, request, params, self.server.redis_store, self.server.hm_logger)
+                if behavior
+                else not_found_response()
+            )
         except TemplateError as exc:
             self.server.hm_logger.error("template render error", error=str(exc), http_path=request.path)
             response = ResponseInfo(
@@ -1184,17 +1534,24 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 class HMockHTTPServer(ThreadingHTTPServer):
-    def __init__(self, address: tuple[str, int], behaviors: list[Behavior], logger: JsonLogger) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        behaviors: list[Behavior],
+        logger: JsonLogger,
+        redis_store: RedisStore | None = None,
+    ) -> None:
         super().__init__(address, MockHTTPRequestHandler)
         self.behaviors = behaviors
         self.hm_logger = logger
+        self.redis_store = redis_store or MemoryRedisStore()
 
 
 def build_server(config: Config | None = None, logger: JsonLogger | None = None) -> HMockHTTPServer:
     config = config or load_config()
     logger = logger or JsonLogger(config.log_level)
     behaviors = load_behaviors(config.templates_dir, logger)
-    return HMockHTTPServer((config.http_host, config.http_port), behaviors, logger)
+    return HMockHTTPServer((config.http_host, config.http_port), behaviors, logger, build_redis_store(config))
 
 
 def main() -> None:

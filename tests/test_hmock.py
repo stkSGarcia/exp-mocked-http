@@ -10,6 +10,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -64,6 +65,46 @@ def request(url, method="GET", body=None, headers=None):
         return exc.code, dict(exc.headers), exc.read().decode()
 
 
+def start_capture_server():
+    records = []
+
+    class CaptureHandler(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            return
+
+        def _handle(self):
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            body = self.rfile.read(length).decode() if length else ""
+            records.append(
+                {
+                    "method": self.command,
+                    "path": self.path,
+                    "headers": {key: value for key, value in self.headers.items()},
+                    "body": body,
+                }
+            )
+            self.send_response(202)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def do_GET(self):
+            self._handle()
+
+        def do_POST(self):
+            self._handle()
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), CaptureHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread, records, f"http://127.0.0.1:{server.server_address[1]}"
+
+
+def stop_server(server, thread):
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=2)
+
+
 def behavior(raw):
     return hmock.validate_behavior(raw)
 
@@ -77,10 +118,12 @@ def test_config_defaults_and_environment_overrides(monkeypatch):
             "HM_HTTP_PORT": "7777",
             "HM_HTTP_HOST": "127.0.0.1",
             "HM_LOG_LEVEL": "warn",
+            "HM_REDIS_TYPE": "redis",
+            "HM_REDIS_URL": "redis://localhost:6380/2",
         }
     )
 
-    assert config == hmock.Config("/tmp/mocks", 7777, "127.0.0.1", "warn")
+    assert config == hmock.Config("/tmp/mocks", 7777, "127.0.0.1", "warn", "redis", "redis://localhost:6380/2")
 
 
 def test_recursive_yaml_loading_validation_order_and_duplicates(tmp_path, logger, log_stream):
@@ -159,6 +202,76 @@ def test_validation_rejects_missing_empty_keys_and_multiple_replies():
                 ],
             }
         )
+
+
+def test_stateful_action_validation_and_send_http_body_file_snapshot(tmp_path, logger):
+    body_file = tmp_path / "callbacks" / "body.txt"
+    body_file.parent.mkdir()
+    body_file.write_text("callback {{ .HTTPBody }}")
+    write_yaml(
+        tmp_path / "stateful.yaml",
+        """
+- key: stateful
+  expect:
+    http:
+      method: POST
+      path: /stateful
+  actions:
+    - redis:
+        - SET seen yes
+        - RPUSH queue '{{ .HTTPBody }}'
+    - send_http:
+        url: http://127.0.0.1:9999/callback
+        method: POST
+        body_from_file: callbacks/body.txt
+        headers:
+          X-Seen: '{{ redisDo "GET seen" }}'
+    - reply_http:
+        status_code: 200
+""",
+    )
+
+    behaviors = hmock.load_behaviors(tmp_path, logger)
+    body_file.write_text("changed")
+
+    assert behaviors[0].actions[0]["redis"] == ["SET seen yes", "RPUSH queue '{{ .HTTPBody }}'"]
+    payload = behaviors[0].actions[1]["send_http"]
+    assert payload["send_http_body_from_file_content"] == "callback {{ .HTTPBody }}"
+
+    invalid_actions = [
+        {"redis": {"command": "SET a b"}},
+        {"redis": ["SET a b", 1]},
+        {"send_http": {"method": "POST"}},
+        {"send_http": {"url": "http://example.test"}},
+        {"send_http": {"url": "http://example.test", "method": "POST", "headers": {"X-Bad": 1}}},
+    ]
+    for action in invalid_actions:
+        with pytest.raises(hmock.ValidationError):
+            hmock.validate_behavior(
+                {
+                    "key": "bad",
+                    "expect": {"http": {"method": "GET", "path": "/bad"}},
+                    "actions": [action],
+                }
+            )
+
+    write_yaml(
+        tmp_path / "missing-callback.yaml",
+        """
+- key: missing-callback
+  expect:
+    http:
+      method: GET
+      path: /missing-callback
+  actions:
+    - send_http:
+        url: http://127.0.0.1:9999/callback
+        method: POST
+        body_from_file: callbacks/missing.txt
+""",
+    )
+    with pytest.raises(hmock.ValidationError):
+        hmock.load_behaviors(tmp_path, logger)
 
 
 def test_template_context_preprocessing_syntax_and_strict_errors(monkeypatch):
@@ -253,6 +366,42 @@ def test_template_path_helpers_empty_no_match_and_invalid_json():
 
     with pytest.raises(hmock.TemplateError):
         hmock.render_template('{{ gJsonPath "foo" .BadJSON }}', ctx)
+
+
+def test_memory_redis_store_commands_and_return_formatting():
+    store = hmock.MemoryRedisStore()
+
+    assert store.do("SET name Ada") == "OK"
+    assert store.do("GET name") == "Ada"
+    assert store.do("GET missing") == ""
+    assert store.do("RPUSH queue a b") == "2"
+    assert store.do("LPUSH queue first") == "3"
+    assert store.do("LRANGE queue 0 -1") == "first;;a;;b"
+    assert store.do("LPOP queue") == "first"
+    assert store.do("RPOP queue") == "b"
+    assert store.do("HSET user name Ada role admin") == "2"
+    assert store.do("HGET user role") == "admin"
+    assert store.do("HGETALL user") == "name;;Ada;;role;;admin"
+    assert store.do("HDEL user role missing") == "1"
+    assert store.do("EXISTS name queue missing") == "2"
+    assert store.do("KEYS q*") == "queue"
+    assert store.do("DEL name queue user") == "3"
+    assert store.do("EXISTS name queue user") == "0"
+
+    with pytest.raises(hmock.RedisError):
+        store.do("NOPE key")
+    with pytest.raises(hmock.RedisError):
+        store.do("GET")
+
+
+def test_redis_do_template_function_and_split_list():
+    store = hmock.MemoryRedisStore()
+    ctx = hmock.build_template_context({}, "", "/", "", {}, store.do)
+
+    assert hmock.render_template('{{ redisDo "SET color blue" }}', ctx) == "OK"
+    assert hmock.render_template('{{ redisDo "GET color" }}', ctx) == "blue"
+    assert hmock.render_template('{{ redisDo "RPUSH letters a b c" }}', ctx) == "3"
+    assert hmock.render_template('{{ range $i, $v := redisDo "LRANGE letters 0 -1" | splitList ";;" }}{{ $v }}{{ end }}', ctx) == "abc"
 
 
 def test_body_from_file_loading_validation_and_snapshot(tmp_path, logger):
@@ -446,6 +595,53 @@ def test_condition_render_failure_falls_through(server_factory):
     assert (status, body) == (200, "ok")
 
 
+def test_redis_do_conditions_headers_bodies_and_redis_actions(server_factory):
+    behaviors = [
+        behavior(
+            {
+                "key": "seed",
+                "expect": {"http": {"method": "POST", "path": "/seed/:id"}},
+                "actions": [
+                    {
+                        "redis": [
+                            'SET mode "{{ .HTTPPathParams.Get "id" }}"',
+                            'SET count {{ redisDo "RPUSH letters a" }}',
+                            'RPUSH letters "{{ .HTTPBody }}"',
+                        ]
+                    },
+                    {"reply_http": {"status_code": 204}},
+                ],
+            }
+        ),
+        behavior(
+            {
+                "key": "guard",
+                "expect": {
+                    "condition": '{{ redisDo "GET mode" | eq "open" }}',
+                    "http": {"method": "GET", "path": "/guard"},
+                },
+                "actions": [
+                    {
+                        "reply_http": {
+                            "status_code": 200,
+                            "headers": {"X-Mode": '{{ redisDo "GET mode" }}'},
+                            "body": '{{ redisDo "GET count" }}:{{ redisDo "LRANGE letters 0 -1" }}',
+                        }
+                    }
+                ],
+            }
+        ),
+    ]
+    _, base = server_factory(behaviors)
+
+    assert request(base + "/guard")[0::2] == (404, "not found")
+    assert request(base + "/seed/open", method="POST", body="b")[0] == 204
+    status, headers, body = request(base + "/guard")
+
+    assert (status, body) == (200, "1:a;;b")
+    assert headers["X-Mode"] == "open"
+
+
 def test_duration_validation():
     assert hmock.parse_duration("2ms") == pytest.approx(0.002)
     assert hmock.parse_duration("1s") == pytest.approx(1)
@@ -538,6 +734,127 @@ def test_condition_routing_example_end_to_end(tmp_path, logger, server_factory):
 
     assert request(base + "/token", headers={"X-Token": "t1234"})[0::2] == (200, "OK")
     assert request(base + "/token", headers={"X-Token": "bad"})[0::2] == (401, "unauthorized")
+
+
+def test_in_memory_redis_state_across_requests(server_factory):
+    behaviors = [
+        behavior(
+            {
+                "key": "enqueue",
+                "expect": {"http": {"method": "POST", "path": "/queue"}},
+                "actions": [
+                    {"redis": ['RPUSH events "{{ .HTTPBody }}"']},
+                    {"reply_http": {"status_code": 201, "body": '{{ redisDo "LRANGE events 0 -1" }}'}},
+                ],
+            }
+        ),
+        behavior(
+            {
+                "key": "dequeue",
+                "expect": {"http": {"method": "GET", "path": "/queue"}},
+                "actions": [{"reply_http": {"status_code": 200, "body": '{{ redisDo "LPOP events" }}'}}],
+            }
+        ),
+    ]
+    _, base = server_factory(behaviors)
+
+    assert request(base + "/queue", method="POST", body="first")[0::2] == (201, "first")
+    assert request(base + "/queue", method="POST", body="second")[0::2] == (201, "first;;second")
+    assert request(base + "/queue")[0::2] == (200, "first")
+    assert request(base + "/queue")[0::2] == (200, "second")
+
+
+def test_send_http_receives_rendered_method_url_headers_and_body(server_factory):
+    target, target_thread, records, target_base = start_capture_server()
+    try:
+        behaviors = [
+            behavior(
+                {
+                    "key": "callback",
+                    "expect": {"http": {"method": "POST", "path": "/items/:id"}},
+                    "actions": [
+                        {
+                            "send_http": {
+                                "url": target_base + '/callback/{{ .HTTPPathParams.Get "id" }}',
+                                "method": "POST",
+                                "headers": {"X-Echo": "{{ .HTTPBody | upper }}"},
+                                "body": 'sent {{ .HTTPBody }} {{ .HTTPPathParams.Get "id" }}',
+                            }
+                        },
+                        {"reply_http": {"status_code": 200, "body": "ok"}},
+                    ],
+                }
+            )
+        ]
+        _, base = server_factory(behaviors)
+
+        assert request(base + "/items/42", method="POST", body="abc")[0::2] == (200, "ok")
+    finally:
+        stop_server(target, target_thread)
+
+    assert records == [
+        {
+            "method": "POST",
+            "path": "/callback/42",
+            "headers": {
+                **records[0]["headers"],
+                "X-Echo": "ABC",
+            },
+            "body": "sent abc 42",
+        }
+    ]
+
+
+def test_send_http_file_body_and_failures_do_not_affect_inbound_response(tmp_path, logger, server_factory):
+    body_file = tmp_path / "callback.txt"
+    body_file.write_text('file {{ .HTTPBody }} {{ .HTTPHeader.Get "X-Name" }}')
+    target, target_thread, records, target_base = start_capture_server()
+    try:
+        write_yaml(
+            tmp_path / "callbacks.yaml",
+            f"""
+- key: callback-file
+  expect:
+    http:
+      method: POST
+      path: /callback-file
+  actions:
+    - send_http:
+        url: {target_base}/file
+        method: POST
+        body_from_file: callback.txt
+        headers:
+          X-From-File: '{{{{ .HTTPHeader.Get "X-Name" }}}}'
+    - reply_http:
+        status_code: 200
+        body: file-ok
+- key: callback-fail
+  expect:
+    http:
+      method: GET
+      path: /callback-fail
+  actions:
+    - send_http:
+        url: http://127.0.0.1:1/unavailable
+        method: POST
+        body: ignored
+    - reply_http:
+        status_code: 200
+        body: still-ok
+""",
+        )
+        _, base = server_factory(hmock.load_behaviors(tmp_path, logger))
+
+        assert request(base + "/callback-file", method="POST", body="payload", headers={"X-Name": "Ada"})[0::2] == (200, "file-ok")
+        assert request(base + "/callback-fail")[0::2] == (200, "still-ok")
+    finally:
+        stop_server(target, target_thread)
+
+    assert len(records) == 1
+    assert records[0]["method"] == "POST"
+    assert records[0]["path"] == "/file"
+    assert records[0]["headers"]["X-From-File"] == "Ada"
+    assert records[0]["body"] == "file payload Ada"
 
 
 def test_build_server_uses_configured_host_port_and_templates(tmp_path, logger):
