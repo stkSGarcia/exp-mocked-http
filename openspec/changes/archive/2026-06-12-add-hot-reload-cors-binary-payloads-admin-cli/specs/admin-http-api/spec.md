@@ -1,35 +1,4 @@
-## Purpose
-
-Define the admin HTTP server configuration and management endpoints for runtime mock definitions.
-## Requirements
-### Requirement: Admin Server Configuration
-The system SHALL read admin HTTP server configuration from environment variables using documented defaults when variables are absent.
-
-#### Scenario: Admin configuration defaults are used
-- **WHEN** the server starts without `HM_ADMIN_HTTP_ENABLED`, `HM_ADMIN_HTTP_PORT`, or `HM_ADMIN_HTTP_HOST`
-- **THEN** the system SHALL enable the admin server, bind it to `0.0.0.0`, and listen on port `9998`
-
-#### Scenario: Admin configuration overrides are used
-- **WHEN** the server starts with `HM_ADMIN_HTTP_ENABLED`, `HM_ADMIN_HTTP_PORT`, and `HM_ADMIN_HTTP_HOST` set
-- **THEN** the system SHALL use those values for admin enablement, admin bind address, and admin port
-
-#### Scenario: Admin server disabled
-- **WHEN** `HM_ADMIN_HTTP_ENABLED` is `false`
-- **THEN** the system SHALL NOT start the admin HTTP server
-
-### Requirement: Admin Health Endpoint
-The system SHALL expose a health endpoint on the admin server.
-
-#### Scenario: Health check succeeds
-- **WHEN** a client sends `GET /api/v1/health` to the admin server
-- **THEN** the system SHALL return `200 OK` with JSON body `{"status":"OK"}`
-
-### Requirement: Admin Template Listing
-The system SHALL expose the active mock definition collection through the admin server.
-
-#### Scenario: Active templates are listed
-- **WHEN** a client sends `GET /api/v1/templates`
-- **THEN** the system SHALL return `200 OK` with a JSON array containing filesystem-loaded mock definitions and API-added mock definitions active at the time of the request
+## MODIFIED Requirements
 
 ### Requirement: Admin Base Template Upsert
 The system SHALL allow clients to add or update base API-added mock definitions using JSON or YAML payloads.
@@ -58,25 +27,6 @@ The system SHALL allow clients to add or update base API-added mock definitions 
 - **WHEN** a client sends `POST /api/v1/templates` with `Content-Type: application/yaml` and a payload that cannot be parsed as a valid YAML array of mock definitions
 - **THEN** the system SHALL return `400 Bad Request` with an error message
 - **AND** the system SHALL NOT change the active mock set
-
-### Requirement: Admin Base Template Deletion
-The system SHALL allow clients to delete base API-added mock definitions without deleting filesystem mocks or template sets.
-
-#### Scenario: All base API templates are deleted
-- **WHEN** a client sends `DELETE /api/v1/templates`
-- **THEN** the system SHALL delete all base API-added mocks
-- **AND** the system SHALL leave filesystem-loaded mocks and template sets unchanged
-- **AND** the system SHALL return `204 No Content`
-
-#### Scenario: One base API template is deleted
-- **WHEN** a client sends `DELETE /api/v1/templates/{templateKey}` for a key present in base API-added storage
-- **THEN** the system SHALL delete only that base API-added mock
-- **AND** the system SHALL leave any filesystem-loaded mock with the same key unchanged
-- **AND** the system SHALL return `204 No Content`
-
-#### Scenario: Missing base API template delete returns not found
-- **WHEN** a client sends `DELETE /api/v1/templates/{templateKey}` for a key absent from base API-added storage
-- **THEN** the system SHALL return `404 Not Found`
 
 ### Requirement: Admin Template Sets
 The system SHALL allow clients to manage named groups of persisted mock definitions separately from the base template collection using JSON or YAML payloads.
@@ -112,4 +62,3 @@ The system SHALL allow clients to manage named groups of persisted mock definiti
 #### Scenario: Missing template set delete is idempotent
 - **WHEN** a client sends `DELETE /api/v1/template_sets/{setKey}` for a set that does not exist
 - **THEN** the system SHALL return `204 No Content`
-
