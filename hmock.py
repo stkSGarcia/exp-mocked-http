@@ -42,9 +42,19 @@ DEFAULT_ADMIN_HTTP_HOST = "0.0.0.0"
 DEFAULT_LOG_LEVEL = "info"
 DEFAULT_REDIS_TYPE = "memory"
 DEFAULT_REDIS_URL = "redis://redis:6379"
+DEFAULT_KAFKA_ENABLED = False
+DEFAULT_KAFKA_CLIENT_ID = "hmock"
+DEFAULT_KAFKA_SEED_BROKERS = "kafka:9092"
+DEFAULT_KAFKA_SASL_USERNAME = ""
+DEFAULT_KAFKA_SASL_PASSWORD = ""
+DEFAULT_KAFKA_TLS_ENABLED = False
+DEFAULT_AMQP_ENABLED = False
+DEFAULT_AMQP_URL = "amqp://guest:guest@rabbitmq:5672"
 SUPPORTED_REDIS_TYPES = {"memory", "redis"}
 OUTBOUND_HTTP_TIMEOUT_SECONDS = 2.0
 HOT_RELOAD_INTERVAL_SECONDS = 0.1
+BROKER_RECONCILE_INTERVAL_SECONDS = 0.1
+AMQP_RECONNECT_DELAY_SECONDS = 0.1
 INTERNAL_REDIS_PREFIX = "__hmock_internal:"
 INTERNAL_TEMPLATES_KEY = f"{INTERNAL_REDIS_PREFIX}templates"
 INTERNAL_TEMPLATE_SETS_KEY = f"{INTERNAL_REDIS_PREFIX}template_sets"
@@ -62,6 +72,10 @@ _ACTIVE_DEFINITIONS: list[dict[str, Any]] = []
 _RUNTIME_LOCK = threading.RLock()
 _MUTATION_LOCK = threading.RLock()
 _REQUEST_RUNTIME = threading.local()
+_BROKER_LOCK = threading.RLock()
+_KAFKA_PRODUCER: Any = None
+_AMQP_PUBLISH_CONNECTION: Any = None
+_AMQP_PUBLISH_CHANNEL: Any = None
 
 KIND_BEHAVIOR = "Behavior"
 KIND_TEMPLATE = "Template"
@@ -87,6 +101,43 @@ class Config:
     log_level: str = DEFAULT_LOG_LEVEL
     redis_type: str = DEFAULT_REDIS_TYPE
     redis_url: str = DEFAULT_REDIS_URL
+    kafka_enabled: bool = DEFAULT_KAFKA_ENABLED
+    kafka_client_id: str = DEFAULT_KAFKA_CLIENT_ID
+    kafka_seed_brokers: str = DEFAULT_KAFKA_SEED_BROKERS
+    kafka_sasl_username: str = DEFAULT_KAFKA_SASL_USERNAME
+    kafka_sasl_password: str = DEFAULT_KAFKA_SASL_PASSWORD
+    kafka_tls_enabled: bool = DEFAULT_KAFKA_TLS_ENABLED
+    kafka_producer_seed_brokers: str = ""
+    kafka_consumer_seed_brokers: str = ""
+    kafka_sasl_producer_username: str = ""
+    kafka_sasl_producer_password: str = ""
+    kafka_sasl_consumer_username: str = ""
+    kafka_sasl_consumer_password: str = ""
+    kafka_tls_producer_enabled: Optional[bool] = None
+    kafka_tls_consumer_enabled: Optional[bool] = None
+    amqp_enabled: bool = DEFAULT_AMQP_ENABLED
+    amqp_url: str = DEFAULT_AMQP_URL
+
+
+@dataclass(frozen=True)
+class KafkaRoleSettings:
+    seed_brokers: tuple[str, ...]
+    sasl_username: str
+    sasl_password: str
+    sasl_enabled: bool
+    tls_enabled: bool
+
+
+@dataclass
+class BrokerWorker:
+    stop_event: threading.Event
+    thread: threading.Thread
+    close_resources: Callable[[], None]
+
+    def stop(self, timeout: float = 2.0) -> None:
+        self.stop_event.set()
+        self.close_resources()
+        self.thread.join(timeout=timeout)
 
 
 @dataclass
@@ -159,6 +210,37 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
         log_level=log_level,
         redis_type=redis_type,
         redis_url=env.get("HM_REDIS_URL", DEFAULT_REDIS_URL),
+        kafka_enabled=_parse_bool(
+            env.get("HM_KAFKA_ENABLED", str(DEFAULT_KAFKA_ENABLED)),
+            "HM_KAFKA_ENABLED",
+        ),
+        kafka_client_id=env.get("HM_KAFKA_CLIENT_ID", DEFAULT_KAFKA_CLIENT_ID),
+        kafka_seed_brokers=env.get("HM_KAFKA_SEED_BROKERS", DEFAULT_KAFKA_SEED_BROKERS),
+        kafka_sasl_username=env.get("HM_KAFKA_SASL_USERNAME", DEFAULT_KAFKA_SASL_USERNAME),
+        kafka_sasl_password=env.get("HM_KAFKA_SASL_PASSWORD", DEFAULT_KAFKA_SASL_PASSWORD),
+        kafka_tls_enabled=_parse_bool(
+            env.get("HM_KAFKA_TLS_ENABLED", str(DEFAULT_KAFKA_TLS_ENABLED)),
+            "HM_KAFKA_TLS_ENABLED",
+        ),
+        kafka_producer_seed_brokers=env.get("HM_KAFKA_PRODUCER_SEED_BROKERS", ""),
+        kafka_consumer_seed_brokers=env.get("HM_KAFKA_CONSUMER_SEED_BROKERS", ""),
+        kafka_sasl_producer_username=env.get("HM_KAFKA_SASL_PRODUCER_USERNAME", ""),
+        kafka_sasl_producer_password=env.get("HM_KAFKA_SASL_PRODUCER_PASSWORD", ""),
+        kafka_sasl_consumer_username=env.get("HM_KAFKA_SASL_CONSUMER_USERNAME", ""),
+        kafka_sasl_consumer_password=env.get("HM_KAFKA_SASL_CONSUMER_PASSWORD", ""),
+        kafka_tls_producer_enabled=_parse_optional_bool(
+            env,
+            "HM_KAFKA_TLS_PRODUCER_ENABLED",
+        ),
+        kafka_tls_consumer_enabled=_parse_optional_bool(
+            env,
+            "HM_KAFKA_TLS_CONSUMER_ENABLED",
+        ),
+        amqp_enabled=_parse_bool(
+            env.get("HM_AMQP_ENABLED", str(DEFAULT_AMQP_ENABLED)),
+            "HM_AMQP_ENABLED",
+        ),
+        amqp_url=env.get("HM_AMQP_URL", DEFAULT_AMQP_URL),
     )
 
 
@@ -169,6 +251,55 @@ def _parse_bool(value: Any, name: str) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise ValueError(f"{name} must be a boolean")
+
+
+def _parse_optional_bool(env: dict[str, str], name: str) -> Optional[bool]:
+    if name not in env or env[name] == "":
+        return None
+    return _parse_bool(env[name], name)
+
+
+def _first_non_empty(specific: str, shared: str) -> str:
+    return specific if str(specific) != "" else shared
+
+
+def _parse_broker_list(value: str) -> tuple[str, ...]:
+    return tuple(part.strip() for part in str(value).split(",") if part.strip())
+
+
+def resolve_kafka_role(config: Config, role: str) -> KafkaRoleSettings:
+    if role not in {"producer", "consumer"}:
+        raise ValueError("Kafka role must be producer or consumer")
+    brokers = _first_non_empty(
+        config.kafka_producer_seed_brokers
+        if role == "producer"
+        else config.kafka_consumer_seed_brokers,
+        config.kafka_seed_brokers,
+    )
+    username = _first_non_empty(
+        config.kafka_sasl_producer_username
+        if role == "producer"
+        else config.kafka_sasl_consumer_username,
+        config.kafka_sasl_username,
+    )
+    password = _first_non_empty(
+        config.kafka_sasl_producer_password
+        if role == "producer"
+        else config.kafka_sasl_consumer_password,
+        config.kafka_sasl_password,
+    )
+    role_tls = (
+        config.kafka_tls_producer_enabled
+        if role == "producer"
+        else config.kafka_tls_consumer_enabled
+    )
+    return KafkaRoleSettings(
+        seed_brokers=_parse_broker_list(brokers),
+        sasl_username=username,
+        sasl_password=password,
+        sasl_enabled=bool(username and password),
+        tls_enabled=config.kafka_tls_enabled if role_tls is None else role_tls,
+    )
 
 
 def setup_logger(level_name: str, stream: Any = None) -> logging.Logger:
@@ -192,6 +323,14 @@ def log_json(level: str, message: str, **fields: Any) -> None:
     record = LOGGER.makeRecord(LOGGER.name, numeric, "", 0, message, (), None)
     record.hmock_extra = fields
     LOGGER.handle(record)
+
+
+def _redact_error(error: Exception, sensitive_values: tuple[str, ...] = ()) -> str:
+    message = str(error)
+    for value in sensitive_values:
+        if value:
+            message = message.replace(value, "[redacted]")
+    return message
 
 
 class RedisBackend:
@@ -546,6 +685,26 @@ def _validate_behavior(
         raise ValueError(f"{source}: expect.http must be a map")
     path_pattern = http_expect.get("path")
     behavior["_pattern"] = _compile_path(str(path_pattern)) if path_pattern else None
+    kafka_expect = expect.get("kafka")
+    if kafka_expect is not None:
+        if not isinstance(kafka_expect, dict):
+            raise ValueError(f"{source}: expect.kafka must be a map")
+        if not str(kafka_expect.get("topic") or ""):
+            raise ValueError(f"{source}: expect.kafka.topic is required")
+    amqp_expect = expect.get("amqp")
+    if amqp_expect is not None:
+        if not isinstance(amqp_expect, dict):
+            raise ValueError(f"{source}: expect.amqp must be a map")
+        if not str(amqp_expect.get("exchange") or ""):
+            raise ValueError(f"{source}: expect.amqp.exchange is required")
+        routing_key = str(amqp_expect.get("routing_key") or "")
+        if not routing_key:
+            raise ValueError(f"{source}: expect.amqp.routing_key is required")
+        normalized_expect = dict(expect)
+        normalized_amqp = dict(amqp_expect)
+        normalized_amqp["queue"] = str(normalized_amqp.get("queue") or routing_key)
+        normalized_expect["amqp"] = normalized_amqp
+        behavior["expect"] = normalized_expect
     return behavior
 
 
@@ -612,8 +771,53 @@ def _prepare_actions(
             _prepare_body_from_file(send_config, templates_dir, source)
             _prepare_body_from_binary_file(send_config, templates_dir, source)
             prepared_action["send_http"] = send_config
+        if "publish_kafka" in prepared_action:
+            publish_config = _prepare_publish_action(
+                "publish_kafka",
+                prepared_action.get("publish_kafka"),
+                ("topic",),
+                templates_dir,
+                source,
+            )
+            prepared_action["publish_kafka"] = publish_config
+        if "publish_amqp" in prepared_action:
+            publish_config = _prepare_publish_action(
+                "publish_amqp",
+                prepared_action.get("publish_amqp"),
+                ("exchange", "routing_key"),
+                templates_dir,
+                source,
+            )
+            prepared_action["publish_amqp"] = publish_config
         prepared.append(prepared_action)
     return prepared
+
+
+def _prepare_publish_action(
+    action_name: str,
+    value: Any,
+    required_fields: tuple[str, ...],
+    templates_dir: Optional[str],
+    source: str,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{source}: {action_name} action must be an object")
+    config = dict(value)
+    for field in required_fields:
+        if not str(config.get(field) or ""):
+            raise ValueError(f"{source}: {action_name}.{field} is required")
+    if not str(config.get("payload") or "") and not str(config.get("payload_from_file") or ""):
+        raise ValueError(
+            f"{source}: {action_name}.payload or {action_name}.payload_from_file is required"
+        )
+    _prepare_text_from_file(
+        config,
+        "payload_from_file",
+        "_payload_from_file_content",
+        templates_dir,
+        source,
+    )
+    return config
 
 
 def _sort_actions(actions: list[Any]) -> list[Any]:
@@ -634,26 +838,50 @@ def _prepare_body_from_file(
     templates_dir: Optional[str],
     source: str,
 ) -> None:
-    body_from_file = config.get("body_from_file")
-    if body_from_file not in (None, "") and templates_dir is not None:
-        config["_body_from_file_content"] = _load_body_from_file(
+    _prepare_text_from_file(
+        config,
+        "body_from_file",
+        "_body_from_file_content",
+        templates_dir,
+        source,
+    )
+
+
+def _prepare_text_from_file(
+    config: dict[str, Any],
+    field_name: str,
+    content_key: str,
+    templates_dir: Optional[str],
+    source: str,
+) -> None:
+    relative_path = config.get(field_name)
+    if relative_path not in (None, "") and templates_dir is not None:
+        config[content_key] = _load_text_from_file(
             templates_dir,
-            str(body_from_file),
+            str(relative_path),
             source,
+            field_name,
         )
 
 
-def _load_body_from_file(templates_dir: str, relative_path: str, source: str) -> str:
+def _load_text_from_file(
+    templates_dir: str,
+    relative_path: str,
+    source: str,
+    field_name: str,
+) -> str:
     target = _resolve_body_file(
         templates_dir,
         relative_path,
         source,
-        "body_from_file",
+        field_name,
     )
     try:
         return target.read_text(encoding="utf-8")
     except OSError as exc:
-        raise ValueError(f"{source}: cannot read body_from_file {relative_path!r}: {exc}") from exc
+        raise ValueError(
+            f"{source}: cannot read {field_name} {relative_path!r}: {exc}"
+        ) from exc
 
 
 def _prepare_body_from_binary_file(
@@ -1101,6 +1329,27 @@ def build_context(
     }
 
 
+def build_kafka_context(topic: str, payload: str) -> dict[str, Any]:
+    return {
+        "KafkaTopic": str(topic),
+        "KafkaPayload": str(payload),
+    }
+
+
+def build_amqp_context(
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+) -> dict[str, Any]:
+    return {
+        "AMQPExchange": str(exchange),
+        "AMQPRoutingKey": str(routing_key),
+        "AMQPQueue": str(queue),
+        "AMQPPayload": str(payload),
+    }
+
+
 def find_behavior(
     behaviors: list[dict[str, Any]],
     method: str,
@@ -1129,6 +1378,93 @@ def find_behavior(
         if condition_passes(expect.get("condition"), check_context):
             return behavior, params
     return None, {}
+
+
+def find_kafka_behaviors(
+    behaviors: list[dict[str, Any]],
+    topic: str,
+    context: dict[str, Any],
+) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for behavior in behaviors:
+        expect = behavior.get("expect") or {}
+        kafka_expect = expect.get("kafka")
+        if not isinstance(kafka_expect, dict):
+            continue
+        if str(kafka_expect.get("topic") or "") != topic:
+            continue
+        check_context = dict(context)
+        check_context["Values"] = behavior.get("values") or {}
+        if condition_passes(expect.get("condition"), check_context):
+            matches.append(behavior)
+    return matches
+
+
+def find_amqp_behaviors(
+    behaviors: list[dict[str, Any]],
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    context: dict[str, Any],
+) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for behavior in behaviors:
+        expect = behavior.get("expect") or {}
+        amqp_expect = expect.get("amqp")
+        if not isinstance(amqp_expect, dict):
+            continue
+        if (
+            str(amqp_expect.get("exchange") or "") != exchange
+            or str(amqp_expect.get("routing_key") or "") != routing_key
+            or str(amqp_expect.get("queue") or "") != queue
+        ):
+            continue
+        check_context = dict(context)
+        check_context["Values"] = behavior.get("values") or {}
+        if condition_passes(expect.get("condition"), check_context):
+            matches.append(behavior)
+    return matches
+
+
+def dispatch_kafka_message(topic: str, payload: str) -> int:
+    state = runtime_snapshot()
+    context = build_kafka_context(topic, payload)
+    matches = find_kafka_behaviors(state.behaviors, topic, context)
+    _REQUEST_RUNTIME.named_templates = state.named_templates
+    try:
+        for behavior in matches:
+            behavior_context = dict(context)
+            behavior_context["Values"] = behavior.get("values") or {}
+            execute_actions(behavior.get("actions") or [], behavior_context)
+    finally:
+        del _REQUEST_RUNTIME.named_templates
+    return len(matches)
+
+
+def dispatch_amqp_message(
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+) -> int:
+    state = runtime_snapshot()
+    context = build_amqp_context(exchange, routing_key, queue, payload)
+    matches = find_amqp_behaviors(
+        state.behaviors,
+        exchange,
+        routing_key,
+        queue,
+        context,
+    )
+    _REQUEST_RUNTIME.named_templates = state.named_templates
+    try:
+        for behavior in matches:
+            behavior_context = dict(context)
+            behavior_context["Values"] = behavior.get("values") or {}
+            execute_actions(behavior.get("actions") or [], behavior_context)
+    finally:
+        del _REQUEST_RUNTIME.named_templates
+    return len(matches)
 
 
 def condition_passes(condition: Any, context: dict[str, Any]) -> bool:
@@ -1169,6 +1505,12 @@ def execute_actions(actions: list[dict[str, Any]], context: dict[str, Any]) -> R
         if "send_http" in action:
             send_http_request(action.get("send_http") or {}, context)
             continue
+        if "publish_kafka" in action:
+            publish_kafka_message(action.get("publish_kafka") or {}, context)
+            continue
+        if "publish_amqp" in action:
+            publish_amqp_message(action.get("publish_amqp") or {}, context)
+            continue
         if "sleep" in action:
             duration = str((action.get("sleep") or {}).get("duration") or "")
             time.sleep(parse_duration(duration))
@@ -1176,6 +1518,61 @@ def execute_actions(actions: list[dict[str, Any]], context: dict[str, Any]) -> R
         if "reply_http" in action:
             return build_http_response(action.get("reply_http") or {}, context)
     return Response(204, {"Content-Length": "0"}, b"")
+
+
+def _select_payload_template(config: dict[str, Any]) -> Optional[str]:
+    payload = config.get("payload")
+    if payload is not None and str(payload) != "":
+        return str(payload)
+    if "_payload_from_file_content" in config:
+        return str(config.get("_payload_from_file_content", ""))
+    return None
+
+
+def publish_kafka_message(config: dict[str, Any], context: dict[str, Any]) -> None:
+    topic = render(str(config.get("topic") or ""), context)
+    payload = render(_select_payload_template(config) or "", context)
+    try:
+        with _BROKER_LOCK:
+            producer = _KAFKA_PRODUCER
+        if producer is None:
+            raise RuntimeError("Kafka producer is not available")
+        producer.send(topic, payload.encode("utf-8"))
+    except Exception as exc:
+        log_json(
+            "warn",
+            "kafka publish failed",
+            transport="kafka",
+            operation="publish",
+            topic=topic,
+            error=str(exc),
+        )
+
+
+def publish_amqp_message(config: dict[str, Any], context: dict[str, Any]) -> None:
+    exchange = render(str(config.get("exchange") or ""), context)
+    routing_key = render(str(config.get("routing_key") or ""), context)
+    payload = render(_select_payload_template(config) or "", context)
+    try:
+        with _BROKER_LOCK:
+            channel = _AMQP_PUBLISH_CHANNEL
+        if channel is None:
+            raise RuntimeError("AMQP publisher is not available")
+        channel.basic_publish(
+            exchange=exchange,
+            routing_key=routing_key,
+            body=payload.encode("utf-8"),
+        )
+    except Exception as exc:
+        log_json(
+            "warn",
+            "amqp publish failed",
+            transport="amqp",
+            operation="publish",
+            exchange=exchange,
+            routing_key=routing_key,
+            error=str(exc),
+        )
 
 
 def build_http_response(config: dict[str, Any], context: dict[str, Any]) -> Response:
@@ -1514,6 +1911,305 @@ class AdminRequestHandler(BaseHTTPRequestHandler):
         self._dispatch()
 
 
+def kafka_client_kwargs(config: Config, role: str) -> dict[str, Any]:
+    settings = resolve_kafka_role(config, role)
+    if settings.sasl_enabled:
+        security_protocol = "SASL_SSL" if settings.tls_enabled else "SASL_PLAINTEXT"
+    else:
+        security_protocol = "SSL" if settings.tls_enabled else "PLAINTEXT"
+    kwargs: dict[str, Any] = {
+        "bootstrap_servers": list(settings.seed_brokers),
+        "client_id": config.kafka_client_id,
+        "security_protocol": security_protocol,
+    }
+    if settings.sasl_enabled:
+        kwargs.update({
+            "sasl_mechanism": "PLAIN",
+            "sasl_plain_username": settings.sasl_username,
+            "sasl_plain_password": settings.sasl_password,
+        })
+    return kwargs
+
+
+def create_kafka_producer(config: Config) -> Any:
+    from kafka import KafkaProducer
+
+    return KafkaProducer(**kafka_client_kwargs(config, "producer"))
+
+
+def create_kafka_consumer(config: Config) -> Any:
+    from kafka import KafkaConsumer
+
+    return KafkaConsumer(
+        **kafka_client_kwargs(config, "consumer"),
+        auto_offset_reset="earliest",
+        enable_auto_commit=True,
+    )
+
+
+def kafka_topics(behaviors: list[dict[str, Any]]) -> tuple[str, ...]:
+    topics = {
+        str(((behavior.get("expect") or {}).get("kafka") or {}).get("topic") or "")
+        for behavior in behaviors
+    }
+    return tuple(sorted(topic for topic in topics if topic))
+
+
+def _decode_message_payload(value: Any) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def run_kafka_worker(
+    consumer: Any,
+    stop_event: threading.Event,
+    interval: float = BROKER_RECONCILE_INTERVAL_SECONDS,
+    sensitive_values: tuple[str, ...] = (),
+) -> None:
+    subscribed: tuple[str, ...] = ()
+    while not stop_event.is_set():
+        try:
+            topics = kafka_topics(runtime_snapshot().behaviors)
+            if topics != subscribed:
+                if topics:
+                    consumer.subscribe(topics=list(topics))
+                elif hasattr(consumer, "unsubscribe"):
+                    consumer.unsubscribe()
+                subscribed = topics
+            records = consumer.poll(timeout_ms=max(1, int(interval * 1000)))
+            batches = records.values() if isinstance(records, dict) else [records]
+            for batch in batches:
+                for message in batch or []:
+                    topic = str(getattr(message, "topic", ""))
+                    payload = _decode_message_payload(getattr(message, "value", ""))
+                    dispatch_kafka_message(topic, payload)
+        except Exception as exc:
+            if stop_event.is_set():
+                break
+            log_json(
+                "error",
+                "kafka consume failed",
+                transport="kafka",
+                operation="consume",
+                error=_redact_error(exc, sensitive_values),
+            )
+            stop_event.wait(interval)
+
+
+def _safe_close(
+    resource: Any,
+    transport: str,
+    operation: str,
+    sensitive_values: tuple[str, ...] = (),
+) -> None:
+    if resource is None:
+        return
+    try:
+        resource.close()
+    except Exception as exc:
+        log_json(
+            "warn",
+            f"{transport} close failed",
+            transport=transport,
+            operation=operation,
+            error=_redact_error(exc, sensitive_values),
+        )
+
+
+def start_kafka_worker(
+    config: Config,
+    producer_factory: Callable[[Config], Any] = create_kafka_producer,
+    consumer_factory: Callable[[Config], Any] = create_kafka_consumer,
+    interval: float = BROKER_RECONCILE_INTERVAL_SECONDS,
+) -> Optional[BrokerWorker]:
+    global _KAFKA_PRODUCER
+    if not config.kafka_enabled:
+        return None
+    sensitive_values = tuple({
+        config.kafka_sasl_username,
+        config.kafka_sasl_password,
+        config.kafka_sasl_producer_username,
+        config.kafka_sasl_producer_password,
+        config.kafka_sasl_consumer_username,
+        config.kafka_sasl_consumer_password,
+    })
+    producer = None
+    try:
+        producer = producer_factory(config)
+        consumer = consumer_factory(config)
+    except Exception as exc:
+        _safe_close(
+            producer,
+            "kafka",
+            "close_partial_startup",
+            sensitive_values,
+        )
+        log_json(
+            "error",
+            "kafka connection failed",
+            transport="kafka",
+            operation="connect",
+            error=_redact_error(exc, sensitive_values),
+        )
+        raise
+    with _BROKER_LOCK:
+        _KAFKA_PRODUCER = producer
+    stop_event = threading.Event()
+    thread = threading.Thread(
+        target=run_kafka_worker,
+        args=(consumer, stop_event, interval, sensitive_values),
+        daemon=True,
+    )
+    thread.start()
+
+    def close_resources() -> None:
+        global _KAFKA_PRODUCER
+        with _BROKER_LOCK:
+            if _KAFKA_PRODUCER is producer:
+                _KAFKA_PRODUCER = None
+        _safe_close(consumer, "kafka", "close_consumer", sensitive_values)
+        _safe_close(producer, "kafka", "close_producer", sensitive_values)
+
+    return BrokerWorker(stop_event, thread, close_resources)
+
+
+def create_amqp_connection(config: Config) -> Any:
+    import pika
+
+    return pika.BlockingConnection(pika.URLParameters(config.amqp_url))
+
+
+def amqp_topology(
+    behaviors: list[dict[str, Any]],
+) -> tuple[tuple[str, str, str], ...]:
+    topology = set()
+    for behavior in behaviors:
+        amqp_expect = ((behavior.get("expect") or {}).get("amqp") or {})
+        exchange = str(amqp_expect.get("exchange") or "")
+        routing_key = str(amqp_expect.get("routing_key") or "")
+        queue = str(amqp_expect.get("queue") or routing_key)
+        if exchange and routing_key and queue:
+            topology.add((exchange, routing_key, queue))
+    return tuple(sorted(topology))
+
+
+def setup_amqp_topology(channel: Any, topology: tuple[tuple[str, str, str], ...]) -> None:
+    declared_exchanges: set[str] = set()
+    declared_queues: set[str] = set()
+    consumed_queues: set[str] = set()
+    for exchange, routing_key, queue in topology:
+        if exchange not in declared_exchanges:
+            channel.exchange_declare(exchange=exchange)
+            declared_exchanges.add(exchange)
+        if queue not in declared_queues:
+            channel.queue_declare(queue=queue)
+            declared_queues.add(queue)
+        channel.queue_bind(exchange=exchange, queue=queue, routing_key=routing_key)
+        if queue in consumed_queues:
+            continue
+
+        def callback(
+            _channel: Any,
+            method: Any,
+            _properties: Any,
+            body: Any,
+            consumed_queue: str = queue,
+        ) -> None:
+            dispatch_amqp_message(
+                str(getattr(method, "exchange", "")),
+                str(getattr(method, "routing_key", "")),
+                consumed_queue,
+                _decode_message_payload(body),
+            )
+
+        channel.basic_consume(
+            queue=queue,
+            on_message_callback=callback,
+            auto_ack=True,
+        )
+        consumed_queues.add(queue)
+
+
+def run_amqp_worker(
+    config: Config,
+    stop_event: threading.Event,
+    connection_factory: Callable[[Config], Any] = create_amqp_connection,
+    interval: float = BROKER_RECONCILE_INTERVAL_SECONDS,
+    reconnect_delay: float = AMQP_RECONNECT_DELAY_SECONDS,
+) -> None:
+    while not stop_event.is_set():
+        connection = None
+        try:
+            connection = connection_factory(config)
+            channel = connection.channel()
+            topology = amqp_topology(runtime_snapshot().behaviors)
+            setup_amqp_topology(channel, topology)
+            while not stop_event.is_set():
+                current = amqp_topology(runtime_snapshot().behaviors)
+                if current != topology:
+                    break
+                connection.process_data_events(time_limit=interval)
+        except Exception as exc:
+            if not stop_event.is_set():
+                log_json(
+                    "error",
+                    "amqp consume or reconnect failed",
+                    transport="amqp",
+                    operation="consume_reconnect",
+                    error=str(exc),
+                )
+        finally:
+            _safe_close(connection, "amqp", "close_consumer_connection")
+        if not stop_event.is_set():
+            stop_event.wait(reconnect_delay)
+
+
+def start_amqp_worker(
+    config: Config,
+    connection_factory: Callable[[Config], Any] = create_amqp_connection,
+    interval: float = BROKER_RECONCILE_INTERVAL_SECONDS,
+    reconnect_delay: float = AMQP_RECONNECT_DELAY_SECONDS,
+) -> Optional[BrokerWorker]:
+    global _AMQP_PUBLISH_CONNECTION, _AMQP_PUBLISH_CHANNEL
+    if not config.amqp_enabled:
+        return None
+    publish_connection = None
+    try:
+        publish_connection = connection_factory(config)
+        publish_channel = publish_connection.channel()
+    except Exception as exc:
+        _safe_close(publish_connection, "amqp", "close_partial_startup")
+        log_json(
+            "error",
+            "amqp connection failed",
+            transport="amqp",
+            operation="connect",
+            error=str(exc),
+        )
+        raise
+    with _BROKER_LOCK:
+        _AMQP_PUBLISH_CONNECTION = publish_connection
+        _AMQP_PUBLISH_CHANNEL = publish_channel
+    stop_event = threading.Event()
+    thread = threading.Thread(
+        target=run_amqp_worker,
+        args=(config, stop_event, connection_factory, interval, reconnect_delay),
+        daemon=True,
+    )
+    thread.start()
+
+    def close_resources() -> None:
+        global _AMQP_PUBLISH_CONNECTION, _AMQP_PUBLISH_CHANNEL
+        with _BROKER_LOCK:
+            if _AMQP_PUBLISH_CONNECTION is publish_connection:
+                _AMQP_PUBLISH_CONNECTION = None
+                _AMQP_PUBLISH_CHANNEL = None
+        _safe_close(publish_connection, "amqp", "close_publisher_connection")
+
+    return BrokerWorker(stop_event, thread, close_resources)
+
+
 def create_server(
     config: Config,
     behaviors: Optional[list[dict[str, Any]]] = None,
@@ -1563,6 +2259,15 @@ def main() -> None:
     _REDIS_BACKEND = create_redis_backend(config)
     state = reload_runtime(config, _REDIS_BACKEND)
     log_json("info", "loaded behaviors", count=len(state.behaviors), templates_dir=config.templates_dir)
+    kafka_worker = None
+    amqp_worker = None
+    try:
+        kafka_worker = start_kafka_worker(config)
+        amqp_worker = start_amqp_worker(config)
+    except Exception:
+        if kafka_worker is not None:
+            kafka_worker.stop()
+        raise
     server = create_server(config, backend=_REDIS_BACKEND)
     reload_stop, reload_thread = start_hot_reload_worker(config, _REDIS_BACKEND)
     admin_server, admin_thread = start_admin_server(config, _REDIS_BACKEND)
@@ -1579,6 +2284,10 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if kafka_worker is not None:
+            kafka_worker.stop()
+        if amqp_worker is not None:
+            amqp_worker.stop()
         if reload_stop is not None:
             reload_stop.set()
         if reload_thread is not None:
