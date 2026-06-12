@@ -1,0 +1,106 @@
+## Purpose
+
+Define the HTTP request matching and action execution behavior for `hmock.py`.
+
+## Requirements
+
+### Requirement: HTTP Server Entry Point
+The system SHALL provide `hmock.py` as the HTTP mock server entry point.
+
+#### Scenario: Server starts with uv
+- **WHEN** `uv run --project /app hmock.py` is executed in the application environment
+- **THEN** the system SHALL start the HTTP mock server using the configured host, port, templates directory, and log level
+
+### Requirement: Method And Path Matching
+The system SHALL match HTTP requests against behaviors by `expect.http.method` and `expect.http.path`.
+
+#### Scenario: Exact method and path match
+- **WHEN** a request method and path exactly match a behavior's `expect.http.method` and `expect.http.path`
+- **THEN** the behavior SHALL be eligible for condition evaluation and action execution
+
+#### Scenario: Method mismatch
+- **WHEN** a request path matches but the request method differs from `expect.http.method`
+- **THEN** the behavior SHALL NOT match the request
+
+#### Scenario: Query string excluded from route matching
+- **WHEN** a request path matches `expect.http.path` and includes a query string
+- **THEN** the system SHALL match the route using the path without the query string
+
+### Requirement: Named Path Parameters
+The system SHALL support named path parameters in behavior paths using `:param` syntax.
+
+#### Scenario: Named parameter captures segment
+- **WHEN** a behavior expects `/api/:id/resource` and a request uses `/api/42/resource`
+- **THEN** the behavior SHALL match and capture `id` with value `42`
+
+#### Scenario: Named parameter does not cross segment boundary
+- **WHEN** a behavior expects `/api/:id/resource` and a request uses `/api/42/extra/resource`
+- **THEN** the behavior SHALL NOT match
+
+#### Scenario: Captures are available to templates
+- **WHEN** a behavior with named path parameters matches a request
+- **THEN** the captured values SHALL be available through the request URL template context
+
+### Requirement: Condition Routing
+The system SHALL evaluate matching behaviors in load order and use the first behavior whose condition passes.
+
+#### Scenario: Missing condition passes
+- **WHEN** a behavior matches method and path and omits `expect.condition`
+- **THEN** the behavior SHALL be selected
+
+#### Scenario: Empty condition passes
+- **WHEN** a behavior matches method and path and has an empty `expect.condition`
+- **THEN** the behavior SHALL be selected
+
+#### Scenario: Condition must render true
+- **WHEN** a behavior matches method and path and its condition renders exactly `true`
+- **THEN** the behavior SHALL be selected
+
+#### Scenario: Condition renders non-true
+- **WHEN** a behavior matches method and path and its condition renders any value other than exactly `true`
+- **THEN** the behavior SHALL NOT match
+
+#### Scenario: Condition render failure
+- **WHEN** a behavior matches method and path but condition rendering fails
+- **THEN** the behavior SHALL NOT match and later behaviors SHALL still be evaluated
+
+### Requirement: Action Execution
+The system SHALL execute the selected behavior's actions in their declared order and stop evaluating further behaviors.
+
+#### Scenario: Sleep delays next action
+- **WHEN** a selected behavior contains a `sleep` action with a supported duration
+- **THEN** the system SHALL pause for that duration before executing the next action
+
+#### Scenario: Unsupported sleep duration is invalid
+- **WHEN** a `sleep` action uses a duration without one of `ns`, `us`, `ms`, `s`, `m`, or `h`
+- **THEN** the system SHALL reject the action as invalid
+
+#### Scenario: Reply action sends response
+- **WHEN** a selected behavior executes `reply_http`
+- **THEN** the system SHALL send the configured HTTP status, rendered headers, and rendered body
+
+### Requirement: HTTP Response Defaults
+The system SHALL apply HTTP response defaults and framing for `reply_http` actions.
+
+#### Scenario: Content type defaults to JSON
+- **WHEN** a `reply_http` action omits a `Content-Type` header
+- **THEN** the system SHALL set `Content-Type` to `application/json`
+
+#### Scenario: Explicit content type is preserved
+- **WHEN** a `reply_http` action defines a `Content-Type` header
+- **THEN** the system SHALL use the configured header value
+
+#### Scenario: Content length is computed
+- **WHEN** a `reply_http` response body is rendered
+- **THEN** the system SHALL set `Content-Length` to the rendered body length
+
+#### Scenario: Missing body defaults to empty
+- **WHEN** a `reply_http` action omits `body`
+- **THEN** the system SHALL render and send an empty response body
+
+### Requirement: Unmatched HTTP Request
+The system SHALL return a 404 response for requests with no matching behavior.
+
+#### Scenario: No matching behavior
+- **WHEN** no loaded behavior matches the request method, path, and condition
+- **THEN** the system SHALL return status `404 Not Found` with response body exactly `not found`
