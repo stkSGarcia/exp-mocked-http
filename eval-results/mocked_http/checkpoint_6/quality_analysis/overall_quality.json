@@ -1,0 +1,154 @@
+{
+  "ast_grep": {
+    "category_counts": {},
+    "category_weighted": {},
+    "counts": {},
+    "rules_checked": 214,
+    "violation_lines": 0,
+    "violations": 0,
+    "weighted": 0
+  },
+  "classes": {
+    "attribute_counts_mean": 1.9230769230769231,
+    "attribute_counts_sum": 25,
+    "count": 13,
+    "method_counts_mean": 2.923076923076923,
+    "method_counts_sum": 38
+  },
+  "complexity": {
+    "cc_max": 41,
+    "cc_ratings": {
+      "A": 192,
+      "B": 42,
+      "C": 20,
+      "D": 2,
+      "E": 1,
+      "F": 1
+    },
+    "cc_sum": 1040,
+    "mi_min": 0.0,
+    "mi_ratings": {
+      "A": 1,
+      "B": 0,
+      "C": 2
+    },
+    "mi_sum": 51.142318073683654,
+    "num_complex": 24
+  },
+  "file_count": 3,
+  "functions": {
+    "cc_concentration": 0.4774119291322399,
+    "cc_extreme_count": 1,
+    "cc_high_count": 22,
+    "cc_max": 38,
+    "cc_mean": 4.676470588235294,
+    "cc_normalized": 0.005022496239152061,
+    "cc_std": 4.733616837956872,
+    "cc_sum": 954,
+    "cc_top20": 0.5157232704402516,
+    "count": 204,
+    "depth_max": 4,
+    "extreme_cc_mean": 38.0,
+    "high_cc_mean": 15.090909090909092,
+    "lines_mean": 15.495098039215685,
+    "lines_sum": 3161
+  },
+  "graph": {
+    "cyclic_dependency_mass": 0.0,
+    "dependency_entropy": 0.22545467570399103,
+    "edge_count": 154,
+    "node_count": 137,
+    "propagation_cost": 0.04921640188922284
+  },
+  "lines": {
+    "comments": 7,
+    "loc": 3176,
+    "multi_comment": 0,
+    "single_comment": 4,
+    "total_lines": 3658
+  },
+  "lint": {
+    "counts": {
+      "A002": 3,
+      "ANN401": 47,
+      "ARG001": 6,
+      "ARG002": 6,
+      "B904": 1,
+      "BLE001": 3,
+      "C901": 4,
+      "EM101": 6,
+      "EM102": 48,
+      "FBT001": 4,
+      "FBT002": 4,
+      "FURB113": 1,
+      "FURB118": 7,
+      "INP001": 1,
+      "N802": 1,
+      "PLC1901": 16,
+      "PLR0911": 3,
+      "PLR0912": 1,
+      "PLR0913": 1,
+      "PLR0915": 1,
+      "PLR0917": 1,
+      "PLR2004": 19,
+      "PLR6201": 5,
+      "PLR6301": 5,
+      "PLW0108": 2,
+      "PLW0603": 8,
+      "PT001": 3,
+      "PT011": 1,
+      "Q003": 3,
+      "RET504": 1,
+      "RUF010": 1,
+      "RUF043": 2,
+      "RUF059": 2,
+      "S101": 224,
+      "S104": 2,
+      "S105": 1,
+      "S108": 2,
+      "S310": 15,
+      "S314": 1,
+      "S404": 1,
+      "S405": 1,
+      "S603": 3,
+      "S701": 1,
+      "SLF001": 23,
+      "TRY003": 54,
+      "TRY004": 7,
+      "UP012": 1,
+      "UP035": 1,
+      "UP045": 41
+    },
+    "errors": 595,
+    "fixable": 50
+  },
+  "redundancy": {
+    "clone_lines": 58,
+    "clone_ratio_sum": 0.03891885056528456,
+    "cloned_sloc_lines": 58,
+    "files_with_clones": 3
+  },
+  "source_files": [
+    "hmock.py"
+  ],
+  "symbols": {
+    "classes": 13,
+    "expressions": 4399,
+    "expressions_top_level": 111,
+    "functions": 166,
+    "globals": 41,
+    "imports": 50,
+    "max_imports": 25,
+    "methods": 38,
+    "statements": 1105,
+    "total": 258,
+    "type_aliases": 0,
+    "variables": 41
+  },
+  "verbosity_flagged_sloc_lines": 58,
+  "waste": {
+    "single_use_functions": 117,
+    "trivial_wrappers": 7,
+    "unused_variables": 50
+  }
+}

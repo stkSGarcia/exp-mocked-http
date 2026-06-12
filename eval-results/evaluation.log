@@ -1,0 +1,74 @@
+{"submission_path": "/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results", "problem_names": ["mocked_http"], "env_config": "/mnt/d/ArtifactNet_Testcases/exp-mocked-http/slop-code-bench/../configs/environments/docker-python3.12-uv.yaml", "pass_policy": "all-cases", "overwrite": false, "event": "Evaluating a directory of submissions", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Building base image for environment 'python3.12' base_image='ghcr.io/astral-sh/uv:python3.12-trixie-slim' image_name='slop-code:python3.12'", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Checking if image exists image_name='slop-code:python3.12'", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Found image found_image='sha256:a4e84c96e1a97a3ea6a8342ad7b8f59cd68a3f6ba977d3fb7619ca4e6ef09842' image_name='slop-code:python3.12'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Found current image and not forcing build", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Getting available problems problems_path='/home/amirhosseinaghaei/.cache/scbench/problems'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/cfgpipe')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/circuit_eval')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/code_search')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/dag_execution')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/database_migration')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/datagate')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/dynamic_buffer')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/dynamic_config_service_api')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/env_manager')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/etl_pipeline')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/eve_industry')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/eve_jump_planner')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/eve_market_tools')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/eve_route_planner')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/execution_server')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/file_backup')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/file_merger')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/file_query_tool')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/forge')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/l2m')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/layered_config_synthesizer')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/log_query')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/meshctl')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/metric_transform_lang')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/migrate_configs')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mvvault')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/pwd_manager')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/recli')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/rejector')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/sheeteval')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/sith')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/test_translator')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/textdrop')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/trajectory_api')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/xjq')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Found problems problems='cfgpipe,circuit_eval,code_search,dag_execution,database_migration,datagate,dynamic_buffer,dynamic_config_service_api,env_manager,etl_pipeline,eve_industry,eve_jump_planner,eve_market_tools,eve_route_planner,execution_server,file_backup,file_merger,file_query_tool,forge,l2m,layered_config_synthesizer,log_query,meshctl,metric_transform_lang,migrate_configs,mocked_http,mvvault,pwd_manager,recli,rejector,sheeteval,sith,test_translator,textdrop,trajectory_api,xjq'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"problem_name": "mocked_http", "problem_dir": "/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http", "reason": "needs evaluation", "event": "Adding problem to evaluation", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Evaluating 1 problems", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Starting checkpoint evaluation problems=['mocked_http']", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Gathering checkpoint directories checkpoints=['checkpoint_1', 'checkpoint_2', 'checkpoint_3', 'checkpoint_4', 'checkpoint_5', 'checkpoint_6', 'checkpoint_7', 'checkpoint_8'] problem_name='mocked_http' snapshot_dir_name='snapshot' submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 15:42:58", "level": "info"}
+{"event": "Checkpoint submission directory does not exist checkpoint_name='checkpoint_1' submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 15:42:58", "level": "warning"}
+{"event": "Checkpoint submission directory does not exist checkpoint_name='checkpoint_2' submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 15:42:58", "level": "warning"}
+{"event": "Checkpoint submission directory does not exist checkpoint_name='checkpoint_3' submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 15:42:58", "level": "warning"}
+{"event": "Checkpoint submission directory does not exist checkpoint_name='checkpoint_4' submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 15:42:58", "level": "warning"}
+{"event": "Found checkpoint directory checkpoint_name='checkpoint_5' problem_name='mocked_http' snapshot='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_5/snapshot'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading checkpoint config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http/checkpoint_5')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Found checkpoint directory checkpoint_name='checkpoint_6' problem_name='mocked_http' snapshot='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_6/snapshot'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading checkpoint config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http/checkpoint_6')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Found checkpoint directory checkpoint_name='checkpoint_7' problem_name='mocked_http' snapshot='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_7/snapshot'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading checkpoint config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http/checkpoint_7')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Found checkpoint directory checkpoint_name='checkpoint_8' problem_name='mocked_http' snapshot='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_8/snapshot'", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Loading checkpoint config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http/checkpoint_8')", "timestamp": "2026-06-12 15:42:58", "level": "debug"}
+{"event": "Evaluated checkpoint checkpoint_name='checkpoint_5' problem_name='mocked_http'", "timestamp": "2026-06-12 15:45:53", "level": "info"}
+{"event": "Evaluated checkpoint checkpoint_name='checkpoint_6' problem_name='mocked_http'", "timestamp": "2026-06-12 15:48:52", "level": "info"}
+{"event": "Evaluated checkpoint checkpoint_name='checkpoint_7' problem_name='mocked_http'", "timestamp": "2026-06-12 15:57:21", "level": "info"}
+{"event": "Evaluated checkpoint checkpoint_name='checkpoint_8' problem_name='mocked_http'", "timestamp": "2026-06-12 16:02:18", "level": "info"}
+{"event": "Evaluation complete saving full results failed=0 successful=4 total=1", "timestamp": "2026-06-12 16:02:18", "level": "info"}
+{"successful": 4, "failed": 0, "event": "Evaluation complete", "timestamp": "2026-06-12 16:02:18", "level": "info"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http')", "timestamp": "2026-06-12 16:02:18", "level": "debug"}
+{"event": "Creating problem reports submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 16:02:18", "level": "debug"}
+{"event": "run_info.yaml not found submission_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http'", "timestamp": "2026-06-12 16:02:18", "level": "debug"}
+{"event": "Checkpoint directory not found checkpoint_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_1'", "timestamp": "2026-06-12 16:02:18", "level": "warning"}
+{"event": "Checkpoint directory not found checkpoint_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_2'", "timestamp": "2026-06-12 16:02:18", "level": "warning"}
+{"event": "Checkpoint directory not found checkpoint_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_3'", "timestamp": "2026-06-12 16:02:18", "level": "warning"}
+{"event": "Checkpoint directory not found checkpoint_dir='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/mocked_http/checkpoint_4'", "timestamp": "2026-06-12 16:02:18", "level": "warning"}
+{"event": "Loading problem config path=PosixPath('/home/amirhosseinaghaei/.cache/scbench/problems/mocked_http')", "timestamp": "2026-06-12 16:02:33", "level": "debug"}
+{"event": "Saved run summary path='/mnt/d/ArtifactNet_Testcases/exp-mocked-http/eval-results/result.json'", "timestamp": "2026-06-12 16:02:33", "level": "info"}

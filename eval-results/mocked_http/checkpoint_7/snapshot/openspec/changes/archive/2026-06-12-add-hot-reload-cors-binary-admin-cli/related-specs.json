@@ -1,0 +1,5 @@
+[
+  "admin-template-management/add-admin-api-template-persistence",
+  "http-yaml-mock-server/add-behavior-templates-inheritance-values-ordering",
+  "http-yaml-mock-server/add-template-helpers-file-backed-bodies"
+]

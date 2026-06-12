@@ -1,0 +1,5 @@
+[
+  "http-yaml-mock-server/add-http-yaml-mock-server",
+  "http-yaml-mock-server/add-behavior-templates-inheritance-values-ordering",
+  "http-yaml-mock-server/add-template-helpers-file-backed-bodies"
+]

@@ -1,0 +1,5 @@
+[
+  "cors-response-policy/add-hot-reload-cors-binary-admin-cli",
+  "http-yaml-mock-server/add-template-helpers-file-backed-bodies",
+  "http-yaml-mock-server/add-admin-api-template-persistence"
+]
