@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import hashlib
+import hmac
 import pathlib
 import sys
 import threading
@@ -207,6 +209,121 @@ def test_template_builtin_and_extended_functions(monkeypatch):
     assert len(generated) == 36
 
 
+def test_template_rich_helper_functions():
+    ctx = hmock.build_template_context(
+        {},
+        '{"foo":"bar","context":{"type":"event"},"items":[{"id":"a"},{"id":"b"}],"nested":{"bar":"deep"}}',
+        "/",
+        "",
+        {},
+    )
+    ctx["XML"] = "<root><user><name>Ada</name></user></root>"
+    ctx["Items"] = ["x", "y"]
+    ctx["HTML"] = "<tag>&'\""
+
+    assert hmock.render_template('{{ jsonPath "foo" .HTTPBody }} {{ jsonPath "//bar" .HTTPBody }}', ctx) == "bar deep"
+    assert hmock.render_template('{{ gJsonPath "context.type" .HTTPBody }} {{ gJsonPath "items.0.id" .HTTPBody }}', ctx) == "event a"
+    assert hmock.render_template('{{ gJsonPath "items.#.id" .HTTPBody }} {{ gJsonPath "items.#" .HTTPBody }}', ctx) == '["a","b"] 2'
+    assert hmock.render_template('{{ xmlPath "//name" .XML }}', ctx) == "Ada"
+
+    first_uuid = hmock.render_template('{{ uuidv5 "stable-input" }}', ctx)
+    second_uuid = hmock.render_template('{{ uuidv5 "stable-input" }}', ctx)
+    assert first_uuid == second_uuid
+    assert len(first_uuid) == 36
+
+    assert hmock.render_template('{{ $m := regexFindAllSubmatch "([a-z]+)-([0-9]+)" "abc-123" }}{{ index $m 0 }} {{ index $m 1 }} {{ index $m 2 }}', ctx) == "abc-123 abc 123"
+    assert hmock.render_template('{{ regexFindFirstSubmatch "id=([0-9]+)" "id=42" }}', ctx) == "42"
+    assert hmock.render_template('{{ regexFindFirstSubmatch "id=[0-9]+" "id=42" }}', ctx) == ""
+
+    expected_hmac = hmac.new(b"secret", b"data", hashlib.sha256).hexdigest()
+    assert hmock.render_template('{{ hmacSHA256 "secret" "data" }}', ctx) == expected_hmac
+    assert hmock.render_template("{{ isLastIndex 1 .Items }} {{ isLastIndex 0 .Items }}", ctx) == "true false"
+    assert hmock.render_template("{{ htmlEscapeString .HTML }}", ctx) == "&lt;tag&gt;&amp;&#x27;&quot;"
+
+
+def test_template_path_helpers_empty_no_match_and_invalid_json():
+    ctx = hmock.build_template_context({}, "", "/", "", {})
+    ctx["JSON"] = '{"items":[{"id":"a"}]}'
+    ctx["XML"] = "<root><item>A</item></root>"
+    ctx["BadJSON"] = "not-json"
+
+    assert hmock.render_template('{{ jsonPath "missing" .JSON }}x{{ jsonPath "foo" .HTTPBody }}', ctx) == "x"
+    assert hmock.render_template('{{ gJsonPath "items.9.id" .JSON }}x{{ gJsonPath "foo" .HTTPBody }}', ctx) == "x"
+    assert hmock.render_template('{{ xmlPath "//missing" .XML }}x{{ xmlPath "//item" .HTTPBody }}', ctx) == "x"
+
+    with pytest.raises(hmock.TemplateError):
+        hmock.render_template('{{ gJsonPath "foo" .BadJSON }}', ctx)
+
+
+def test_body_from_file_loading_validation_and_snapshot(tmp_path, logger):
+    body_file = tmp_path / "responses" / "body.txt"
+    body_file.parent.mkdir()
+    body_file.write_text("original {{ .HTTPBody }}")
+    write_yaml(
+        tmp_path / "body.yaml",
+        """
+- key: file-body
+  expect:
+    http:
+      method: POST
+      path: /file
+  actions:
+    - reply_http:
+        status_code: 200
+        body_from_file: responses/body.txt
+""",
+    )
+
+    behaviors = hmock.load_behaviors(tmp_path, logger)
+    body_file.write_text("changed")
+
+    payload = behaviors[0].actions[0]["reply_http"]
+    assert payload["body_from_file_content"] == "original {{ .HTTPBody }}"
+
+    request_info = hmock.RequestInfo("POST", "/file", "/file", "", "", {}, "payload")
+    response = hmock.execute_behavior(behaviors[0], request_info, {})
+    assert response.body == "original payload"
+
+    write_yaml(
+        tmp_path / "missing.yaml",
+        """
+- key: missing-body
+  expect:
+    http:
+      method: GET
+      path: /missing
+  actions:
+    - reply_http:
+        status_code: 200
+        body_from_file: responses/missing.txt
+""",
+    )
+    with pytest.raises(hmock.ValidationError):
+        hmock.load_behaviors(tmp_path, logger)
+
+
+def test_body_from_file_rejects_paths_outside_templates_dir(tmp_path, logger):
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.txt"
+    outside.write_text("outside")
+    write_yaml(
+        tmp_path / "outside.yaml",
+        f"""
+- key: outside-body
+  expect:
+    http:
+      method: GET
+      path: /outside
+  actions:
+    - reply_http:
+        status_code: 200
+        body_from_file: ../{outside.name}
+""",
+    )
+
+    with pytest.raises(hmock.ValidationError):
+        hmock.load_behaviors(tmp_path, logger)
+
+
 def test_http_matching_actions_defaults_and_unmatched(server_factory):
     behaviors = [
         behavior(
@@ -253,6 +370,57 @@ def test_http_matching_actions_defaults_and_unmatched(server_factory):
     status, headers, body = request(base + "/items/42", method="POST")
     assert (status, body) == (202, "")
     assert headers["Content-Length"] == "0"
+
+
+def test_file_backed_body_http_rendering_and_precedence(tmp_path, logger, server_factory):
+    body_file = tmp_path / "responses" / "body.txt"
+    body_file.parent.mkdir()
+    body_file.write_text('file {{ .HTTPHeader.Get "X-Name" }} {{ gJsonPath "user.id" .HTTPBody }}')
+    write_yaml(
+        tmp_path / "file.yaml",
+        """
+- key: file-body
+  expect:
+    http:
+      method: POST
+      path: /file
+  actions:
+    - reply_http:
+        status_code: 200
+        body_from_file: responses/body.txt
+        headers:
+          X-From-Body: '{{ .HTTPHeader.Get "X-Name" }}'
+- key: inline-body
+  expect:
+    http:
+      method: GET
+      path: /inline
+  actions:
+    - reply_http:
+        status_code: 200
+        body: inline
+        body_from_file: responses/body.txt
+- key: empty-inline-body
+  expect:
+    http:
+      method: POST
+      path: /empty
+  actions:
+    - reply_http:
+        status_code: 200
+        body: ""
+        body_from_file: responses/body.txt
+""",
+    )
+    _, base = server_factory(hmock.load_behaviors(tmp_path, logger))
+
+    status, headers, body = request(base + "/file", method="POST", body='{"user":{"id":"42"}}', headers={"X-Name": "Ada"})
+    assert (status, body) == (200, "file Ada 42")
+    assert headers["X-From-Body"] == "Ada"
+    assert headers["Content-Length"] == str(len(body.encode()))
+
+    assert request(base + "/inline")[0::2] == (200, "inline")
+    assert request(base + "/empty", method="POST", body='{"user":{"id":"7"}}', headers={"X-Name": "Grace"})[0::2] == (200, "file Grace 7")
 
 
 def test_condition_render_failure_falls_through(server_factory):

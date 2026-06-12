@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import dataclasses
+import hashlib
 import html as html_lib
+import hmac
 import json
 import os
 import posixpath
@@ -12,6 +14,7 @@ import sys
 import threading
 import time
 import uuid
+import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -286,7 +289,19 @@ def parse_duration(value: str) -> float:
     return amount * factors[unit]
 
 
-def validate_behavior(raw: Any) -> Behavior:
+def _resolve_body_file(templates_dir: str | Path, body_from_file: str) -> str:
+    root = Path(templates_dir).resolve()
+    path = (root / body_from_file).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValidationError("reply_http.body_from_file must stay within templates directory") from exc
+    if not path.is_file():
+        raise ValidationError(f"reply_http.body_from_file not found: {body_from_file}")
+    return path.read_text()
+
+
+def validate_behavior(raw: Any, templates_dir: str | Path | None = None) -> Behavior:
     if not isinstance(raw, dict):
         raise ValidationError("behavior must be a mapping")
     key = raw.get("key")
@@ -331,6 +346,12 @@ def validate_behavior(raw: Any) -> Behavior:
             headers = payload.get("headers", {})
             if headers is not None and not isinstance(headers, dict):
                 raise ValidationError(f"behavior {key} reply_http.headers must be a mapping")
+            body_from_file = payload.get("body_from_file")
+            if body_from_file is not None:
+                if not isinstance(body_from_file, str) or not body_from_file:
+                    raise ValidationError(f"behavior {key} reply_http.body_from_file must be a non-empty string")
+                if templates_dir is not None:
+                    payload["body_from_file_content"] = _resolve_body_file(templates_dir, body_from_file)
         elif name == "sleep":
             if "duration" not in payload:
                 raise ValidationError(f"behavior {key} sleep.duration is required")
@@ -365,7 +386,7 @@ def load_behaviors(templates_dir: str | Path, logger: JsonLogger | None = None) 
     order: list[str] = []
     for path in discover_yaml_files(templates_dir):
         for raw in load_mock_file(path):
-            behavior = validate_behavior(raw)
+            behavior = validate_behavior(raw, templates_dir)
             if behavior.key in by_key:
                 order.remove(behavior.key)
                 logger.warn("duplicate mock key override", key=behavior.key, file=str(path))
@@ -808,6 +829,157 @@ def _math(op: str, *args: Any) -> Any:
     return int(result) if isinstance(result, float) and result.is_integer() else result
 
 
+def _parse_json_data(data: Any, *, fail_invalid: bool) -> Any:
+    if _empty(data):
+        return None
+    try:
+        return json.loads(str(data))
+    except json.JSONDecodeError as exc:
+        if fail_invalid:
+            raise TemplateError("invalid JSON") from exc
+        return None
+
+
+def _json_value_to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, separators=(",", ":"))
+    return str(value)
+
+
+def _find_recursive_json(value: Any, name: str) -> Any:
+    if isinstance(value, dict):
+        if name in value:
+            return value[name]
+        for child in value.values():
+            found = _find_recursive_json(child, name)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _find_recursive_json(child, name)
+            if found is not None:
+                return found
+    return None
+
+
+def _json_path(expr: Any, data: Any) -> str:
+    parsed = _parse_json_data(data, fail_invalid=False)
+    if parsed is None:
+        return ""
+    path = str(expr).strip()
+    if not path:
+        return ""
+    if path.startswith("//"):
+        return _json_value_to_text(_find_recursive_json(parsed, path[2:]))
+    value = parsed
+    for part in path.strip("./").split("."):
+        if part == "":
+            continue
+        if isinstance(value, dict) and part in value:
+            value = value[part]
+        elif isinstance(value, list) and part.isdigit() and int(part) < len(value):
+            value = value[int(part)]
+        else:
+            return ""
+    return _json_value_to_text(value)
+
+
+def _gjson_lookup(value: Any, parts: list[str]) -> Any:
+    if not parts:
+        return value
+    part = parts[0]
+    rest = parts[1:]
+    if part == "#":
+        if not isinstance(value, list):
+            return None
+        if not rest:
+            return len(value)
+        results = []
+        for item in value:
+            found = _gjson_lookup(item, rest)
+            if found is not None:
+                results.append(found)
+        return results
+    if isinstance(value, dict):
+        if part not in value:
+            return None
+        return _gjson_lookup(value[part], rest)
+    if isinstance(value, list) and part.isdigit():
+        index = int(part)
+        if index >= len(value):
+            return None
+        return _gjson_lookup(value[index], rest)
+    return None
+
+
+def _gjson_path(expr: Any, data: Any) -> str:
+    parsed = _parse_json_data(data, fail_invalid=True)
+    if parsed is None:
+        return ""
+    path = str(expr).strip()
+    if not path:
+        return ""
+    found = _gjson_lookup(parsed, path.split("."))
+    return _json_value_to_text(found)
+
+
+def _xml_inner_text(element: ET.Element) -> str:
+    return "".join(element.itertext())
+
+
+def _xml_path(expr: Any, data: Any) -> str:
+    if _empty(data):
+        return ""
+    try:
+        root = ET.fromstring(str(data))
+    except ET.ParseError as exc:
+        raise TemplateError("invalid XML") from exc
+    path = str(expr).strip()
+    if not path:
+        return ""
+    if path.startswith("//"):
+        path = ".//" + path[2:]
+    elif path.startswith("/"):
+        parts = [part for part in path.strip("/").split("/") if part]
+        if parts and parts[0] == root.tag:
+            parts = parts[1:]
+        path = "./" + "/".join(parts) if parts else "."
+    elif not path.startswith("."):
+        path = "./" + path
+    found = root if path == "." else root.find(path)
+    return _xml_inner_text(found) if found is not None else ""
+
+
+def _regex_all_submatches(pattern: Any, source: Any) -> list[str]:
+    match = re.search(str(pattern), str(source))
+    if not match:
+        return []
+    groups = [match.group(0)]
+    groups.extend(group if group is not None else "" for group in match.groups(default=""))
+    return groups
+
+
+def _regex_first_submatch(pattern: Any, source: Any) -> str:
+    groups = _regex_all_submatches(pattern, source)
+    return groups[1] if len(groups) > 1 else ""
+
+
+def _hmac_sha256(secret: Any, data: Any) -> str:
+    digest = hmac.new(str(secret).encode(), str(data).encode(), hashlib.sha256)
+    return digest.hexdigest()
+
+
+def _is_last_index(index: Any, array: Any) -> bool:
+    try:
+        return int(index) == len(array) - 1
+    except (TypeError, ValueError):
+        return False
+
+
 FUNCTIONS: dict[str, Callable[..., Any]] = {
     "eq": lambda a, b: _compare(a, b, "eq"),
     "ne": lambda a, b: _compare(a, b, "ne"),
@@ -856,6 +1028,15 @@ FUNCTIONS: dict[str, Callable[..., Any]] = {
     "max": lambda *args: _math("max", *args),
     "min": lambda *args: _math("min", *args),
     "uuidv4": lambda: str(uuid.uuid4()),
+    "jsonPath": _json_path,
+    "gJsonPath": _gjson_path,
+    "xmlPath": _xml_path,
+    "uuidv5": lambda data: str(uuid.uuid5(uuid.NAMESPACE_OID, str(data))),
+    "regexFindAllSubmatch": _regex_all_submatches,
+    "regexFindFirstSubmatch": _regex_first_submatch,
+    "hmacSHA256": _hmac_sha256,
+    "isLastIndex": _is_last_index,
+    "htmlEscapeString": lambda value: html_lib.escape(str(value), quote=True),
 }
 
 
@@ -903,7 +1084,10 @@ def execute_behavior(behavior: Behavior, request: RequestInfo, params: dict[str,
         if name == "sleep":
             time.sleep(parse_duration(str(payload["duration"])))
         elif name == "reply_http":
-            body = render_template(str(payload.get("body", "")), context)
+            body_source = payload.get("body")
+            if body_source is None or body_source == "":
+                body_source = payload.get("body_from_file_content", "")
+            body = render_template(str(body_source), context)
             headers = {
                 str(key): render_template(str(value), context)
                 for key, value in (payload.get("headers") or {}).items()
