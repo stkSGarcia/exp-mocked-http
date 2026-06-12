@@ -71,6 +71,25 @@ The admin server SHALL store named groups of mock definitions separately from th
 - **WHEN** a client sends `DELETE /api/v1/template_sets/{setKey}`
 - **THEN** the system SHALL delete the entire set for `{setKey}`, leave all other sets and base API-added mocks untouched, and return `204 No Content`
 
+### Requirement: YAML Admin Template Mutation Payloads
+The admin server SHALL accept YAML mock-definition payloads for template mutation endpoints.
+
+#### Scenario: Base API templates accept YAML
+- **WHEN** a client sends `POST /api/v1/templates` with `Content-Type: application/yaml` and a YAML array of mock definitions
+- **THEN** the system SHALL validate the submitted definitions, persist them in the base API-added mock collection, and return `200 OK` with the submitted mocks
+
+#### Scenario: Template set accepts YAML
+- **WHEN** a client sends `POST /api/v1/template_sets/{setKey}` with `Content-Type: application/yaml` and a YAML array of mock definitions
+- **THEN** the system SHALL validate the submitted definitions, replace the full persisted set for `{setKey}`, and return `200 OK` with the submitted mocks
+
+#### Scenario: Invalid YAML base API templates are rejected
+- **WHEN** a client sends `POST /api/v1/templates` with `Content-Type: application/yaml` and mock definitions that fail parsing or validation
+- **THEN** the system SHALL return `400 Bad Request` with an error message and SHALL NOT persist the submitted definitions
+
+#### Scenario: Invalid YAML template set is rejected
+- **WHEN** a client sends `POST /api/v1/template_sets/{setKey}` with `Content-Type: application/yaml` and mock definitions that fail parsing or validation
+- **THEN** the system SHALL return `400 Bad Request` with an error message and SHALL NOT replace the persisted set
+
 ### Requirement: Admin Mutation Reload Visibility
 Admin mutations SHALL become visible to subsequent mock-server requests within a bounded eventual-reload window.
 
