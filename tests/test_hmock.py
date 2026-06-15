@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import copy
 import hashlib
 import hmac
 import pathlib
@@ -2440,6 +2441,330 @@ def test_admin_created_mocks_persist_across_runtime_restart(tmp_path, logger):
 
     assert selected is not None
     assert hmock.execute_behavior(selected, request_info, params, store).body == "persisted"
+
+
+def proto_field(number, wire_type, value):
+    tag = hmock._write_varint((number << 3) | wire_type)
+    if wire_type == 0:
+        return tag + hmock._write_varint(value)
+    if wire_type == 2:
+        data = value if isinstance(value, bytes) else str(value).encode()
+        return tag + hmock._write_varint(len(data)) + data
+    raise AssertionError(f"unsupported test wire type {wire_type}")
+
+
+def proto_string(number, value):
+    return proto_field(number, 2, value)
+
+
+def proto_int(number, value):
+    return proto_field(number, 0, value)
+
+
+def field_descriptor(name, number, type_id, json_name=""):
+    return (
+        proto_string(1, name)
+        + proto_int(3, number)
+        + proto_int(4, 1)
+        + proto_int(5, type_id)
+        + (proto_string(10, json_name) if json_name else b"")
+    )
+
+
+def message_descriptor(name, fields):
+    body = proto_string(1, name)
+    for field in fields:
+        body += proto_field(2, 2, field)
+    return body
+
+
+def method_descriptor(name, input_type, output_type):
+    return proto_string(1, name) + proto_string(2, input_type) + proto_string(3, output_type)
+
+
+def service_descriptor(name, methods):
+    body = proto_string(1, name)
+    for method in methods:
+        body += proto_field(2, 2, method)
+    return body
+
+
+def descriptor_set_bytes():
+    request = message_descriptor(
+        "EchoRequest",
+        [field_descriptor("message", 1, hmock.PROTO_TYPE_STRING)],
+    )
+    reply = message_descriptor(
+        "EchoReply",
+        [field_descriptor("reply", 1, hmock.PROTO_TYPE_STRING)],
+    )
+    service = service_descriptor(
+        "EchoService",
+        [method_descriptor("Echo", ".demo.EchoRequest", ".demo.EchoReply")],
+    )
+    file_proto = (
+        proto_string(1, "echo.proto")
+        + proto_string(2, "demo")
+        + proto_field(4, 2, request)
+        + proto_field(4, 2, reply)
+        + proto_field(6, 2, service)
+    )
+    return proto_field(1, 2, file_proto)
+
+
+def test_grpc_config_validation_and_descriptor_startup_rules(tmp_path, logger):
+    defaults = hmock.load_config({})
+    assert defaults.grpc_enabled is False
+    assert defaults.grpc_port == 50051
+    assert defaults.grpc_host == "0.0.0.0"
+    assert defaults.grpc_descriptor_set_paths == ""
+
+    config = hmock.load_config(
+        {
+            "HM_TEMPLATES_DIR": str(tmp_path),
+            "HM_GRPC_ENABLED": "true",
+            "HM_GRPC_PORT": "50052",
+            "HM_GRPC_HOST": "127.0.0.1",
+            "HM_GRPC_DESCRIPTOR_SET_PATHS": "descriptors/echo.pb,/abs/other.pb",
+        }
+    )
+    assert config.grpc_enabled is True
+    assert config.grpc_port == 50052
+    assert config.grpc_host == "127.0.0.1"
+    assert hmock.resolve_grpc_descriptor_set_paths(config) == (
+        tmp_path / "descriptors/echo.pb",
+        pathlib.Path("/abs/other.pb"),
+    )
+
+    valid = behavior(
+        {
+            "key": "grpc",
+            "expect": {"grpc": {"service": "demo.EchoService", "method": "Echo"}},
+            "actions": [{"reply_grpc": {"payload": '{"reply":"ok"}'}}],
+        }
+    )
+    assert valid.grpc_service == "demo.EchoService"
+    assert valid.grpc_method == "Echo"
+
+    invalid = [
+        {"key": "missing-service", "expect": {"grpc": {"method": "Echo"}}, "actions": []},
+        {"key": "missing-method", "expect": {"grpc": {"service": "demo.EchoService"}}, "actions": []},
+        {"key": "bad-grpc", "expect": {"grpc": "nope"}, "actions": []},
+        {
+            "key": "missing-payload",
+            "expect": {"grpc": {"service": "demo.EchoService", "method": "Echo"}},
+            "actions": [{"reply_grpc": {}}],
+        },
+        {
+            "key": "bad-header",
+            "expect": {"grpc": {"service": "demo.EchoService", "method": "Echo"}},
+            "actions": [{"reply_grpc": {"payload": "{}", "headers": {"x": 1}}}],
+        },
+        {
+            "key": "two-replies",
+            "expect": {"grpc": {"service": "demo.EchoService", "method": "Echo"}},
+            "actions": [{"reply_grpc": {"payload": "{}"}}, {"reply_grpc": {"payload": "{}"}}],
+        },
+        {"key": "reply-without-grpc", "expect": {"http": {"method": "GET", "path": "/"}}, "actions": [{"reply_grpc": {"payload": "{}"}}]},
+    ]
+    for raw in invalid:
+        with pytest.raises(hmock.ValidationError):
+            hmock.validate_behavior(raw)
+
+    write_yaml(
+        tmp_path / "grpc.yaml",
+        """
+- key: grpc
+  expect:
+    grpc:
+      service: demo.EchoService
+      method: Echo
+  actions:
+    - reply_grpc:
+        payload: '{"reply":"ok"}'
+""",
+    )
+    with pytest.raises(hmock.ValidationError, match="HM_GRPC_DESCRIPTOR_SET_PATHS"):
+        hmock.HMockRuntime(hmock.Config(str(tmp_path), 0, "127.0.0.1", "debug", grpc_enabled=True), logger)
+
+    descriptor = tmp_path / "echo.pb"
+    descriptor.write_bytes(descriptor_set_bytes())
+    runtime = hmock.HMockRuntime(
+        hmock.Config(str(tmp_path), 0, "127.0.0.1", "debug", grpc_enabled=True, grpc_descriptor_set_paths="echo.pb"),
+        logger,
+    )
+    assert runtime.grpc_registry.method("demo.EchoService", "Echo").method == "Echo"
+
+
+def test_grpc_descriptor_framing_matching_context_and_reply_rendering(tmp_path):
+    descriptor = tmp_path / "echo.pb"
+    descriptor.write_bytes(descriptor_set_bytes())
+    registry = hmock.GrpcDescriptorRegistry([descriptor])
+    request_message = registry.message(".demo.EchoRequest")
+    response_message = registry.message(".demo.EchoReply")
+    request_payload = hmock.encode_proto_object(request_message, {"message": "Ada"}, registry)
+    assert hmock.decode_proto_message(request_message, request_payload, registry) == {"message": "Ada"}
+    frame = hmock.grpc_encode_frame(request_payload)
+    assert hmock.grpc_decode_frame(frame) == request_payload
+
+    grpc_request = hmock.GrpcRequestInfo(
+        "demo.EchoService",
+        "Echo",
+        '{"message":"Ada"}',
+        {"x-id": "42"},
+    )
+    behavior_obj = behavior(
+        {
+            "key": "grpc",
+            "expect": {"grpc": {"service": "demo.EchoService", "method": "Echo"}, "condition": '{{ eq .GRPCMethod "Echo" }}'},
+            "actions": [
+                {
+                    "reply_grpc": {
+                        "payload": '{"reply":"{{ .GRPCMethod }}:{{ .GRPCHeader.Get "x-id" }}"}',
+                        "headers": {"x-echo": "{{ .GRPCService }}"},
+                    }
+                }
+            ],
+        }
+    )
+    assert hmock.find_grpc_behavior([behavior_obj], grpc_request) is behavior_obj
+    response = hmock.execute_behavior(
+        behavior_obj,
+        grpc_request,
+        {},
+        grpc_registry=registry,
+    )
+    assert response.headers["grpc-status"] == "0"
+    assert response.headers["grpc-message"] == "OK"
+    assert response.headers["Content-Type"] == "application/grpc"
+    assert response.headers["x-echo"] == "demo.EchoService"
+    decoded = hmock.decode_proto_message(response_message, hmock.grpc_decode_frame(response.body_bytes()), registry)
+    assert decoded == {"reply": "Echo:42"}
+
+
+def test_admin_evaluate_endpoint_validation_matching_conditions_and_actions(tmp_path, logger):
+    config = hmock.Config(str(tmp_path), 0, "127.0.0.1", "debug")
+    mock_server, mock_thread, mock_base, admin_server, admin_thread, admin_base = start_runtime_servers(config, logger)
+    try:
+        mock = {
+            "key": "eval",
+            "expect": {"http": {"method": "POST", "path": "/items/:id"}, "condition": '{{ eq .HTTPBody "go" }}'},
+            "actions": [
+                {"order": 2, "reply_http": {"status_code": 201, "body": "item {{ .HTTPURL.Get \"id\" }}", "headers": {"x-mode": "{{ .HTTPHeader.Get \"x-mode\" }}"}}},
+                {"order": 1, "publish_kafka": {"topic": "topic-{{ .HTTPURL.Get \"id\" }}", "payload": "{{ .HTTPBody }}"}},
+            ],
+        }
+        request_body = {
+            "mock": mock,
+            "context": {
+                "http_context": {
+                    "method": "POST",
+                    "path": "/items/42",
+                    "body": "go",
+                    "headers": {"x-mode": "dry"},
+                    "query_string": "a=1",
+                }
+            },
+        }
+        status, _, body = request(admin_base + "/api/v1/evaluate", method="POST", body=json.dumps(request_body))
+        assert status == 200
+        parsed = json.loads(body)
+        assert parsed["expect_passed"] is True
+        assert parsed["condition_passed"] is True
+        assert [item["type"] for item in parsed["actions_performed"]] == [
+            "publish_kafka_action_performed",
+            "reply_http_action_performed",
+        ]
+        assert parsed["actions_performed"][0] == {
+            "type": "publish_kafka_action_performed",
+            "topic": "topic-42",
+            "payload": "go",
+        }
+        reply = parsed["actions_performed"][1]
+        assert reply["status_code"] == "201"
+        assert reply["content_type"] == "application/json"
+        assert reply["body"] == "item 42"
+        assert reply["headers"]["Content-Type"] == "application/json"
+        assert reply["headers"]["Content-Length"] == "7"
+        assert reply["headers"]["x-mode"] == "dry"
+
+        failed_match = copy.deepcopy(request_body)
+        failed_match["context"]["http_context"]["path"] = "/other"
+        status, _, body = request(admin_base + "/api/v1/evaluate", method="POST", body=json.dumps(failed_match))
+        parsed = json.loads(body)
+        assert status == 200
+        assert parsed["expect_passed"] is False
+        assert parsed["actions_performed"] == []
+
+        failed_condition = copy.deepcopy(request_body)
+        failed_condition["context"]["http_context"]["body"] = "stop"
+        status, _, body = request(admin_base + "/api/v1/evaluate", method="POST", body=json.dumps(failed_condition))
+        parsed = json.loads(body)
+        assert status == 200
+        assert parsed["expect_passed"] is True
+        assert parsed["condition_passed"] is False
+        assert parsed["condition_rendered"] == "false"
+        assert parsed["actions_performed"] == []
+
+        status, _, body = request(admin_base + "/api/v1/evaluate", method="POST", body=json.dumps({"mock": {"key": ""}, "context": {}}))
+        assert status == 400
+        assert "error" in json.loads(body)
+    finally:
+        stop_server(mock_server, mock_thread)
+        stop_server(admin_server, admin_thread)
+
+
+def test_evaluate_does_not_execute_side_effecting_actions(tmp_path, logger):
+    capture_server, capture_thread, records, capture_base = start_capture_server()
+    config = hmock.Config(str(tmp_path), 0, "127.0.0.1", "debug")
+    mock_server, mock_thread, mock_base, admin_server, admin_thread, admin_base = start_runtime_servers(config, logger)
+    try:
+        mock = {
+            "key": "dry",
+            "expect": {"http": {"method": "POST", "path": "/dry"}},
+            "actions": [
+                {"sleep": {"duration": "1s"}},
+                {"redis": ["SET dry touched"]},
+                {"send_http": {"url": capture_base + "/side-effect", "method": "POST", "body": "nope"}},
+                {"publish_amqp": {"exchange": "ex", "routing_key": "rk", "payload": "nope"}},
+                {"publish_kafka": {"topic": "preview", "payload": "ok"}},
+                {"reply_http": {"status_code": 200, "body": '{{ redisDo "SET no side" }}done'}},
+            ],
+        }
+        started = time.monotonic()
+        status, _, body = request(
+            admin_base + "/api/v1/evaluate",
+            method="POST",
+            body=json.dumps(
+                {
+                    "mock": mock,
+                    "context": {
+                        "http_context": {
+                            "method": "POST",
+                            "path": "/dry",
+                            "body": "",
+                            "headers": {},
+                            "query_string": "",
+                        }
+                    },
+                }
+            ),
+        )
+        elapsed = time.monotonic() - started
+        assert status == 200
+        assert elapsed < 0.5
+        assert records == []
+        assert hmock.MemoryRedisStore().do("GET dry") == ""
+        parsed = json.loads(body)
+        assert [item["type"] for item in parsed["actions_performed"]] == [
+            "publish_kafka_action_performed",
+            "reply_http_action_performed",
+        ]
+        assert parsed["actions_performed"][1]["body"] == "done"
+    finally:
+        stop_server(mock_server, mock_thread)
+        stop_server(admin_server, admin_thread)
+        stop_server(capture_server, capture_thread)
 
 
 def test_omctl_push_delete_flags_and_payloads(tmp_path, monkeypatch):
