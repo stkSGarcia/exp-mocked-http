@@ -6,6 +6,7 @@ import dataclasses
 import hashlib
 import html as html_lib
 import hmac
+import importlib.util
 import json
 import os
 import posixpath
@@ -49,6 +50,16 @@ def _env_bool(value: str | None, default: bool) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
+def _env_bool_optional(value: str | None) -> bool | None:
+    if value is None or value == "":
+        return None
+    return _env_bool(value, False)
+
+
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 @dataclasses.dataclass(frozen=True)
 class Config:
     templates_dir: str = "./templates"
@@ -62,6 +73,81 @@ class Config:
     admin_http_host: str = "0.0.0.0"
     templates_dir_hot_reload: bool = True
     cors_enabled: bool = False
+    kafka_enabled: bool = False
+    kafka_client_id: str = "hmock"
+    kafka_seed_brokers: str = "kafka:9092"
+    kafka_sasl_username: str = ""
+    kafka_sasl_password: str = ""
+    kafka_tls_enabled: bool = False
+    kafka_producer_seed_brokers: str | None = None
+    kafka_consumer_seed_brokers: str | None = None
+    kafka_sasl_producer_username: str | None = None
+    kafka_sasl_producer_password: str | None = None
+    kafka_sasl_consumer_username: str | None = None
+    kafka_sasl_consumer_password: str | None = None
+    kafka_tls_producer_enabled: bool | None = None
+    kafka_tls_consumer_enabled: bool | None = None
+    amqp_enabled: bool = False
+    amqp_url: str = "amqp://guest:guest@rabbitmq:5672"
+
+
+@dataclasses.dataclass(frozen=True)
+class KafkaEndpointConfig:
+    client_id: str
+    seed_brokers: list[str]
+    sasl_username: str
+    sasl_password: str
+    tls_enabled: bool
+
+    @property
+    def sasl_enabled(self) -> bool:
+        return bool(self.sasl_username and self.sasl_password)
+
+
+def resolve_kafka_endpoint_config(config: Config, endpoint: str) -> KafkaEndpointConfig:
+    if endpoint not in {"producer", "consumer"}:
+        raise ValidationError(f"unsupported Kafka endpoint: {endpoint}")
+    if endpoint == "producer":
+        seed_brokers = config.kafka_producer_seed_brokers or config.kafka_seed_brokers
+        username = (
+            config.kafka_sasl_producer_username
+            if config.kafka_sasl_producer_username is not None
+            else config.kafka_sasl_username
+        )
+        password = (
+            config.kafka_sasl_producer_password
+            if config.kafka_sasl_producer_password is not None
+            else config.kafka_sasl_password
+        )
+        tls_enabled = (
+            config.kafka_tls_producer_enabled
+            if config.kafka_tls_producer_enabled is not None
+            else config.kafka_tls_enabled
+        )
+    else:
+        seed_brokers = config.kafka_consumer_seed_brokers or config.kafka_seed_brokers
+        username = (
+            config.kafka_sasl_consumer_username
+            if config.kafka_sasl_consumer_username is not None
+            else config.kafka_sasl_username
+        )
+        password = (
+            config.kafka_sasl_consumer_password
+            if config.kafka_sasl_consumer_password is not None
+            else config.kafka_sasl_password
+        )
+        tls_enabled = (
+            config.kafka_tls_consumer_enabled
+            if config.kafka_tls_consumer_enabled is not None
+            else config.kafka_tls_enabled
+        )
+    return KafkaEndpointConfig(
+        client_id=config.kafka_client_id,
+        seed_brokers=_split_csv(seed_brokers),
+        sasl_username=username or "",
+        sasl_password=password or "",
+        tls_enabled=bool(tls_enabled),
+    )
 
 
 def load_config(env: dict[str, str] | None = None) -> Config:
@@ -78,6 +164,22 @@ def load_config(env: dict[str, str] | None = None) -> Config:
         admin_http_host=env.get("HM_ADMIN_HTTP_HOST", "0.0.0.0"),
         templates_dir_hot_reload=_env_bool(env.get("HM_TEMPLATES_DIR_HOT_RELOAD"), True),
         cors_enabled=_env_bool(env.get("HM_CORS_ENABLED"), False),
+        kafka_enabled=_env_bool(env.get("HM_KAFKA_ENABLED"), False),
+        kafka_client_id=env.get("HM_KAFKA_CLIENT_ID", "hmock"),
+        kafka_seed_brokers=env.get("HM_KAFKA_SEED_BROKERS", "kafka:9092"),
+        kafka_sasl_username=env.get("HM_KAFKA_SASL_USERNAME", ""),
+        kafka_sasl_password=env.get("HM_KAFKA_SASL_PASSWORD", ""),
+        kafka_tls_enabled=_env_bool(env.get("HM_KAFKA_TLS_ENABLED"), False),
+        kafka_producer_seed_brokers=env.get("HM_KAFKA_PRODUCER_SEED_BROKERS"),
+        kafka_consumer_seed_brokers=env.get("HM_KAFKA_CONSUMER_SEED_BROKERS"),
+        kafka_sasl_producer_username=env.get("HM_KAFKA_SASL_PRODUCER_USERNAME"),
+        kafka_sasl_producer_password=env.get("HM_KAFKA_SASL_PRODUCER_PASSWORD"),
+        kafka_sasl_consumer_username=env.get("HM_KAFKA_SASL_CONSUMER_USERNAME"),
+        kafka_sasl_consumer_password=env.get("HM_KAFKA_SASL_CONSUMER_PASSWORD"),
+        kafka_tls_producer_enabled=_env_bool_optional(env.get("HM_KAFKA_TLS_PRODUCER_ENABLED")),
+        kafka_tls_consumer_enabled=_env_bool_optional(env.get("HM_KAFKA_TLS_CONSUMER_ENABLED")),
+        amqp_enabled=_env_bool(env.get("HM_AMQP_ENABLED"), False),
+        amqp_url=env.get("HM_AMQP_URL", "amqp://guest:guest@rabbitmq:5672"),
     )
 
 
@@ -801,13 +903,18 @@ class PathPattern:
 class Behavior:
     key: str
     kind: str
-    method: str
-    path: str
+    trigger: str
     condition: str
     actions: list[dict[str, Any]]
-    pattern: PathPattern
     values: dict[str, Any]
     templates: dict[str, str]
+    method: str = ""
+    path: str = ""
+    pattern: PathPattern | None = None
+    kafka_topic: str = ""
+    amqp_exchange: str = ""
+    amqp_routing_key: str = ""
+    amqp_queue: str = ""
 
 
 @dataclasses.dataclass
@@ -898,6 +1005,37 @@ def _validate_headers_mapping(headers: Any, field_name: str) -> None:
     for key, value in headers.items():
         if not isinstance(key, str) or not isinstance(value, str):
             raise ValidationError(f"{field_name} must be a string map")
+
+
+def _require_string_field(payload: dict[str, Any], field_name: str, error_prefix: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str) or not value:
+        raise ValidationError(f"{error_prefix}.{field_name} is required")
+    return value
+
+
+def _validate_text_payload_source(
+    payload: dict[str, Any],
+    action_name: str,
+    key: str,
+    templates_dir: str | Path | None,
+    content_field: str,
+) -> None:
+    if "payload" in payload and payload["payload"] is not None and not isinstance(payload["payload"], str):
+        raise ValidationError(f"behavior {key} {action_name}.payload must be a string")
+    payload_from_file = payload.get("payload_from_file")
+    has_inline = isinstance(payload.get("payload"), str)
+    if payload_from_file is not None:
+        if not isinstance(payload_from_file, str) or not payload_from_file:
+            raise ValidationError(f"behavior {key} {action_name}.payload_from_file must be a non-empty string")
+        if templates_dir is not None:
+            payload[content_field] = _resolve_body_file(
+                templates_dir,
+                payload_from_file,
+                f"{action_name}.payload_from_file",
+            )
+    if not has_inline and payload_from_file is None:
+        raise ValidationError(f"behavior {key} {action_name} payload or payload_from_file is required")
 
 
 VALID_KINDS = {"Behavior", "Template", "AbstractBehavior"}
@@ -1044,6 +1182,29 @@ def _validate_actions(
                     )
             if "binary_file_name" in payload and payload["binary_file_name"] is not None and not isinstance(payload["binary_file_name"], str):
                 raise ValidationError(f"behavior {key} send_http.binary_file_name must be a string")
+        elif name == "publish_kafka":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
+            _require_string_field(payload, "topic", f"behavior {key} publish_kafka")
+            _validate_text_payload_source(
+                payload,
+                "publish_kafka",
+                key,
+                templates_dir,
+                "kafka_payload_from_file_content",
+            )
+        elif name == "publish_amqp":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
+            _require_string_field(payload, "exchange", f"behavior {key} publish_amqp")
+            _require_string_field(payload, "routing_key", f"behavior {key} publish_amqp")
+            _validate_text_payload_source(
+                payload,
+                "publish_amqp",
+                key,
+                templates_dir,
+                "amqp_payload_from_file_content",
+            )
         else:
             raise ValidationError(f"behavior {key} action {name} is not supported")
     if reply_count > 1:
@@ -1066,7 +1227,22 @@ def _validate_abstract_definition(raw: dict[str, Any], templates_dir: str | Path
     http = expect.get("http", {})
     if http is not None and not isinstance(http, dict):
         raise ValidationError(f"behavior {key} expect.http must be a mapping")
+    kafka = expect.get("kafka", {})
+    if kafka is not None and not isinstance(kafka, dict):
+        raise ValidationError(f"behavior {key} expect.kafka must be a mapping")
+    amqp = expect.get("amqp", {})
+    if amqp is not None and not isinstance(amqp, dict):
+        raise ValidationError(f"behavior {key} expect.amqp must be a mapping")
     _validate_actions(raw.get("actions", []), key, templates_dir)
+
+
+def _expect_trigger(expect: dict[str, Any], key: str) -> str:
+    triggers = [name for name in ("http", "kafka", "amqp") if name in expect and expect.get(name) is not None]
+    if not triggers:
+        raise ValidationError(f"behavior {key} expect.http.method is required")
+    if len(triggers) != 1:
+        raise ValidationError(f"behavior {key} must define exactly one expect trigger")
+    return triggers[0]
 
 
 def validate_behavior(
@@ -1080,15 +1256,6 @@ def validate_behavior(
     expect = raw.get("expect", {})
     if not isinstance(expect, dict):
         raise ValidationError(f"behavior {key} expect must be a mapping")
-    http = expect.get("http", {})
-    if not isinstance(http, dict):
-        raise ValidationError(f"behavior {key} expect.http must be a mapping")
-    method = http.get("method")
-    path = http.get("path")
-    if not isinstance(method, str) or not method:
-        raise ValidationError(f"behavior {key} expect.http.method is required")
-    if not isinstance(path, str) or not path:
-        raise ValidationError(f"behavior {key} expect.http.path is required")
     condition = expect.get("condition", "")
     if condition is None:
         condition = ""
@@ -1100,16 +1267,66 @@ def validate_behavior(
     if not isinstance(values, dict):
         raise ValidationError(f"behavior {key} values must be a mapping")
     sorted_actions = _validate_actions(raw.get("actions", []), key, templates_dir)
+    trigger = _expect_trigger(expect, key)
+    method = ""
+    path = ""
+    pattern: PathPattern | None = None
+    kafka_topic = ""
+    amqp_exchange = ""
+    amqp_routing_key = ""
+    amqp_queue = ""
+    if trigger == "http":
+        http = expect.get("http", {})
+        if not isinstance(http, dict):
+            raise ValidationError(f"behavior {key} expect.http must be a mapping")
+        method_value = http.get("method")
+        path_value = http.get("path")
+        if not isinstance(method_value, str) or not method_value:
+            raise ValidationError(f"behavior {key} expect.http.method is required")
+        if not isinstance(path_value, str) or not path_value:
+            raise ValidationError(f"behavior {key} expect.http.path is required")
+        method = method_value.upper()
+        path = path_value
+        pattern = PathPattern.compile(path_value)
+    elif trigger == "kafka":
+        kafka = expect.get("kafka", {})
+        if not isinstance(kafka, dict):
+            raise ValidationError(f"behavior {key} expect.kafka must be a mapping")
+        topic = kafka.get("topic")
+        if not isinstance(topic, str) or not topic:
+            raise ValidationError(f"behavior {key} expect.kafka.topic is required")
+        kafka_topic = topic
+    elif trigger == "amqp":
+        amqp = expect.get("amqp", {})
+        if not isinstance(amqp, dict):
+            raise ValidationError(f"behavior {key} expect.amqp must be a mapping")
+        exchange = amqp.get("exchange")
+        routing_key = amqp.get("routing_key")
+        queue = amqp.get("queue")
+        if not isinstance(exchange, str) or not exchange:
+            raise ValidationError(f"behavior {key} expect.amqp.exchange is required")
+        if not isinstance(routing_key, str) or not routing_key:
+            raise ValidationError(f"behavior {key} expect.amqp.routing_key is required")
+        if queue is not None and not isinstance(queue, str):
+            raise ValidationError(f"behavior {key} expect.amqp.queue must be a string")
+        amqp_exchange = exchange
+        amqp_routing_key = routing_key
+        amqp_queue = queue or routing_key
     return Behavior(
         key=key,
         kind=kind,
-        method=method.upper(),
-        path=path,
+        trigger=trigger,
         condition=condition,
         actions=sorted_actions,
-        pattern=PathPattern.compile(path),
         values=dict(values),
         templates=dict(templates or {}),
+        method=method,
+        path=path,
+        pattern=pattern,
+        kafka_topic=kafka_topic,
+        amqp_exchange=amqp_exchange,
+        amqp_routing_key=amqp_routing_key,
+        amqp_queue=amqp_queue,
     )
 
 
@@ -1302,6 +1519,52 @@ def build_template_context(
         context["redisDo"] = redis_do
     if templates is not None:
         context["__templates"] = templates
+    return context
+
+
+def _build_base_context(
+    redis_do: Callable[[str], str] | None = None,
+    values: dict[str, Any] | None = None,
+    templates: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    context: dict[str, Any] = {"Values": dict(values or {})}
+    if redis_do is not None:
+        context["redisDo"] = redis_do
+    if templates is not None:
+        context["__templates"] = templates
+    return context
+
+
+def build_kafka_template_context(
+    topic: str,
+    payload: str,
+    redis_do: Callable[[str], str] | None = None,
+    values: dict[str, Any] | None = None,
+    templates: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    context = _build_base_context(redis_do, values, templates)
+    context.update({"KafkaTopic": topic, "KafkaPayload": payload})
+    return context
+
+
+def build_amqp_template_context(
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+    redis_do: Callable[[str], str] | None = None,
+    values: dict[str, Any] | None = None,
+    templates: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    context = _build_base_context(redis_do, values, templates)
+    context.update(
+        {
+            "AMQPExchange": exchange,
+            "AMQPRoutingKey": routing_key,
+            "AMQPQueue": queue,
+            "AMQPPayload": payload,
+        }
+    )
     return context
 
 
@@ -1970,13 +2233,304 @@ class ResponseInfo:
     body: str | bytes
 
 
+class KafkaAdapter:
+    def publish(self, topic: str, payload: str) -> None:
+        raise NotImplementedError
+
+    def consume(
+        self,
+        topics: list[str],
+        handler: Callable[[str, str], None],
+        stop_event: threading.Event,
+    ) -> None:
+        raise NotImplementedError
+
+    def close(self) -> None:
+        return
+
+
+class RealKafkaAdapter(KafkaAdapter):
+    def __init__(self, producer_config: KafkaEndpointConfig, consumer_config: KafkaEndpointConfig) -> None:
+        if importlib.util.find_spec("kafka") is None:
+            raise ValidationError("Kafka support requires optional dependency 'kafka-python'")
+        from kafka import KafkaConsumer, KafkaProducer  # type: ignore[import-not-found]
+
+        self._producer_cls = KafkaProducer
+        self._consumer_cls = KafkaConsumer
+        self.producer_config = producer_config
+        self.consumer_config = consumer_config
+        self._producer: Any | None = None
+
+    def _client_kwargs(self, config: KafkaEndpointConfig) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "bootstrap_servers": config.seed_brokers,
+            "client_id": config.client_id,
+        }
+        if config.sasl_enabled:
+            kwargs.update(
+                {
+                    "security_protocol": "SASL_SSL" if config.tls_enabled else "SASL_PLAINTEXT",
+                    "sasl_mechanism": "PLAIN",
+                    "sasl_plain_username": config.sasl_username,
+                    "sasl_plain_password": config.sasl_password,
+                }
+            )
+        elif config.tls_enabled:
+            kwargs["security_protocol"] = "SSL"
+        return kwargs
+
+    def publish(self, topic: str, payload: str) -> None:
+        if self._producer is None:
+            self._producer = self._producer_cls(
+                value_serializer=lambda value: str(value).encode(),
+                **self._client_kwargs(self.producer_config),
+            )
+        future = self._producer.send(topic, payload)
+        future.get(timeout=10)
+        self._producer.flush()
+
+    def consume(
+        self,
+        topics: list[str],
+        handler: Callable[[str, str], None],
+        stop_event: threading.Event,
+    ) -> None:
+        consumer = self._consumer_cls(
+            *topics,
+            value_deserializer=lambda value: value.decode(errors="replace"),
+            consumer_timeout_ms=1000,
+            **self._client_kwargs(self.consumer_config),
+        )
+        try:
+            while not stop_event.is_set():
+                for message in consumer:
+                    handler(str(message.topic), str(message.value))
+                    if stop_event.is_set():
+                        break
+                break
+        finally:
+            consumer.close()
+
+    def close(self) -> None:
+        if self._producer is not None:
+            self._producer.close()
+
+
+@dataclasses.dataclass(frozen=True)
+class AMQPBinding:
+    exchange: str
+    routing_key: str
+    queue: str
+
+
+class AMQPAdapter:
+    def setup(self, bindings: list[AMQPBinding]) -> None:
+        raise NotImplementedError
+
+    def publish(self, exchange: str, routing_key: str, payload: str) -> None:
+        raise NotImplementedError
+
+    def consume(
+        self,
+        bindings: list[AMQPBinding],
+        handler: Callable[[str, str, str, str], None],
+        stop_event: threading.Event,
+    ) -> None:
+        raise NotImplementedError
+
+    def close(self) -> None:
+        return
+
+
+class RealAMQPAdapter(AMQPAdapter):
+    def __init__(self, url: str) -> None:
+        if importlib.util.find_spec("pika") is None:
+            raise ValidationError("AMQP support requires optional dependency 'pika'")
+        import pika  # type: ignore[import-not-found]
+
+        self._pika = pika
+        self.url = url
+
+    def _connection(self) -> Any:
+        return self._pika.BlockingConnection(self._pika.URLParameters(self.url))
+
+    def setup(self, bindings: list[AMQPBinding]) -> None:
+        with self._connection() as conn:
+            channel = conn.channel()
+            for binding in bindings:
+                channel.exchange_declare(exchange=binding.exchange, exchange_type="direct", durable=True)
+                channel.queue_declare(queue=binding.queue, durable=True)
+                channel.queue_bind(
+                    queue=binding.queue,
+                    exchange=binding.exchange,
+                    routing_key=binding.routing_key,
+                )
+
+    def publish(self, exchange: str, routing_key: str, payload: str) -> None:
+        with self._connection() as conn:
+            channel = conn.channel()
+            channel.basic_publish(exchange=exchange, routing_key=routing_key, body=payload.encode())
+
+    def consume(
+        self,
+        bindings: list[AMQPBinding],
+        handler: Callable[[str, str, str, str], None],
+        stop_event: threading.Event,
+    ) -> None:
+        with self._connection() as conn:
+            channel = conn.channel()
+            while not stop_event.is_set():
+                for binding in bindings:
+                    method, _, body = channel.basic_get(queue=binding.queue, auto_ack=True)
+                    if method is not None:
+                        handler(
+                            binding.exchange,
+                            str(method.routing_key),
+                            binding.queue,
+                            body.decode(errors="replace"),
+                        )
+                stop_event.wait(0.2)
+
+
+def kafka_topics_for_behaviors(behaviors: Iterable[Behavior]) -> list[str]:
+    return sorted({behavior.kafka_topic for behavior in behaviors if behavior.trigger == "kafka" and behavior.kafka_topic})
+
+
+def amqp_bindings_for_behaviors(behaviors: Iterable[Behavior]) -> list[AMQPBinding]:
+    bindings = {
+        AMQPBinding(behavior.amqp_exchange, behavior.amqp_routing_key, behavior.amqp_queue)
+        for behavior in behaviors
+        if behavior.trigger == "amqp"
+    }
+    return sorted(bindings, key=lambda item: (item.exchange, item.routing_key, item.queue))
+
+
+class KafkaBrokerWorker:
+    def __init__(
+        self,
+        state: MockState,
+        redis_store: RedisStore,
+        logger: JsonLogger,
+        adapter: KafkaAdapter,
+    ) -> None:
+        self.state = state
+        self.redis_store = redis_store
+        self.logger = logger
+        self.adapter = adapter
+        self.stop_event = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    def referenced_topics(self) -> list[str]:
+        return kafka_topics_for_behaviors(self.state.behavior_snapshot())
+
+    def start(self) -> None:
+        if self.thread is None:
+            self.thread = threading.Thread(target=self.run, daemon=True)
+            self.thread.start()
+
+    def stop(self) -> None:
+        self.stop_event.set()
+        if self.thread is not None:
+            self.thread.join(timeout=2)
+        self.adapter.close()
+
+    def run_once(self) -> None:
+        topics = self.referenced_topics()
+        if not topics:
+            self.stop_event.wait(0.2)
+            return
+        self.adapter.consume(topics, self.handle_message, self.stop_event)
+
+    def run(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                self.run_once()
+            except Exception as exc:
+                self.logger.warn("kafka consumer failed", error=str(exc))
+                self.stop_event.wait(1.0)
+
+    def handle_message(self, topic: str, payload: str) -> None:
+        handle_kafka_message(
+            self.state.behavior_snapshot(),
+            topic,
+            payload,
+            self.redis_store,
+            self.logger,
+            self.adapter,
+            None,
+        )
+
+
+class AMQPBrokerWorker:
+    def __init__(
+        self,
+        state: MockState,
+        redis_store: RedisStore,
+        logger: JsonLogger,
+        adapter: AMQPAdapter,
+    ) -> None:
+        self.state = state
+        self.redis_store = redis_store
+        self.logger = logger
+        self.adapter = adapter
+        self.stop_event = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    def referenced_bindings(self) -> list[AMQPBinding]:
+        return amqp_bindings_for_behaviors(self.state.behavior_snapshot())
+
+    def start(self) -> None:
+        if self.thread is None:
+            self.thread = threading.Thread(target=self.run, daemon=True)
+            self.thread.start()
+
+    def stop(self) -> None:
+        self.stop_event.set()
+        if self.thread is not None:
+            self.thread.join(timeout=2)
+        self.adapter.close()
+
+    def run_once(self) -> None:
+        bindings = self.referenced_bindings()
+        if not bindings:
+            self.stop_event.wait(0.2)
+            return
+        self.adapter.setup(bindings)
+        self.adapter.consume(bindings, self.handle_message, self.stop_event)
+
+    def run(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                self.run_once()
+            except Exception as exc:
+                self.logger.warn("amqp consumer failed", error=str(exc))
+                self.stop_event.wait(1.0)
+
+    def handle_message(self, exchange: str, routing_key: str, queue: str, payload: str) -> None:
+        handle_amqp_message(
+            self.state.behavior_snapshot(),
+            exchange,
+            routing_key,
+            queue,
+            payload,
+            self.redis_store,
+            self.logger,
+            None,
+            self.adapter,
+        )
+
+
 def find_behavior(
     behaviors: list[Behavior],
     request: RequestInfo,
     redis_store: RedisStore | None = None,
 ) -> tuple[Behavior, dict[str, str]] | tuple[None, dict[str, str]]:
     for behavior in behaviors:
+        if behavior.trigger != "http":
+            continue
         if behavior.method != request.method.upper():
+            continue
+        if behavior.pattern is None:
             continue
         params = behavior.pattern.match(request.route_path)
         if params is None:
@@ -1999,6 +2553,72 @@ def find_behavior(
         except TemplateError:
             continue
     return None, {}
+
+
+def matching_kafka_behaviors(
+    behaviors: Iterable[Behavior],
+    topic: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+) -> list[Behavior]:
+    matched: list[Behavior] = []
+    for behavior in behaviors:
+        if behavior.trigger != "kafka" or behavior.kafka_topic != topic:
+            continue
+        context = build_kafka_template_context(
+            topic,
+            payload,
+            guarded_redis_do(redis_store) if redis_store is not None else None,
+            behavior.values,
+            behavior.templates,
+        )
+        if not behavior.condition:
+            matched.append(behavior)
+            continue
+        try:
+            if render_template(behavior.condition, context) == "true":
+                matched.append(behavior)
+        except TemplateError:
+            continue
+    return matched
+
+
+def matching_amqp_behaviors(
+    behaviors: Iterable[Behavior],
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+) -> list[Behavior]:
+    matched: list[Behavior] = []
+    for behavior in behaviors:
+        if behavior.trigger != "amqp":
+            continue
+        if (
+            behavior.amqp_exchange != exchange
+            or behavior.amqp_routing_key != routing_key
+            or behavior.amqp_queue != queue
+        ):
+            continue
+        context = build_amqp_template_context(
+            exchange,
+            routing_key,
+            queue,
+            payload,
+            guarded_redis_do(redis_store) if redis_store is not None else None,
+            behavior.values,
+            behavior.templates,
+        )
+        if not behavior.condition:
+            matched.append(behavior)
+            continue
+        try:
+            if render_template(behavior.condition, context) == "true":
+                matched.append(behavior)
+        except TemplateError:
+            continue
+    return matched
 
 
 def _send_http(payload: dict[str, Any], context: dict[str, Any], logger: JsonLogger | None = None) -> None:
@@ -2036,6 +2656,28 @@ def _send_http(payload: dict[str, Any], context: dict[str, Any], logger: JsonLog
             logger.warn("send_http request failed", url=url, method=method, error=str(exc))
 
 
+def _payload_source(payload: dict[str, Any], context: dict[str, Any], content_field: str) -> str:
+    body_source = payload.get("payload")
+    if body_source is not None and body_source != "":
+        return render_template(str(body_source), context)
+    return render_template(str(payload.get(content_field, "")), context)
+
+
+def _publish_kafka(payload: dict[str, Any], context: dict[str, Any], adapter: KafkaAdapter | None) -> None:
+    if adapter is None:
+        raise TemplateError("Kafka publishing is not configured")
+    topic = render_template(str(payload["topic"]), context)
+    adapter.publish(topic, _payload_source(payload, context, "kafka_payload_from_file_content"))
+
+
+def _publish_amqp(payload: dict[str, Any], context: dict[str, Any], adapter: AMQPAdapter | None) -> None:
+    if adapter is None:
+        raise TemplateError("AMQP publishing is not configured")
+    exchange = render_template(str(payload["exchange"]), context)
+    routing_key = render_template(str(payload["routing_key"]), context)
+    adapter.publish(exchange, routing_key, _payload_source(payload, context, "amqp_payload_from_file_content"))
+
+
 def _multipart_file_body(
     boundary: str,
     field_name: str,
@@ -2053,25 +2695,15 @@ def _multipart_file_body(
     return header + data + footer
 
 
-def execute_behavior(
+def execute_actions(
     behavior: Behavior,
-    request: RequestInfo,
-    params: dict[str, str],
-    redis_store: RedisStore | None = None,
+    context: dict[str, Any],
+    redis_do: Callable[[str], str],
     logger: JsonLogger | None = None,
-) -> ResponseInfo:
-    redis_store = redis_store or MemoryRedisStore()
-    redis_do = guarded_redis_do(redis_store)
-    context = build_template_context(
-        request.headers,
-        request.body,
-        request.path,
-        request.query,
-        params,
-        redis_do,
-        behavior.values,
-        behavior.templates,
-    )
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+    allow_reply: bool = True,
+) -> ResponseInfo | None:
     response: ResponseInfo | None = None
     for action in behavior.actions:
         name, payload = _action_name_payload(action, behavior.key)
@@ -2082,7 +2714,11 @@ def execute_behavior(
                 redis_do(render_template(command_template, context))
         elif name == "send_http":
             _send_http(payload, context, logger)
-        elif name == "reply_http":
+        elif name == "publish_kafka":
+            _publish_kafka(payload, context, kafka_adapter)
+        elif name == "publish_amqp":
+            _publish_amqp(payload, context, amqp_adapter)
+        elif name == "reply_http" and allow_reply:
             body_source = payload.get("body")
             headers = {
                 str(key): render_template(str(value), context)
@@ -2101,7 +2737,122 @@ def execute_behavior(
                 headers["Content-Type"] = "application/json"
             headers["Content-Length"] = str(len(body if isinstance(body, bytes) else body.encode()))
             response = ResponseInfo(int(payload["status_code"]), headers, body)
+    return response
+
+
+def execute_behavior(
+    behavior: Behavior,
+    request: RequestInfo,
+    params: dict[str, str],
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+) -> ResponseInfo:
+    redis_store = redis_store or MemoryRedisStore()
+    redis_do = guarded_redis_do(redis_store)
+    context = build_template_context(
+        request.headers,
+        request.body,
+        request.path,
+        request.query,
+        params,
+        redis_do,
+        behavior.values,
+        behavior.templates,
+    )
+    response = execute_actions(
+        behavior,
+        context,
+        redis_do,
+        logger,
+        kafka_adapter,
+        amqp_adapter,
+        allow_reply=True,
+    )
     return response or ResponseInfo(204, {"Content-Length": "0"}, "")
+
+
+def execute_kafka_behavior(
+    behavior: Behavior,
+    topic: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+) -> None:
+    redis_store = redis_store or MemoryRedisStore()
+    redis_do = guarded_redis_do(redis_store)
+    context = build_kafka_template_context(topic, payload, redis_do, behavior.values, behavior.templates)
+    execute_actions(behavior, context, redis_do, logger, kafka_adapter, amqp_adapter, allow_reply=False)
+
+
+def execute_amqp_behavior(
+    behavior: Behavior,
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+) -> None:
+    redis_store = redis_store or MemoryRedisStore()
+    redis_do = guarded_redis_do(redis_store)
+    context = build_amqp_template_context(
+        exchange,
+        routing_key,
+        queue,
+        payload,
+        redis_do,
+        behavior.values,
+        behavior.templates,
+    )
+    execute_actions(behavior, context, redis_do, logger, kafka_adapter, amqp_adapter, allow_reply=False)
+
+
+def handle_kafka_message(
+    behaviors: list[Behavior],
+    topic: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+) -> int:
+    matched = matching_kafka_behaviors(behaviors, topic, payload, redis_store)
+    for behavior in matched:
+        execute_kafka_behavior(behavior, topic, payload, redis_store, logger, kafka_adapter, amqp_adapter)
+    return len(matched)
+
+
+def handle_amqp_message(
+    behaviors: list[Behavior],
+    exchange: str,
+    routing_key: str,
+    queue: str,
+    payload: str,
+    redis_store: RedisStore | None = None,
+    logger: JsonLogger | None = None,
+    kafka_adapter: KafkaAdapter | None = None,
+    amqp_adapter: AMQPAdapter | None = None,
+) -> int:
+    matched = matching_amqp_behaviors(behaviors, exchange, routing_key, queue, payload, redis_store)
+    for behavior in matched:
+        execute_amqp_behavior(
+            behavior,
+            exchange,
+            routing_key,
+            queue,
+            payload,
+            redis_store,
+            logger,
+            kafka_adapter,
+            amqp_adapter,
+        )
+    return len(matched)
 
 
 def not_found_response() -> ResponseInfo:
@@ -2375,7 +3126,15 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
         behavior, params = find_behavior(self.server.state.behavior_snapshot(), request, self.server.redis_store)
         try:
             if behavior:
-                response = execute_behavior(behavior, request, params, self.server.redis_store, self.server.hm_logger)
+                response = execute_behavior(
+                    behavior,
+                    request,
+                    params,
+                    self.server.redis_store,
+                    self.server.hm_logger,
+                    self.server.kafka_adapter,
+                    self.server.amqp_adapter,
+                )
             elif self.server.cors_enabled and request.method.upper() == "OPTIONS":
                 response = preflight_response()
             else:
@@ -2422,12 +3181,18 @@ class HMockHTTPServer(ThreadingHTTPServer):
         templates_dir: str | Path | None = None,
         templates_hot_reload: bool = False,
         cors_enabled: bool = False,
+        kafka_adapter: KafkaAdapter | None = None,
+        amqp_adapter: AMQPAdapter | None = None,
+        broker_workers: list[KafkaBrokerWorker | AMQPBrokerWorker] | None = None,
     ) -> None:
         super().__init__(address, MockHTTPRequestHandler)
         self.state = behaviors if isinstance(behaviors, MockState) else MockState(behaviors)
         self.hm_logger = logger
         self.redis_store = redis_store or MemoryRedisStore()
         self.cors_enabled = cors_enabled
+        self.kafka_adapter = kafka_adapter
+        self.amqp_adapter = amqp_adapter
+        self.broker_workers = list(broker_workers or [])
         self.reload_coordinator = (
             TemplatesReloadCoordinator(templates_dir, self.state, self.redis_store, logger)
             if templates_hot_reload and templates_dir is not None
@@ -2438,6 +3203,18 @@ class HMockHTTPServer(ThreadingHTTPServer):
         if self.reload_coordinator is not None:
             self.reload_coordinator.refresh_if_needed()
 
+    def start_broker_workers(self) -> None:
+        for worker in self.broker_workers:
+            worker.start()
+
+    def stop_broker_workers(self) -> None:
+        for worker in self.broker_workers:
+            worker.stop()
+
+    def server_close(self) -> None:
+        self.stop_broker_workers()
+        super().server_close()
+
 
 def build_server(config: Config | None = None, logger: JsonLogger | None = None) -> HMockHTTPServer:
     config = config or load_config()
@@ -2445,7 +3222,21 @@ def build_server(config: Config | None = None, logger: JsonLogger | None = None)
     redis_store = build_redis_store(config)
     collection = load_persisted_mock_collection(config.templates_dir, redis_store, logger)
     state = MockState(collection.behaviors, collection.raw_definitions, collection.filesystem_definitions)
-    return HMockHTTPServer(
+    kafka_adapter: KafkaAdapter | None = None
+    amqp_adapter: AMQPAdapter | None = None
+    broker_workers: list[KafkaBrokerWorker | AMQPBrokerWorker] = []
+    if config.kafka_enabled:
+        kafka_adapter = RealKafkaAdapter(
+            resolve_kafka_endpoint_config(config, "producer"),
+            resolve_kafka_endpoint_config(config, "consumer"),
+        )
+        if kafka_topics_for_behaviors(state.behavior_snapshot()):
+            broker_workers.append(KafkaBrokerWorker(state, redis_store, logger, kafka_adapter))
+    if config.amqp_enabled:
+        amqp_adapter = RealAMQPAdapter(config.amqp_url)
+        if amqp_bindings_for_behaviors(state.behavior_snapshot()):
+            broker_workers.append(AMQPBrokerWorker(state, redis_store, logger, amqp_adapter))
+    server = HMockHTTPServer(
         (config.http_host, config.http_port),
         state,
         logger,
@@ -2453,7 +3244,12 @@ def build_server(config: Config | None = None, logger: JsonLogger | None = None)
         config.templates_dir,
         config.templates_dir_hot_reload,
         config.cors_enabled,
+        kafka_adapter,
+        amqp_adapter,
+        broker_workers,
     )
+    server.start_broker_workers()
+    return server
 
 
 def build_admin_server(
@@ -2494,6 +3290,7 @@ def main() -> None:
             admin_server.server_close()
         if admin_thread is not None:
             admin_thread.join(timeout=2)
+        server.server_close()
 
 
 if __name__ == "__main__":

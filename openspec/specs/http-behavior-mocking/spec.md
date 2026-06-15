@@ -97,8 +97,16 @@ The system SHALL execute the selected behavior's actions in stable ascending `or
 - **WHEN** a selected behavior executes `send_http` and the outbound request fails
 - **THEN** the system SHALL continue mock action execution and preserve the inbound response produced by the behavior
 
+#### Scenario: Kafka publish action renders message fields
+- **WHEN** a selected HTTP behavior executes `publish_kafka`
+- **THEN** the system SHALL render the action's `topic` and payload using the same request context and template functions available to response bodies
+
+#### Scenario: AMQP publish action renders message fields
+- **WHEN** a selected HTTP behavior executes `publish_amqp`
+- **THEN** the system SHALL render the action's `exchange`, `routing_key`, and payload using the same request context and template functions available to response bodies
+
 #### Scenario: Mixed actions with equal order execute in declared order
-- **WHEN** a selected behavior mixes `redis`, `send_http`, `sleep`, and `reply_http` actions and those actions have the same effective `order`
+- **WHEN** a selected behavior mixes `redis`, `send_http`, `publish_kafka`, `publish_amqp`, `sleep`, and `reply_http` actions and those actions have the same effective `order`
 - **THEN** the system SHALL execute those actions in the order declared by the effective behavior
 
 #### Scenario: Actions are sorted by ascending order
@@ -265,4 +273,3 @@ The system SHALL support outbound request bodies loaded from binary files for `s
 #### Scenario: Binary outbound body is not rendered
 - **WHEN** an outbound binary file contains bytes that look like template expressions
 - **THEN** the system SHALL send those bytes unchanged
-
