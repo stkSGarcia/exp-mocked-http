@@ -6,106 +6,99 @@ compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "1.0"
-  generatedBy: "1.4.1"
+  generatedBy: "1.3.1"
 ---
-
-Propose a new change - create the change and generate all artifacts in one step.
-
-I'll create a change with artifacts:
-- proposal.md (what & why)
-- design.md (how)
-- tasks.md (implementation steps)
-
-When ready to implement, run /opsx:apply
-
----
-
-**Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
 
 **Steps**
 
-1. **If no clear input provided, ask what they want to build**
+1. If no description provided, ask with AskUserQuestion: "What do you want to build?"
+   Derive a kebab-case name (e.g. `add-user-auth`). Do NOT proceed without a description.
 
-   Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
-   > "What change do you want to work on? Describe what you want to build or fix."
+2. **Find similar existing specs and their requirements and scenarios**
 
-   From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
+   a. **Generate hypothetical spec artifacts** to sharpen KG search (internal reasoning — do NOT include in any artifact):
 
-   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
+      Think through the change as a spec author and produce JSON in this shape:
+      ```json
+      {
+        "intent": {
+          "label": "<3–6 word kebab-case name, e.g. `add-user-notifications`>",
+          "tags": ["<tag1: 2–4 words>", "<tag2: 2–4 words>", "<tag3: 2–4 words>", "<tag4: 2–4 words>"]
+        },
+        "requirements": [
+          {
+            "title": "<short noun phrase naming the capability>",
+            "text": "The <component> SHALL <behavior>.",
+            "scenarios": [
+              {
+                "title": "<short phrase for one concrete case>",
+                "text": "WHEN <trigger> THEN <outcome> AND <optional extra outcome>"
+              }
+            ]
+          }
+        ]
+      }
+      ```
+      Tags must cover distinct aspects (e.g. `CLI command interface`, `notification delivery`, `event trigger model`, `user alert display`).
 
-2. **Create the change directory**
-   ```bash
-   openspec new change "<name>"
-   ```
-   This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
+   b. **Run KG search using the hypothetical artifacts (no user permission needed):**
 
-3. **Get the artifact build order**
-   ```bash
-   openspec status --change "<name>" --json
-   ```
-   Parse the JSON to get:
-   - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
-   - `artifacts`: list of all artifacts with their status and dependencies
-   - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
+      **IMPORTANT: NEVER read, list, or glob files under `openspec/changes/archive/` during this search or any step — archived changes are strictly off-limits.**
 
-4. **Create artifacts in sequence until apply-ready**
+      ```bash
+      openspec kg context \
+        --text "<tag1>|<tag2>|<tag3>|<tag4>" \
+        --req-text "<req1.title>: <req1.text>|<req2.title>: <req2.text>|..." \
+        --scen-text "<scen1.title>: <scen1.text>|<scen2.title>: <scen2.text>|..." \
+        --json
+      ```
+      - `--text` drives the intent + spec search (Phase 1).
+      - `--req-text` drives the requirement search scoped to specs found in Phase 1.
+      - `--scen-text` drives the scenario search scoped to requirements found in Phase 2.
+      - All three phases run in one call; the result is a single JSON with `graphText` and `counts`.
 
-   Use the **TodoWrite tool** to track progress through the artifacts.
+      Read `graphText` from the JSON — it contains the merged context view for use in step c.
 
-   Loop through artifacts in dependency order (artifacts with no pending dependencies first):
+   c. **Use the graph-text to build on previous work — reference and reuse across all artifacts:**
 
-   a. **For each artifact that is `ready` (dependencies satisfied)**:
-      - Get instructions:
-        ```bash
-        openspec instructions <artifact-id> --change "<name>" --json
-        ```
-      - The instructions JSON includes:
-        - `context`: Project background (constraints for you - do NOT include in output)
-        - `rules`: Artifact-specific rules (constraints for you - do NOT include in output)
-        - `template`: The structure to use for your output file
-        - `instruction`: Schema-specific guidance for this artifact type
-        - `resolvedOutputPath`: Resolved path or pattern to write the artifact
-        - `dependencies`: Completed artifacts to read for context
-      - Read any completed dependency files for context
-      - Create the artifact file using `template` as the structure and write it to `resolvedOutputPath`
-      - Apply `context` and `rules` as constraints - but do NOT copy them into the file
-      - Show brief progress: "Created <artifact-id>"
+      - iN **proposal.md**
+            `## Why` section:
+                1. Open with a 1–2 sentence problem statement explaining why this change is needed.
 
-   b. **Continue until all `applyRequires` artifacts are complete**
-      - After creating each artifact, re-run `openspec status --change "<name>" --json`
-      - Check if every artifact ID in `applyRequires` has `status: "done"` in the artifacts array
-      - Stop when all `applyRequires` artifacts are done
+            `## Related Work` section:
+                1. `### Related Changes`: per intent node — what motivated that prior change and how this one extends, replaces, or complements it.
+                2. `### Related Specs`: per spec node — what it implements and how this change reuses, adapts, or builds on it. Name the capability specifically, not just the id.
+      - In **spec** (requirements):
+        - Where a new requirement reuses or adapts a pattern from a related requirement match, append a parenthetical reference: `(adapts <requirement-id>)`
+        - Where new requirements build on an existing spec's behavior, open that requirements group with a blockquote: `> Extends: <spec-id>`
+        - Draw on the related requirement `text` to stay consistent in language, scope, and acceptance criteria style.
+        - Never duplicate a requirement already covered by a related spec — reference it with `(adapts <requirement-id>)` instead of restating it.
 
-   c. **If an artifact requires user input** (unclear context):
-      - Use **AskUserQuestion tool** to clarify
-      - Then continue with creation
+      - In **design.md**:
+        - Add a "## Related Work" section near the top. For each related spec write:
+          > **`<id>`**: <text> — informs [specific design decision] because <intent.text>.
+        - When a design decision was directly shaped by a related spec, add an inline citation in that section: _(see `<spec-id>`)_
 
-5. **Show final status**
-   ```bash
-   openspec status --change "<name>"
-   ```
+      - In **tasks.md**: for tasks that touch existing code, name the specific files from related changes as the starting point. Mark pure extensions with `[extends <spec-id>]`.
 
-**Output**
+3. `openspec new change "<name>"`
+   If step 2 found matches, write their `id` fields as a JSON array to `openspec/changes/<name>/related-specs.json`.
 
-After completing all artifacts, summarize:
-- Change name and location
-- List of artifacts created with brief descriptions
-- What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx:apply` or ask me to implement to start working on the tasks."
+4. `openspec status --change "<name>" --json` — note `applyRequires` and `artifacts`.
 
-**Artifact Creation Guidelines**
+5. **Create artifacts** — use TodoWrite to track. Process in dependency order (status `ready` first):
+   - First artifact: `openspec instructions <id> --change "<name>" --json`
+   - Subsequent artifacts: add `--omit-context` (context is identical — carry it from first call)
+   - Write artifact using `template` as structure. `context` and `rules` are your constraints only — do NOT copy them into the file.
+   - Read `dependencies` files before writing each artifact.
+   - After each write: `openspec status --change "<name>" --json` — stop when all `applyRequires` are `"done"`.
+   - If context is unclear: AskUserQuestion, then continue.
 
-- Follow the `instruction` field from `openspec instructions` for each artifact type
-- The schema defines what each artifact should contain - follow it
-- Read dependency artifacts for context before creating new ones
-- Use `template` as the structure for your output file - fill in its sections
-- **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
-  - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
-  - These guide what you write, but should never appear in the output
+6. `openspec status --change "<name>"` — show final status and prompt to run `/opsx:apply`.
 
 **Guardrails**
-- Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
-- Always read dependency artifacts before creating a new one
-- If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next
+- Read dependency artifacts before creating each new one
+- If change name already exists, ask to continue or rename
+- Prefer reasonable decisions over asking; only ask when critically unclear
+- Verify artifact file exists after writing before proceeding
+- **IMPORTANT: NEVER read, list, or reference any files under `openspec/changes/archive/` — archived changes are off-limits during proposal**

@@ -6,7 +6,7 @@ compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "1.0"
-  generatedBy: "1.4.1"
+  generatedBy: "1.3.1"
 ---
 
 Implement tasks from an OpenSpec change.
@@ -30,7 +30,6 @@ Implement tasks from an OpenSpec change.
    ```
    Parse the JSON to understand:
    - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
 
 3. **Get apply instructions**
@@ -50,14 +49,18 @@ Implement tasks from an OpenSpec change.
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
-   **Workspace guard:** If status JSON reports `actionContext.mode: "workspace-planning"` and `allowedEditRoots` is empty, explain that full workspace apply is not supported in this slice. Treat linked repos and folders as read-only context, ask the user to select an affected area through an explicit implementation workflow, and STOP before editing files.
-
 4. **Read context files**
 
+   **IMPORTANT: NEVER read, list, or glob files under `openspec/changes/archive/` — only read the paths explicitly listed in `contextFiles` from the active change.**
+
    Read every file path listed under `contextFiles` from the apply instructions output.
-   The files depend on the schema being used:
-   - **spec-driven**: proposal, specs, design, tasks
-   - Other schemas: follow the contextFiles from CLI output
+      `contextFiles` is a map of artifact names to arrays of absolute file paths
+      (e.g. `{ "proposal": [...], "specs": [...] }`). The artifact keys depend on
+      the schema being used:
+      - **spec-driven**: `proposal`, `specs`, `design`, `tasks` (some may be
+      absent if the artifact hasn't been created yet)
+      - Other schemas: read whichever keys appear in the CLI output — do not
+      assume a fixed set
 
 5. **Show current progress**
 
@@ -144,12 +147,15 @@ What would you like to do?
 **Guardrails**
 - Keep going through tasks until done or blocked
 - Always read context files before starting (from the apply instructions output)
+- Always extract related intents, specs, requirements, and scenarios from the context files before implementing (step 5)
+- Let related specs and scenarios guide implementation — do not contradict their behavior or ignore their acceptance criteria
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
+- **IMPORTANT: NEVER read, list, or reference any files under `openspec/changes/archive/` — archived changes are off-limits during implementation**
 
 **Fluid Workflow Integration**
 
