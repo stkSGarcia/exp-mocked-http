@@ -24,7 +24,7 @@ from fnmatch import fnmatch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, urlsplit
+from urllib.parse import quote_plus, unquote, urlsplit
 
 
 class HMockError(Exception):
@@ -51,6 +51,15 @@ class Config:
     log_level: str = "info"
     redis_type: str = "memory"
     redis_url: str = "redis://redis:6379"
+    admin_http_enabled: bool = True
+    admin_http_port: int = 9998
+    admin_http_host: str = "0.0.0.0"
+
+
+def _env_bool(value: str | None, default: bool) -> bool:
+    if value is None:
+        return default
+    return value.lower() not in {"0", "false", "no", "off"}
 
 
 def load_config(env: dict[str, str] | None = None) -> Config:
@@ -62,6 +71,9 @@ def load_config(env: dict[str, str] | None = None) -> Config:
         log_level=env.get("HM_LOG_LEVEL", "info").lower(),
         redis_type=env.get("HM_REDIS_TYPE", "memory").lower(),
         redis_url=env.get("HM_REDIS_URL", "redis://redis:6379"),
+        admin_http_enabled=_env_bool(env.get("HM_ADMIN_HTTP_ENABLED"), True),
+        admin_http_port=int(env.get("HM_ADMIN_HTTP_PORT", "9998")),
+        admin_http_host=env.get("HM_ADMIN_HTTP_HOST", "0.0.0.0"),
     )
 
 
@@ -787,6 +799,10 @@ def load_mock_file(path: str | Path) -> list[Any]:
     return parsed
 
 
+def _filesystem_definition_sources(templates_dir: str | Path) -> list[tuple[str, list[Any]]]:
+    return [(str(path), load_mock_file(path)) for path in discover_yaml_files(templates_dir)]
+
+
 def _recursive_merge(parent: Any, child: Any) -> Any:
     if isinstance(parent, dict) and isinstance(child, dict):
         merged = copy.deepcopy(parent)
@@ -849,22 +865,29 @@ def _resolve_behavior_definition(
     return merged
 
 
-def load_behaviors(templates_dir: str | Path, logger: JsonLogger | None = None) -> list[Behavior]:
+def _build_behaviors_from_sources(
+    sources: list[tuple[str, list[Any]]],
+    templates_dir: str | Path,
+    logger: JsonLogger | None = None,
+) -> tuple[list[Behavior], list[dict[str, Any]]]:
     logger = logger or JsonLogger("error")
     raw_by_key: dict[str, dict[str, Any]] = {}
     order: list[str] = []
-    for path in discover_yaml_files(templates_dir):
-        for raw in load_mock_file(path):
+    for source, definitions in sources:
+        if not isinstance(definitions, list):
+            raise ValidationError(f"{source} must contain a top-level list")
+        for raw in definitions:
             key, kind = _definition_kind(raw)
             if kind == "AbstractBehavior":
                 _validate_abstract_definition(raw)
             if key in raw_by_key:
                 order.remove(key)
-                logger.warn("duplicate mock key override", key=key, file=str(path))
+                logger.warn("duplicate mock key override", key=key, file=source)
             raw_by_key[key] = copy.deepcopy(raw)
             raw_by_key[key].setdefault("kind", "Behavior")
             order.append(key)
 
+    active_definitions = [copy.deepcopy(raw_by_key[key]) for key in order]
     templates: dict[str, str] = {
         key: raw["template"]
         for key, raw in raw_by_key.items()
@@ -881,7 +904,210 @@ def load_behaviors(templates_dir: str | Path, logger: JsonLogger | None = None) 
             continue
         effective = _resolve_behavior_definition(key, raw_by_key)
         behaviors.append(validate_behavior(effective, templates_dir, templates))
+    return behaviors, active_definitions
+
+
+def load_behaviors(templates_dir: str | Path, logger: JsonLogger | None = None) -> list[Behavior]:
+    behaviors, _ = _build_behaviors_from_sources(_filesystem_definition_sources(templates_dir), templates_dir, logger)
     return behaviors
+
+
+INTERNAL_REDIS_PREFIX = "__hmock_internal:"
+BASE_TEMPLATES_KEY = INTERNAL_REDIS_PREFIX + "templates"
+TEMPLATE_SET_KEY_PREFIX = INTERNAL_REDIS_PREFIX + "template_sets:"
+
+
+def _redis_arg(value: Any) -> str:
+    return shlex.quote(str(value))
+
+
+def _load_json_array_from_redis(redis_store: RedisStore, key: str) -> list[Any]:
+    raw = redis_store.do(f"GET {_redis_arg(key)}")
+    if raw == "":
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValidationError(f"invalid persisted mock definitions at {key}") from exc
+    if not isinstance(parsed, list):
+        raise ValidationError(f"persisted mock definitions at {key} must be an array")
+    return parsed
+
+
+def _store_json_array_in_redis(redis_store: RedisStore, key: str, definitions: list[Any]) -> None:
+    payload = json.dumps(definitions, separators=(",", ":"))
+    redis_store.do(f"SET {_redis_arg(key)} {_redis_arg(payload)}")
+
+
+def _delete_redis_key(redis_store: RedisStore, key: str) -> None:
+    redis_store.do(f"DEL {_redis_arg(key)}")
+
+
+def _template_set_storage_key(set_key: str) -> str:
+    return TEMPLATE_SET_KEY_PREFIX + set_key
+
+
+def _load_base_api_definitions(redis_store: RedisStore) -> list[Any]:
+    return _load_json_array_from_redis(redis_store, BASE_TEMPLATES_KEY)
+
+
+def _load_template_sets(redis_store: RedisStore) -> dict[str, list[Any]]:
+    keys_text = redis_store.do(f"KEYS {_redis_arg(TEMPLATE_SET_KEY_PREFIX + '*')}")
+    if not keys_text:
+        return {}
+    sets: dict[str, list[Any]] = {}
+    for key in sorted(part for part in keys_text.split(";;") if part):
+        if not key.startswith(TEMPLATE_SET_KEY_PREFIX):
+            continue
+        sets[key[len(TEMPLATE_SET_KEY_PREFIX) :]] = _load_json_array_from_redis(redis_store, key)
+    return sets
+
+
+def _merge_upsert_definitions(existing: list[Any], submitted: list[Any]) -> list[Any]:
+    by_key: dict[str, Any] = {}
+    order: list[str] = []
+    for raw in [*existing, *submitted]:
+        key, _ = _definition_kind(raw)
+        if key in by_key:
+            order.remove(key)
+        by_key[key] = copy.deepcopy(raw)
+        order.append(key)
+    return [by_key[key] for key in order]
+
+
+def _remove_definition_by_key(definitions: list[Any], key: str) -> tuple[list[Any], bool]:
+    removed = False
+    kept: list[Any] = []
+    for raw in definitions:
+        raw_key, _ = _definition_kind(raw)
+        if raw_key == key:
+            removed = True
+            continue
+        kept.append(raw)
+    return kept, removed
+
+
+def _redis_command_key_args(parts: list[str]) -> list[str]:
+    name = parts[0]
+    args = parts[1:]
+    if name in {"GET", "SET", "RPUSH", "LPUSH", "LRANGE", "LPOP", "RPOP", "HSET", "HGET", "HGETALL", "HDEL", "KEYS"}:
+        return args[:1]
+    if name in {"DEL", "EXISTS"}:
+        return args
+    return []
+
+
+def _guard_internal_redis_keyspace(command: str) -> None:
+    parts = _parse_redis_command(command)
+    for key in _redis_command_key_args(parts):
+        if key.startswith(INTERNAL_REDIS_PREFIX):
+            raise RedisError(f"Redis key is reserved: {key}")
+
+
+def guarded_redis_do(redis_store: RedisStore) -> Callable[[str], str]:
+    def do(command: str) -> str:
+        _guard_internal_redis_keyspace(command)
+        return redis_store.do(command)
+
+    return do
+
+
+class HMockRuntimeState:
+    def __init__(
+        self,
+        templates_dir: str | Path,
+        logger: JsonLogger,
+        redis_store: RedisStore | None = None,
+        initial_behaviors: list[Behavior] | None = None,
+        initial_definitions: list[dict[str, Any]] | None = None,
+    ) -> None:
+        self.templates_dir = str(templates_dir)
+        self.logger = logger
+        self.redis_store = redis_store or MemoryRedisStore()
+        self._lock = threading.Lock()
+        self._behaviors: list[Behavior] = list(initial_behaviors or [])
+        self._definitions: list[dict[str, Any]] = copy.deepcopy(initial_definitions or [])
+        if initial_behaviors is None:
+            self.reload()
+
+    def get_behaviors(self) -> list[Behavior]:
+        with self._lock:
+            return list(self._behaviors)
+
+    def get_definitions(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return copy.deepcopy(self._definitions)
+
+    def redis_do(self, command: str) -> str:
+        _guard_internal_redis_keyspace(command)
+        return self.redis_store.do(command)
+
+    def reload(self) -> None:
+        behaviors, definitions = self._build_from_persistence()
+        with self._lock:
+            self._behaviors = behaviors
+            self._definitions = definitions
+
+    def upsert_base_definitions(self, submitted: list[Any]) -> None:
+        current_base = _load_base_api_definitions(self.redis_store)
+        proposed_base = _merge_upsert_definitions(current_base, submitted)
+        template_sets = _load_template_sets(self.redis_store)
+        self._build_from_data(proposed_base, template_sets)
+        _store_json_array_in_redis(self.redis_store, BASE_TEMPLATES_KEY, proposed_base)
+        self.reload()
+
+    def delete_all_base_definitions(self) -> None:
+        template_sets = _load_template_sets(self.redis_store)
+        self._build_from_data([], template_sets)
+        _delete_redis_key(self.redis_store, BASE_TEMPLATES_KEY)
+        self.reload()
+
+    def delete_base_definition(self, key: str) -> bool:
+        current_base = _load_base_api_definitions(self.redis_store)
+        proposed_base, removed = _remove_definition_by_key(current_base, key)
+        if not removed:
+            return False
+        template_sets = _load_template_sets(self.redis_store)
+        self._build_from_data(proposed_base, template_sets)
+        if proposed_base:
+            _store_json_array_in_redis(self.redis_store, BASE_TEMPLATES_KEY, proposed_base)
+        else:
+            _delete_redis_key(self.redis_store, BASE_TEMPLATES_KEY)
+        self.reload()
+        return True
+
+    def replace_template_set(self, set_key: str, definitions: list[Any]) -> None:
+        base = _load_base_api_definitions(self.redis_store)
+        template_sets = _load_template_sets(self.redis_store)
+        template_sets[set_key] = copy.deepcopy(definitions)
+        self._build_from_data(base, template_sets)
+        _store_json_array_in_redis(self.redis_store, _template_set_storage_key(set_key), definitions)
+        self.reload()
+
+    def delete_template_set(self, set_key: str) -> None:
+        base = _load_base_api_definitions(self.redis_store)
+        template_sets = _load_template_sets(self.redis_store)
+        template_sets.pop(set_key, None)
+        self._build_from_data(base, template_sets)
+        _delete_redis_key(self.redis_store, _template_set_storage_key(set_key))
+        self.reload()
+
+    def _build_from_persistence(self) -> tuple[list[Behavior], list[dict[str, Any]]]:
+        return self._build_from_data(
+            _load_base_api_definitions(self.redis_store),
+            _load_template_sets(self.redis_store),
+        )
+
+    def _build_from_data(
+        self,
+        base_definitions: list[Any],
+        template_sets: dict[str, list[Any]],
+    ) -> tuple[list[Behavior], list[dict[str, Any]]]:
+        sources = _filesystem_definition_sources(self.templates_dir)
+        sources.append(("api:base", copy.deepcopy(base_definitions)))
+        for set_key in sorted(template_sets):
+            sources.append((f"api:template_set:{set_key}", copy.deepcopy(template_sets[set_key])))
+        return _build_behaviors_from_sources(sources, self.templates_dir, self.logger)
 
 
 class HeaderMap:
@@ -1599,6 +1825,7 @@ def find_behavior(
     request: RequestInfo,
     redis_store: RedisStore | None = None,
 ) -> tuple[Behavior, dict[str, str]] | tuple[None, dict[str, str]]:
+    redis_do = guarded_redis_do(redis_store) if redis_store is not None else None
     for behavior in behaviors:
         if behavior.method != request.method.upper():
             continue
@@ -1613,7 +1840,7 @@ def find_behavior(
             request.path,
             request.query,
             params,
-            redis_store.do if redis_store is not None else None,
+            redis_do,
             behavior.values,
             behavior.templates,
         )
@@ -1654,13 +1881,14 @@ def execute_behavior(
     logger: JsonLogger | None = None,
 ) -> ResponseInfo:
     redis_store = redis_store or MemoryRedisStore()
+    redis_do = guarded_redis_do(redis_store)
     context = build_template_context(
         request.headers,
         request.body,
         request.path,
         request.query,
         params,
-        redis_store.do,
+        redis_do,
         behavior.values,
         behavior.templates,
     )
@@ -1741,7 +1969,7 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             headers={key: value for key, value in self.headers.items()},
             body=body,
         )
-        behavior, params = find_behavior(self.server.behaviors, request, self.server.redis_store)
+        behavior, params = find_behavior(self.server.state.get_behaviors(), request, self.server.redis_store)
         try:
             response = (
                 execute_behavior(behavior, request, params, self.server.redis_store, self.server.hm_logger)
@@ -1782,32 +2010,167 @@ class HMockHTTPServer(ThreadingHTTPServer):
     def __init__(
         self,
         address: tuple[str, int],
-        behaviors: list[Behavior],
-        logger: JsonLogger,
+        behaviors_or_state: list[Behavior] | HMockRuntimeState,
+        logger: JsonLogger | None = None,
         redis_store: RedisStore | None = None,
     ) -> None:
         super().__init__(address, MockHTTPRequestHandler)
-        self.behaviors = behaviors
-        self.hm_logger = logger
-        self.redis_store = redis_store or MemoryRedisStore()
+        if isinstance(behaviors_or_state, HMockRuntimeState):
+            self.state = behaviors_or_state
+        else:
+            if logger is None:
+                logger = JsonLogger("error")
+            self.state = HMockRuntimeState(
+                "",
+                logger,
+                redis_store or MemoryRedisStore(),
+                initial_behaviors=behaviors_or_state,
+            )
+        self.hm_logger = self.state.logger
+        self.redis_store = self.state.redis_store
+
+    @property
+    def behaviors(self) -> list[Behavior]:
+        return self.state.get_behaviors()
+
+
+def _json_response_bytes(payload: Any) -> bytes:
+    return json.dumps(payload, separators=(",", ":")).encode()
+
+
+class AdminHTTPRequestHandler(BaseHTTPRequestHandler):
+    server: "HMockAdminHTTPServer"
+
+    def log_message(self, fmt: str, *args: Any) -> None:
+        return
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_POST(self) -> None:
+        self._handle()
+
+    def do_DELETE(self) -> None:
+        self._handle()
+
+    def _handle(self) -> None:
+        path = urlsplit(self.path).path
+        try:
+            if self.command == "GET" and path == "/api/v1/health":
+                self._send_json(200, {"status": "OK"})
+                return
+            if self.command == "GET" and path == "/api/v1/templates":
+                self._send_json(200, self.server.state.get_definitions())
+                return
+            if self.command == "POST" and path == "/api/v1/templates":
+                submitted = self._read_json_array()
+                self.server.state.upsert_base_definitions(submitted)
+                self._send_json(200, submitted)
+                return
+            if self.command == "DELETE" and path == "/api/v1/templates":
+                self.server.state.delete_all_base_definitions()
+                self._send_no_content()
+                return
+            template_prefix = "/api/v1/templates/"
+            if self.command == "DELETE" and path.startswith(template_prefix):
+                template_key = unquote(path[len(template_prefix) :])
+                if not template_key or not self.server.state.delete_base_definition(template_key):
+                    self._send_text(404, "not found")
+                    return
+                self._send_no_content()
+                return
+            set_prefix = "/api/v1/template_sets/"
+            if path.startswith(set_prefix):
+                set_key = unquote(path[len(set_prefix) :])
+                if not set_key:
+                    self._send_text(404, "not found")
+                    return
+                if self.command == "POST":
+                    submitted = self._read_json_array()
+                    self.server.state.replace_template_set(set_key, submitted)
+                    self._send_json(200, submitted)
+                    return
+                if self.command == "DELETE":
+                    self.server.state.delete_template_set(set_key)
+                    self._send_no_content()
+                    return
+            self._send_text(404, "not found")
+        except (ValidationError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+
+    def _read_json_array(self) -> list[Any]:
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        body = self.rfile.read(length).decode() if length else ""
+        parsed = json.loads(body or "null")
+        if not isinstance(parsed, list):
+            raise ValidationError("request body must be a JSON array")
+        return parsed
+
+    def _send_json(self, status: int, payload: Any) -> None:
+        body = _json_response_bytes(payload)
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_text(self, status: int, body_text: str) -> None:
+        body = body_text.encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_no_content(self) -> None:
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+
+class HMockAdminHTTPServer(ThreadingHTTPServer):
+    def __init__(self, address: tuple[str, int], state: HMockRuntimeState) -> None:
+        super().__init__(address, AdminHTTPRequestHandler)
+        self.state = state
 
 
 def build_server(config: Config | None = None, logger: JsonLogger | None = None) -> HMockHTTPServer:
     config = config or load_config()
     logger = logger or JsonLogger(config.log_level)
-    behaviors = load_behaviors(config.templates_dir, logger)
-    return HMockHTTPServer((config.http_host, config.http_port), behaviors, logger, build_redis_store(config))
+    state = HMockRuntimeState(config.templates_dir, logger, build_redis_store(config))
+    return HMockHTTPServer((config.http_host, config.http_port), state)
+
+
+def build_admin_server(
+    config: Config,
+    state: HMockRuntimeState,
+) -> HMockAdminHTTPServer | None:
+    if not config.admin_http_enabled:
+        return None
+    return HMockAdminHTTPServer((config.admin_http_host, config.admin_http_port), state)
 
 
 def main() -> None:
     config = load_config()
     logger = JsonLogger(config.log_level)
     server = build_server(config, logger)
+    admin_server = build_admin_server(config, server.state)
+    admin_thread: threading.Thread | None = None
+    if admin_server is not None:
+        admin_thread = threading.Thread(target=admin_server.serve_forever, daemon=True)
+        admin_thread.start()
+        logger.info("hmock admin server started", host=config.admin_http_host, port=config.admin_http_port)
     logger.info("hmock server started", host=config.http_host, port=config.http_port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         logger.info("hmock server stopped")
+    finally:
+        if admin_server is not None:
+            admin_server.shutdown()
+            admin_server.server_close()
+            if admin_thread is not None:
+                admin_thread.join(timeout=2)
 
 
 if __name__ == "__main__":
