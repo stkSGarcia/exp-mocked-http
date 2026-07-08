@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Push Command",
+    "tags": ["template upload", "yaml payload", "recursive loading"]
+  },
+  {
+    "label": "Endpoint Selection",
+    "tags": ["base templates", "template sets", "set key"]
+  },
+  {
+    "label": "CLI Defaults",
+    "tags": ["default directory", "default url", "flag resolution"]
+  },
+  {
+    "label": "Delete Command",
+    "tags": ["remote deletion", "required key", "no content"]
+  }
+]

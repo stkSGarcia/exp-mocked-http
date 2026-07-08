@@ -1,0 +1,8 @@
+[
+  "mock-definition-loading/add-stateful-actions",
+  "template-set-storage/add-admin-api-template-storage",
+  "api-template-persistence/add-admin-api-template-storage",
+  "template-rendering/add-stateful-actions",
+  "template-rendering/add-admin-api-template-storage",
+  "http-behavior-mocking/add-stateful-actions"
+]

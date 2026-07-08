@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Filesystem Hot Reload",
+    "tags": ["template edits", "automatic reload", "directory changes"]
+  },
+  {
+    "label": "Reload Configuration",
+    "tags": ["hot reload flag", "default enabled", "runtime config"]
+  },
+  {
+    "label": "Deferred Filesystem Reload",
+    "tags": ["disabled reload", "loaded snapshot", "reload boundary"]
+  },
+  {
+    "label": "Admin Mutation Visibility",
+    "tags": ["admin mutations", "eventual visibility", "active mock set"]
+  }
+]

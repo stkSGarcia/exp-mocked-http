@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Binary Reply Snapshots",
+    "tags": ["binary replies", "stable snapshots", "byte preservation"]
+  },
+  {
+    "label": "Response Metadata",
+    "tags": ["content length", "content disposition", "filename metadata"]
+  },
+  {
+    "label": "Body Source Precedence",
+    "tags": ["body precedence", "empty body", "text fallback"]
+  },
+  {
+    "label": "Outbound Binary Sends",
+    "tags": ["multipart upload", "raw request body", "file part"]
+  }
+]
