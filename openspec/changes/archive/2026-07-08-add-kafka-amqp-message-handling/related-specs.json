@@ -1,0 +1,5 @@
+[
+  "api-template-persistence/add-admin-api-template-storage",
+  "http-behavior-mocking/add-reusable-templates-inheritance-values-action-ordering",
+  "mock-definition-loading/add-http-yaml-mock-server"
+]

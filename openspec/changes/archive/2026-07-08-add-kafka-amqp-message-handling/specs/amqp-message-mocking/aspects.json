@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["amqp enablement", "connection url", "environment defaults"]
+  },
+  {
+    "label": "Broker Resource Setup",
+    "tags": ["exchange binding", "queue defaulting", "startup provisioning"]
+  },
+  {
+    "label": "Message Matching",
+    "tags": ["routing evaluation", "template context", "loaded order"]
+  },
+  {
+    "label": "Publishing and Recovery",
+    "tags": ["publish action", "file payload", "reconnect recovery"]
+  }
+]

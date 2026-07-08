@@ -131,6 +131,54 @@ def stop_server(server, thread):
     thread.join(timeout=2)
 
 
+class FakeKafkaAdapter:
+    def __init__(self, messages=None):
+        self.messages = list(messages or [])
+        self.subscriptions = []
+        self.published = []
+        self.closed = False
+
+    def subscribe(self, topics):
+        self.subscriptions.append(tuple(topics))
+
+    def poll(self, timeout=0.1):
+        return self.messages.pop(0) if self.messages else None
+
+    def publish(self, topic, payload):
+        self.published.append((topic, payload))
+
+    def close(self):
+        self.closed = True
+
+
+class FakeAMQPAdapter:
+    def __init__(self, messages=None, fail_once=False):
+        self.messages = list(messages or [])
+        self.bindings = []
+        self.published = []
+        self.closed = False
+        self.reconnects = 0
+        self.fail_once = fail_once
+
+    def ensure_binding(self, exchange, routing_key, queue_name):
+        self.bindings.append((exchange, routing_key, queue_name))
+
+    def consume_once(self, timeout=0.1):
+        if self.fail_once:
+            self.fail_once = False
+            raise RuntimeError("disconnect")
+        return self.messages.pop(0) if self.messages else None
+
+    def publish(self, exchange, routing_key, payload):
+        self.published.append((exchange, routing_key, payload))
+
+    def reconnect(self):
+        self.reconnects += 1
+
+    def close(self):
+        self.closed = True
+
+
 def behavior(raw):
     return hmock.validate_behavior(raw)
 
@@ -139,6 +187,8 @@ def test_config_defaults_and_environment_overrides(monkeypatch):
     assert hmock.load_config({}) == hmock.Config()
     assert hmock.load_config({}).templates_dir_hot_reload is True
     assert hmock.load_config({}).cors_enabled is False
+    assert hmock.load_config({}).kafka == hmock.KafkaConfig()
+    assert hmock.load_config({}).amqp == hmock.AMQPConfig()
 
     config = hmock.load_config(
         {
@@ -153,6 +203,18 @@ def test_config_defaults_and_environment_overrides(monkeypatch):
             "HM_ADMIN_HTTP_HOST": "127.0.0.2",
             "HM_TEMPLATES_DIR_HOT_RELOAD": "false",
             "HM_CORS_ENABLED": "true",
+            "HM_KAFKA_ENABLED": "true",
+            "HM_KAFKA_CLIENT_ID": "client-a",
+            "HM_KAFKA_SEED_BROKERS": "kafka-a:9092,kafka-b:9092",
+            "HM_KAFKA_SASL_USERNAME": "shared-user",
+            "HM_KAFKA_SASL_PASSWORD": "shared-pass",
+            "HM_KAFKA_TLS_ENABLED": "true",
+            "HM_KAFKA_PRODUCER_SEED_BROKERS": "producer:9092",
+            "HM_KAFKA_SASL_CONSUMER_USERNAME": "consumer-user",
+            "HM_KAFKA_SASL_CONSUMER_PASSWORD": "",
+            "HM_KAFKA_TLS_CONSUMER_ENABLED": "false",
+            "HM_AMQP_ENABLED": "true",
+            "HM_AMQP_URL": "amqp://user:pass@host:5673",
         }
     )
 
@@ -168,7 +230,40 @@ def test_config_defaults_and_environment_overrides(monkeypatch):
         "127.0.0.2",
         False,
         True,
+        hmock.KafkaConfig(
+            enabled=True,
+            client_id="client-a",
+            producer=hmock.KafkaClientConfig(
+                seed_brokers=("producer:9092",),
+                sasl_username="shared-user",
+                sasl_password="shared-pass",
+                sasl_enabled=True,
+                tls_enabled=True,
+            ),
+            consumer=hmock.KafkaClientConfig(
+                seed_brokers=("kafka-a:9092", "kafka-b:9092"),
+                sasl_username="consumer-user",
+                sasl_password="",
+                sasl_enabled=False,
+                tls_enabled=False,
+            ),
+        ),
+        hmock.AMQPConfig(True, "amqp://user:pass@host:5673"),
     )
+
+
+def test_broker_features_disabled_by_default_and_lazy_factories(monkeypatch):
+    assert hmock.build_kafka_adapter(hmock.KafkaConfig()) is None
+    assert hmock.build_amqp_adapter(hmock.AMQPConfig()) is None
+
+    def fail_import(name):
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(hmock.importlib, "import_module", fail_import)
+    with pytest.raises(hmock.ValidationError):
+        hmock.build_kafka_adapter(hmock.KafkaConfig(enabled=True))
+    with pytest.raises(hmock.ValidationError):
+        hmock.build_amqp_adapter(hmock.AMQPConfig(enabled=True))
 
 
 def test_admin_config_defaults_overrides_and_disabled_server(tmp_path, logger):
@@ -517,6 +612,234 @@ def test_stateful_action_validation_and_send_http_body_file_snapshot(tmp_path, l
     )
     with pytest.raises(hmock.ValidationError):
         hmock.load_behaviors(tmp_path, logger)
+
+
+def test_broker_expectation_validation_queue_defaulting_and_payload_snapshots(tmp_path, logger):
+    write_yaml(tmp_path / "payloads" / "kafka.txt", "kafka {{ .KafkaPayload }}")
+    write_yaml(tmp_path / "payloads" / "amqp.txt", "amqp {{ .AMQPPayload }}")
+    write_yaml(
+        tmp_path / "brokers.yaml",
+        """
+- key: kafka-in
+  expect:
+    kafka:
+      topic: events
+  actions:
+    - publish_kafka:
+        topic: out
+        payload_from_file: payloads/kafka.txt
+- key: amqp-in
+  expect:
+    amqp:
+      exchange: ex
+      routing_key: route
+  actions:
+    - publish_amqp:
+        exchange: out-ex
+        routing_key: out-route
+        payload_from_file: payloads/amqp.txt
+""",
+    )
+
+    behaviors = hmock.load_behaviors(tmp_path, logger)
+
+    assert behaviors[0].expectation_type == "kafka"
+    assert behaviors[0].kafka_topic == "events"
+    assert behaviors[0].actions[0]["publish_kafka"]["publish_kafka_payload_from_file_content"] == "kafka {{ .KafkaPayload }}"
+    assert behaviors[1].expectation_type == "amqp"
+    assert behaviors[1].amqp_queue == "route"
+    assert behaviors[1].actions[0]["publish_amqp"]["publish_amqp_payload_from_file_content"] == "amqp {{ .AMQPPayload }}"
+
+    invalid_definitions = [
+        {"key": "no-expect", "expect": {}, "actions": []},
+        {"key": "two-expects", "expect": {"http": {"method": "GET", "path": "/x"}, "kafka": {"topic": "x"}}, "actions": []},
+        {"key": "bad-kafka", "expect": {"kafka": {}}, "actions": []},
+        {"key": "bad-amqp-exchange", "expect": {"amqp": {"routing_key": "r"}}, "actions": []},
+        {"key": "bad-amqp-route", "expect": {"amqp": {"exchange": "e"}}, "actions": []},
+        {"key": "bad-kafka-publish", "expect": {"kafka": {"topic": "x"}}, "actions": [{"publish_kafka": {"topic": "x"}}]},
+        {"key": "bad-amqp-publish", "expect": {"amqp": {"exchange": "e", "routing_key": "r"}}, "actions": [{"publish_amqp": {"exchange": "e", "routing_key": "r"}}]},
+    ]
+    for raw in invalid_definitions:
+        with pytest.raises(hmock.ValidationError):
+            hmock.validate_behavior(raw)
+
+
+def test_broker_matching_executes_all_matches_and_http_still_selects_one(logger):
+    redis_store = hmock.MemoryRedisStore()
+    kafka_behaviors = [
+        behavior(
+            {
+                "key": "kafka-first",
+                "expect": {"condition": '{{ eq .KafkaPayload "go" }}', "kafka": {"topic": "events"}},
+                "actions": [{"redis": ["RPUSH seen first"]}],
+            }
+        ),
+        behavior(
+            {
+                "key": "kafka-second",
+                "expect": {"kafka": {"topic": "events"}},
+                "actions": [{"redis": ["RPUSH seen second"]}],
+            }
+        ),
+        behavior(
+            {
+                "key": "kafka-other",
+                "expect": {"kafka": {"topic": "other"}},
+                "actions": [{"redis": ["RPUSH seen other"]}],
+            }
+        ),
+    ]
+
+    kafka_matches = hmock.find_kafka_behaviors(kafka_behaviors, "events", "go", redis_store)
+    assert [item.key for item in kafka_matches] == ["kafka-first", "kafka-second"]
+    for item in kafka_matches:
+        hmock.execute_kafka_behavior(item, "events", "go", redis_store, logger)
+    assert redis_store.do("LRANGE seen 0 -1") == "first;;second"
+
+    amqp_behaviors = [
+        behavior(
+            {
+                "key": "amqp-first",
+                "expect": {"condition": '{{ eq .AMQPPayload "ship" }}', "amqp": {"exchange": "ex", "routing_key": "route"}},
+                "actions": [{"redis": ["RPUSH amqp first"]}],
+            }
+        ),
+        behavior(
+            {
+                "key": "amqp-second",
+                "expect": {"amqp": {"exchange": "ex", "routing_key": "route", "queue": "route"}},
+                "actions": [{"redis": ["RPUSH amqp second"]}],
+            }
+        ),
+    ]
+
+    amqp_matches = hmock.find_amqp_behaviors(amqp_behaviors, "ex", "route", "route", "ship", redis_store)
+    assert [item.key for item in amqp_matches] == ["amqp-first", "amqp-second"]
+    for item in amqp_matches:
+        hmock.execute_amqp_behavior(item, "ex", "route", "route", "ship", redis_store, logger)
+    assert redis_store.do("LRANGE amqp 0 -1") == "first;;second"
+
+    http_behaviors = [
+        behavior(
+            {
+                "key": "http-first",
+                "expect": {"http": {"method": "GET", "path": "/x"}},
+                "actions": [{"reply_http": {"status_code": 201, "body": "first"}}],
+            }
+        ),
+        behavior(
+            {
+                "key": "http-second",
+                "expect": {"http": {"method": "GET", "path": "/x"}},
+                "actions": [{"reply_http": {"status_code": 202, "body": "second"}}],
+            }
+        ),
+    ]
+    request_info = hmock.RequestInfo("GET", "/x", "/x", "", "", {}, "")
+    selected, params = hmock.find_behavior(http_behaviors + kafka_behaviors, request_info, redis_store)
+    assert selected.key == "http-first"
+    assert params == {}
+
+
+def test_kafka_broker_service_discovers_matches_and_publishes(logger):
+    redis_store = hmock.MemoryRedisStore()
+    behaviors = [
+        behavior(
+            {
+                "key": "kafka-in",
+                "expect": {"condition": '{{ eq .KafkaPayload "in" }}', "kafka": {"topic": "input"}},
+                "actions": [
+                    {"redis": ["SET kafka-topic {{ .KafkaTopic }}"]},
+                    {"publish_kafka": {"topic": "out-{{ .KafkaTopic }}", "payload": "payload {{ .KafkaPayload }}"}},
+                ],
+            }
+        )
+    ]
+    adapter = FakeKafkaAdapter([hmock.KafkaMessage("input", "in")])
+    service = hmock.KafkaBrokerService(hmock.StaticMockRegistry(behaviors), adapter, redis_store, logger)
+
+    assert service.poll_once() == ["kafka-in"]
+
+    assert adapter.subscriptions == [("input",)]
+    assert redis_store.do("GET kafka-topic") == "input"
+    assert adapter.published == [("out-input", "payload in")]
+
+
+def test_amqp_broker_service_sets_resources_publishes_and_recovers(logger):
+    redis_store = hmock.MemoryRedisStore()
+    behaviors = [
+        behavior(
+            {
+                "key": "amqp-in",
+                "expect": {"condition": '{{ eq .AMQPQueue "route" }}', "amqp": {"exchange": "ex", "routing_key": "route"}},
+                "actions": [
+                    {"redis": ["SET amqp-payload {{ .AMQPPayload }}"]},
+                    {"publish_amqp": {"exchange": "out", "routing_key": "done", "payload": "payload {{ .AMQPPayload }}"}},
+                ],
+            }
+        )
+    ]
+    adapter = FakeAMQPAdapter([hmock.AMQPMessage("ex", "route", "route", "work")], fail_once=True)
+    service = hmock.AMQPBrokerService(hmock.StaticMockRegistry(behaviors), adapter, redis_store, logger)
+
+    assert service.poll_once() == []
+    assert adapter.reconnects == 1
+    assert adapter.bindings == [("ex", "route", "route"), ("ex", "route", "route")]
+    assert service.poll_once() == ["amqp-in"]
+
+    assert redis_store.do("GET amqp-payload") == "work"
+    assert adapter.published == [("out", "done", "payload work")]
+
+
+def test_broker_service_lifecycle_start_stop(logger):
+    service = hmock.KafkaBrokerService(
+        hmock.StaticMockRegistry([]),
+        FakeKafkaAdapter(),
+        hmock.MemoryRedisStore(),
+        logger,
+    )
+
+    service.start()
+    assert service._thread is not None
+    service.stop()
+
+    assert not service._thread.is_alive()
+    assert service.adapter.closed is True
+
+
+def test_build_server_wires_disabled_and_enabled_broker_services(tmp_path, logger, monkeypatch):
+    disabled = hmock.build_server(
+        hmock.Config(templates_dir=str(tmp_path), http_port=0, http_host="127.0.0.1"),
+        logger,
+    )
+    try:
+        assert disabled.broker_services == []
+    finally:
+        disabled.server_close()
+
+    kafka_adapter = FakeKafkaAdapter()
+    amqp_adapter = FakeAMQPAdapter()
+    monkeypatch.setattr(hmock, "build_kafka_adapter", lambda config: kafka_adapter if config.enabled else None)
+    monkeypatch.setattr(hmock, "build_amqp_adapter", lambda config: amqp_adapter if config.enabled else None)
+
+    enabled = hmock.build_server(
+        hmock.Config(
+            templates_dir=str(tmp_path),
+            http_port=0,
+            http_host="127.0.0.1",
+            kafka=hmock.KafkaConfig(enabled=True),
+            amqp=hmock.AMQPConfig(enabled=True),
+        ),
+        logger,
+    )
+    try:
+        assert len(enabled.broker_services) == 2
+        enabled.start_broker_services()
+        enabled.stop_broker_services()
+        assert kafka_adapter.closed is True
+        assert amqp_adapter.closed is True
+    finally:
+        enabled.server_close()
 
 
 def test_template_context_preprocessing_syntax_and_strict_errors(monkeypatch):

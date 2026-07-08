@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["kafka enablement", "client identity", "broker defaults"]
+  },
+  {
+    "label": "Connection Overrides",
+    "tags": ["producer settings", "consumer settings", "sasl tls"]
+  },
+  {
+    "label": "Message Matching",
+    "tags": ["topic consumption", "condition context", "multi match"]
+  },
+  {
+    "label": "Publish Actions",
+    "tags": ["topic publish", "rendered payload", "schema validation"]
+  }
+]
