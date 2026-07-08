@@ -1,0 +1,18 @@
+[
+  {
+    "label": "API Validation",
+    "tags": ["evaluate endpoint", "request shape", "bad request"]
+  },
+  {
+    "label": "Simulated Contexts",
+    "tags": ["channel context", "context merging", "amqp defaulting"]
+  },
+  {
+    "label": "Evaluation Flow",
+    "tags": ["matcher precedence", "condition rendering", "empty condition"]
+  },
+  {
+    "label": "Dry Run Actions",
+    "tags": ["side effects", "action ordering", "rendered results"]
+  }
+]

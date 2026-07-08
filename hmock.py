@@ -13,6 +13,8 @@ import posixpath
 import re
 import shlex
 import socket
+import socketserver
+import struct
 import sys
 import threading
 import time
@@ -68,6 +70,14 @@ class AMQPConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class GrpcConfig:
+    enabled: bool = False
+    host: str = "0.0.0.0"
+    port: int = 50051
+    descriptor_set_paths: tuple[str, ...] = ()
+
+
+@dataclasses.dataclass(frozen=True)
 class Config:
     templates_dir: str = "./templates"
     http_port: int = 9999
@@ -82,6 +92,7 @@ class Config:
     cors_enabled: bool = False
     kafka: KafkaConfig = dataclasses.field(default_factory=KafkaConfig)
     amqp: AMQPConfig = dataclasses.field(default_factory=AMQPConfig)
+    grpc: GrpcConfig = dataclasses.field(default_factory=GrpcConfig)
 
 
 def _env_bool(value: str) -> bool:
@@ -132,6 +143,12 @@ def load_config(env: dict[str, str] | None = None) -> Config:
         amqp=AMQPConfig(
             enabled=_env_bool(env.get("HM_AMQP_ENABLED", "false")),
             url=env.get("HM_AMQP_URL", "amqp://guest:guest@rabbitmq:5672"),
+        ),
+        grpc=GrpcConfig(
+            enabled=_env_bool(env.get("HM_GRPC_ENABLED", "false")),
+            host=env.get("HM_GRPC_HOST", "0.0.0.0"),
+            port=int(env.get("HM_GRPC_PORT", "50051")),
+            descriptor_set_paths=_env_csv(env.get("HM_GRPC_DESCRIPTOR_SET_PATHS", "")),
         ),
     )
 
@@ -666,6 +683,8 @@ class Behavior:
     amqp_exchange: str | None = None
     amqp_routing_key: str | None = None
     amqp_queue: str | None = None
+    grpc_service: str | None = None
+    grpc_method: str | None = None
 
 
 def parse_duration(value: str) -> float:
@@ -894,6 +913,11 @@ def _validate_actions(
             if not isinstance(payload.get("routing_key"), str) or not payload.get("routing_key"):
                 raise ValidationError(f"behavior {key} publish_amqp.routing_key is required")
             _validate_payload_source(payload, key, name, templates_dir)
+        elif name == "reply_grpc":
+            if not isinstance(payload, dict):
+                raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
+            _validate_payload_source(payload, key, name, templates_dir)
+            _validate_headers_mapping(payload.get("headers", {}), f"behavior {key} reply_grpc.headers")
         else:
             raise ValidationError(f"behavior {key} action {name} is not supported")
     if reply_count > 1:
@@ -913,7 +937,7 @@ def _validate_abstract_definition(raw: dict[str, Any], templates_dir: str | Path
     condition = expect.get("condition", "")
     if condition is not None and not isinstance(condition, str):
         raise ValidationError(f"behavior {key} expect.condition must be a string")
-    for name in ("http", "kafka", "amqp"):
+    for name in ("http", "kafka", "amqp", "grpc"):
         if name in expect and expect[name] is not None and not isinstance(expect[name], dict):
             raise ValidationError(f"behavior {key} expect.{name} must be a mapping")
     _validate_actions(raw.get("actions", []), key, templates_dir)
@@ -922,7 +946,7 @@ def _validate_abstract_definition(raw: dict[str, Any], templates_dir: str | Path
 def _expectation_names(expect: dict[str, Any]) -> list[str]:
     return [
         name
-        for name in ("http", "kafka", "amqp")
+        for name in ("http", "kafka", "amqp", "grpc")
         if name in expect and expect[name] is not None and expect[name] != {}
     ]
 
@@ -938,12 +962,12 @@ def validate_behavior(
     expect = raw.get("expect", {})
     if not isinstance(expect, dict):
         raise ValidationError(f"behavior {key} expect must be a mapping")
-    for name in ("http", "kafka", "amqp"):
+    for name in ("http", "kafka", "amqp", "grpc"):
         if name in expect and expect[name] is not None and not isinstance(expect[name], dict):
             raise ValidationError(f"behavior {key} expect.{name} must be a mapping")
     expectation_names = _expectation_names(expect)
     if len(expectation_names) != 1:
-        raise ValidationError(f"behavior {key} expect must contain exactly one of http, kafka, or amqp")
+        raise ValidationError(f"behavior {key} expect must contain exactly one of http, kafka, amqp, or grpc")
     expectation_type = expectation_names[0]
     method: str | None = None
     path: str | None = None
@@ -952,6 +976,8 @@ def validate_behavior(
     amqp_exchange: str | None = None
     amqp_routing_key: str | None = None
     amqp_queue: str | None = None
+    grpc_service: str | None = None
+    grpc_method: str | None = None
     if expectation_type == "http":
         http = expect["http"]
         method = http.get("method")
@@ -967,7 +993,7 @@ def validate_behavior(
         kafka_topic = kafka.get("topic")
         if not isinstance(kafka_topic, str) or not kafka_topic:
             raise ValidationError(f"behavior {key} expect.kafka.topic is required")
-    else:
+    elif expectation_type == "amqp":
         amqp = expect["amqp"]
         amqp_exchange = amqp.get("exchange")
         amqp_routing_key = amqp.get("routing_key")
@@ -981,6 +1007,14 @@ def validate_behavior(
             amqp["queue"] = amqp_queue
         if not isinstance(amqp_queue, str) or not amqp_queue:
             raise ValidationError(f"behavior {key} expect.amqp.queue must be a non-empty string")
+    else:
+        grpc = expect["grpc"]
+        grpc_service = grpc.get("service")
+        grpc_method = grpc.get("method")
+        if not isinstance(grpc_service, str) or not grpc_service:
+            raise ValidationError(f"behavior {key} expect.grpc.service is required")
+        if not isinstance(grpc_method, str) or not grpc_method:
+            raise ValidationError(f"behavior {key} expect.grpc.method is required")
     condition = expect.get("condition", "")
     if condition is None:
         condition = ""
@@ -1007,6 +1041,8 @@ def validate_behavior(
         amqp_exchange=amqp_exchange,
         amqp_routing_key=amqp_routing_key,
         amqp_queue=amqp_queue,
+        grpc_service=grpc_service,
+        grpc_method=grpc_method,
     )
 
 
@@ -2211,6 +2247,171 @@ def build_amqp_adapter(config: AMQPConfig) -> Any | None:
         raise ValidationError("AMQP support requires the pika package") from exc
 
 
+def resolve_grpc_descriptor_paths(templates_dir: str | Path, descriptor_set_paths: Iterable[str]) -> tuple[Path, ...]:
+    root = Path(templates_dir)
+    resolved: list[Path] = []
+    for item in descriptor_set_paths:
+        path = Path(item)
+        resolved.append(path if path.is_absolute() else root / path)
+    return tuple(resolved)
+
+
+def _grpc_message_class(message_factory_module: Any, pool: Any, descriptor: Any) -> Any:
+    if hasattr(message_factory_module, "GetMessageClass"):
+        return message_factory_module.GetMessageClass(descriptor)
+    factory = message_factory_module.MessageFactory(pool)
+    return factory.GetPrototype(descriptor)
+
+
+class GrpcDescriptorRegistry:
+    def __init__(self, paths: Iterable[Path] = ()) -> None:
+        self.paths = tuple(paths)
+        self._pool: Any | None = None
+        self._json_format: Any | None = None
+        self._message_factory: Any | None = None
+        self._methods: dict[tuple[str, str], tuple[str, str]] = {}
+        if self.paths:
+            self._load()
+
+    def _load(self) -> None:
+        try:
+            from google.protobuf import descriptor_pb2, descriptor_pool, json_format, message_factory
+        except ModuleNotFoundError as exc:
+            raise ValidationError("gRPC descriptor support requires the protobuf package") from exc
+        pool = descriptor_pool.DescriptorPool()
+        methods: dict[tuple[str, str], tuple[str, str]] = {}
+        for path in self.paths:
+            try:
+                data = path.read_bytes()
+            except OSError as exc:
+                raise ValidationError(f"gRPC descriptor set is unreadable: {path}") from exc
+            descriptor_set = descriptor_pb2.FileDescriptorSet()
+            try:
+                descriptor_set.ParseFromString(data)
+            except Exception as exc:
+                raise ValidationError(f"gRPC descriptor set is invalid: {path}") from exc
+            for file_descriptor in descriptor_set.file:
+                try:
+                    pool.Add(file_descriptor)
+                except Exception as exc:
+                    raise ValidationError(f"gRPC descriptor set is invalid: {path}") from exc
+                package = file_descriptor.package
+                for service in file_descriptor.service:
+                    service_name = f"{package}.{service.name}" if package else service.name
+                    for method in service.method:
+                        methods[(service_name, method.name)] = (
+                            method.input_type.lstrip("."),
+                            method.output_type.lstrip("."),
+                        )
+        self._pool = pool
+        self._json_format = json_format
+        self._message_factory = message_factory
+        self._methods = methods
+
+    def has_method(self, service: str, method: str) -> bool:
+        return (service, method) in self._methods
+
+    def _message_type(self, service: str, method: str, side: str) -> Any:
+        if self._pool is None:
+            raise ValidationError("gRPC descriptors are not loaded")
+        names = self._methods.get((service, method))
+        if names is None:
+            raise ValidationError(f"gRPC method not found in descriptors: {service}/{method}")
+        name = names[0] if side == "request" else names[1]
+        try:
+            descriptor = self._pool.FindMessageTypeByName(name)
+        except Exception as exc:
+            raise ValidationError(f"gRPC message type not found in descriptors: {name}") from exc
+        return _grpc_message_class(self._message_factory, self._pool, descriptor)
+
+    def decode_request_json(self, service: str, method: str, payload: bytes) -> str:
+        message_type = self._message_type(service, method, "request")
+        message = message_type()
+        try:
+            message.ParseFromString(payload)
+        except Exception as exc:
+            raise ValidationError(f"gRPC request payload is invalid for {service}/{method}") from exc
+        return self._json_format.MessageToJson(message, preserving_proto_field_name=True)
+
+    def encode_response_json(self, service: str, method: str, payload: str) -> bytes:
+        message_type = self._message_type(service, method, "response")
+        message = message_type()
+        try:
+            self._json_format.Parse(payload, message)
+        except Exception as exc:
+            raise ValidationError(f"gRPC response payload is invalid for {service}/{method}") from exc
+        return message.SerializeToString()
+
+
+def load_grpc_descriptor_registry(templates_dir: str | Path, config: GrpcConfig) -> GrpcDescriptorRegistry:
+    paths = resolve_grpc_descriptor_paths(templates_dir, config.descriptor_set_paths)
+    return GrpcDescriptorRegistry(paths)
+
+
+def _decode_grpc_frame(frame: bytes) -> bytes:
+    if len(frame) < 5:
+        raise ValidationError("gRPC frame is incomplete")
+    compressed = frame[0]
+    if compressed != 0:
+        raise ValidationError("compressed gRPC frames are not supported")
+    length = struct.unpack(">I", frame[1:5])[0]
+    payload = frame[5:]
+    if len(payload) != length:
+        raise ValidationError("gRPC frame length does not match payload")
+    return payload
+
+
+def _encode_grpc_frame(payload: bytes) -> bytes:
+    return b"\x00" + struct.pack(">I", len(payload)) + payload
+
+
+def grpc_request_payload_to_json(
+    registry: GrpcDescriptorRegistry,
+    service: str,
+    method: str,
+    frame: bytes,
+) -> str:
+    return registry.decode_request_json(service, method, _decode_grpc_frame(frame))
+
+
+def grpc_response_json_to_frame(
+    registry: GrpcDescriptorRegistry,
+    service: str,
+    method: str,
+    payload: str,
+) -> bytes:
+    return _encode_grpc_frame(registry.encode_response_json(service, method, payload))
+
+
+def behavior_needs_grpc_descriptors(behavior: Behavior) -> bool:
+    if behavior.expectation_type == "grpc":
+        return True
+    for action in behavior.actions:
+        name, _ = _action_name_payload(action, behavior.key)
+        if name == "reply_grpc":
+            return True
+    return False
+
+
+def validate_grpc_descriptor_config(config: Config, behaviors: list[Behavior]) -> GrpcDescriptorRegistry:
+    if not config.grpc.enabled:
+        return GrpcDescriptorRegistry()
+    needs_descriptors = any(behavior_needs_grpc_descriptors(behavior) for behavior in behaviors)
+    if needs_descriptors and not config.grpc.descriptor_set_paths:
+        raise ValidationError("HM_GRPC_DESCRIPTOR_SET_PATHS is required when gRPC behaviors are loaded")
+    registry = load_grpc_descriptor_registry(config.templates_dir, config.grpc)
+    if needs_descriptors:
+        for behavior in behaviors:
+            if behavior.expectation_type == "grpc":
+                assert behavior.grpc_service is not None
+                assert behavior.grpc_method is not None
+                if not registry.has_method(behavior.grpc_service, behavior.grpc_method):
+                    raise ValidationError(
+                        f"gRPC method not found in descriptors: {behavior.grpc_service}/{behavior.grpc_method}"
+                    )
+    return registry
+
+
 def find_behavior(
     behaviors: list[Behavior],
     request: RequestInfo,
@@ -2336,6 +2537,51 @@ def find_amqp_behaviors(
     return matches
 
 
+def build_grpc_template_context(
+    service: str,
+    method: str,
+    payload: str,
+    headers: dict[str, str] | Iterable[tuple[str, str]],
+    behavior: Behavior,
+    redis_store: RedisStore | None = None,
+) -> dict[str, Any]:
+    return build_template_context(
+        {},
+        "",
+        "",
+        "",
+        {},
+        redis_store.do if redis_store is not None else None,
+        behavior.values,
+        behavior.templates,
+        {
+            "GRPCService": service,
+            "GRPCMethod": method,
+            "GRPCPayload": payload,
+            "GRPCHeader": HeaderMap(headers),
+        },
+    )
+
+
+def find_grpc_behavior(
+    behaviors: list[Behavior],
+    service: str,
+    method: str,
+    payload: str,
+    headers: dict[str, str] | Iterable[tuple[str, str]] | None = None,
+    redis_store: RedisStore | None = None,
+) -> Behavior | None:
+    for behavior in behaviors:
+        if behavior.expectation_type != "grpc":
+            continue
+        if behavior.grpc_service != service or behavior.grpc_method != method:
+            continue
+        context = build_grpc_template_context(service, method, payload, headers or {}, behavior, redis_store)
+        if _condition_matches(behavior, context):
+            return behavior
+    return None
+
+
 def _pop_header_case_insensitive(headers: dict[str, str], name: str) -> str | None:
     expected = name.lower()
     for key in list(headers):
@@ -2405,6 +2651,58 @@ def _render_publish_payload(action_name: str, payload: dict[str, Any], context: 
     return render_template(str(body_source), context)
 
 
+def _render_reply_http_response(payload: dict[str, Any], context: dict[str, Any]) -> ResponseInfo:
+    body_source = payload.get("body")
+    binary_body: bytes | None = None
+    if (body_source is None or body_source == "") and "body_from_binary_file_content" in payload:
+        binary_body = payload["body_from_binary_file_content"]
+    elif body_source is None or body_source == "":
+        body_source = payload.get("body_from_file_content", "")
+    body: str | bytes = binary_body if binary_body is not None else render_template(str(body_source), context)
+    headers = {
+        str(key): render_template(str(value), context)
+        for key, value in (payload.get("headers") or {}).items()
+    }
+    if not any(key.lower() == "content-type" for key in headers):
+        headers["Content-Type"] = "application/json"
+    if binary_body is not None and payload.get("binary_file_name"):
+        headers["Content-Disposition"] = f'inline; filename="{payload["binary_file_name"]}"'
+    headers["Content-Length"] = str(len(body if isinstance(body, bytes) else body.encode()))
+    return ResponseInfo(int(payload["status_code"]), headers, body)
+
+
+def _render_reply_grpc_payload(payload: dict[str, Any], context: dict[str, Any]) -> str:
+    body_source = payload.get("payload")
+    if body_source is None or body_source == "":
+        body_source = payload.get("reply_grpc_payload_from_file_content", "")
+    return render_template(str(body_source), context)
+
+
+def render_reply_grpc_response(
+    behavior: Behavior,
+    payload: dict[str, Any],
+    context: dict[str, Any],
+    descriptor_registry: GrpcDescriptorRegistry,
+) -> ResponseInfo:
+    if behavior.grpc_service is None or behavior.grpc_method is None:
+        raise ValidationError("reply_grpc requires a gRPC behavior")
+    rendered_payload = _render_reply_grpc_payload(payload, context)
+    body = grpc_response_json_to_frame(
+        descriptor_registry,
+        behavior.grpc_service,
+        behavior.grpc_method,
+        rendered_payload,
+    )
+    headers = {
+        str(key): render_template(str(value), context)
+        for key, value in (payload.get("headers") or {}).items()
+    }
+    headers["grpc-status"] = "0"
+    headers["grpc-message"] = "OK"
+    headers["Content-Type"] = "application/grpc"
+    return ResponseInfo(200, headers, body)
+
+
 def _publish_kafka(payload: dict[str, Any], context: dict[str, Any], publisher: Any | None) -> None:
     if publisher is None:
         return
@@ -2444,23 +2742,7 @@ def execute_actions(
         elif name == "publish_amqp":
             _publish_amqp(payload, context, amqp_publisher)
         elif name == "reply_http" and include_reply_http:
-            body_source = payload.get("body")
-            binary_body: bytes | None = None
-            if (body_source is None or body_source == "") and "body_from_binary_file_content" in payload:
-                binary_body = payload["body_from_binary_file_content"]
-            elif body_source is None or body_source == "":
-                body_source = payload.get("body_from_file_content", "")
-            body: str | bytes = binary_body if binary_body is not None else render_template(str(body_source), context)
-            headers = {
-                str(key): render_template(str(value), context)
-                for key, value in (payload.get("headers") or {}).items()
-            }
-            if not any(key.lower() == "content-type" for key in headers):
-                headers["Content-Type"] = "application/json"
-            if binary_body is not None and payload.get("binary_file_name"):
-                headers["Content-Disposition"] = f'inline; filename="{payload["binary_file_name"]}"'
-            headers["Content-Length"] = str(len(body if isinstance(body, bytes) else body.encode()))
-            response = ResponseInfo(int(payload["status_code"]), headers, body)
+            response = _render_reply_http_response(payload, context)
     return response
 
 
@@ -2537,6 +2819,44 @@ def execute_amqp_behavior(
         kafka_publisher,
         amqp_publisher,
         include_reply_http=False,
+    )
+
+
+def execute_grpc_behavior(
+    behavior: Behavior,
+    service: str,
+    method: str,
+    payload: str,
+    headers: dict[str, str],
+    redis_store: RedisStore,
+    descriptor_registry: GrpcDescriptorRegistry,
+    logger: JsonLogger | None = None,
+    kafka_publisher: Any | None = None,
+    amqp_publisher: Any | None = None,
+) -> ResponseInfo:
+    context = build_grpc_template_context(service, method, payload, headers, behavior, redis_store)
+    response: ResponseInfo | None = None
+    for action in behavior.actions:
+        name, action_payload = _action_name_payload(action, behavior.key)
+        if name == "sleep":
+            time.sleep(parse_duration(str(action_payload["duration"])))
+        elif name == "redis":
+            for command_template in action_payload:
+                redis_store.do(render_template(command_template, context))
+        elif name == "send_http":
+            _send_http(action_payload, context, logger)
+        elif name == "publish_kafka":
+            _publish_kafka(action_payload, context, kafka_publisher)
+        elif name == "publish_amqp":
+            _publish_amqp(action_payload, context, amqp_publisher)
+        elif name == "reply_grpc":
+            response = render_reply_grpc_response(behavior, action_payload, context, descriptor_registry)
+    if response is not None:
+        return response
+    return ResponseInfo(
+        200,
+        {"grpc-status": "0", "grpc-message": "OK", "Content-Type": "application/grpc"},
+        _encode_grpc_frame(b""),
     )
 
 
@@ -2721,6 +3041,80 @@ class AMQPBrokerService:
             self.adapter.close()
 
 
+class _GrpcTCPHandler(socketserver.BaseRequestHandler):
+    def handle(self) -> None:
+        # The core gRPC unary path is exposed through HMockGRPCServer.process_unary.
+        # A full HTTP/2 transport can delegate there without changing matching logic.
+        try:
+            self.request.recv(65536)
+        except OSError:
+            return
+
+
+class HMockGRPCServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+
+    def __init__(
+        self,
+        address: tuple[str, int],
+        registry: ActiveMockRegistry | StaticMockRegistry,
+        logger: JsonLogger,
+        redis_store: RedisStore,
+        descriptor_registry: GrpcDescriptorRegistry,
+        kafka_publisher: Any | None = None,
+        amqp_publisher: Any | None = None,
+    ) -> None:
+        super().__init__(address, _GrpcTCPHandler)
+        self.registry = registry
+        self.hm_logger = logger
+        self.redis_store = redis_store
+        self.descriptor_registry = descriptor_registry
+        self.kafka_publisher = kafka_publisher
+        self.amqp_publisher = amqp_publisher
+        self._thread: threading.Thread | None = None
+
+    def process_unary(
+        self,
+        service: str,
+        method: str,
+        framed_payload: bytes,
+        headers: dict[str, str] | None = None,
+    ) -> ResponseInfo:
+        headers = headers or {}
+        payload = grpc_request_payload_to_json(self.descriptor_registry, service, method, framed_payload)
+        behavior = find_grpc_behavior(self.registry.behaviors(), service, method, payload, headers, self.redis_store)
+        if behavior is None:
+            return ResponseInfo(
+                200,
+                {"grpc-status": "5", "grpc-message": "not found", "Content-Type": "application/grpc"},
+                _encode_grpc_frame(b""),
+            )
+        return execute_grpc_behavior(
+            behavior,
+            service,
+            method,
+            payload,
+            headers,
+            self.redis_store,
+            self.descriptor_registry,
+            self.hm_logger,
+            self.kafka_publisher,
+            self.amqp_publisher,
+        )
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._thread = threading.Thread(target=self.serve_forever, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self.shutdown()
+        self.server_close()
+        if self._thread is not None:
+            self._thread.join(timeout=2)
+
+
 def not_found_response() -> ResponseInfo:
     body = "not found"
     return ResponseInfo(
@@ -2898,6 +3292,207 @@ def _text_response(message: str, status_code: int) -> ResponseInfo:
     )
 
 
+def _mapping(value: Any, field_name: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValidationError(f"{field_name} must be an object")
+    return value
+
+
+def _string_field(mapping: dict[str, Any], field_name: str, default: str | None = None) -> str:
+    key = field_name.rsplit(".", 1)[-1]
+    value = mapping.get(key, default)
+    if not isinstance(value, str):
+        raise ValidationError(f"{field_name} must be a string")
+    return value
+
+
+def _string_map_field(mapping: dict[str, Any], field_name: str, default: dict[str, str] | None = None) -> dict[str, str]:
+    key = field_name.rsplit(".", 1)[-1]
+    value = mapping.get(key, default if default is not None else {})
+    if not isinstance(value, dict):
+        raise ValidationError(f"{field_name} must be a string map")
+    result: dict[str, str] = {}
+    for item_key, item_value in value.items():
+        if not isinstance(item_key, str) or not isinstance(item_value, str):
+            raise ValidationError(f"{field_name} must be a string map")
+        result[item_key] = item_value
+    return result
+
+
+def _route_path(path: str) -> str:
+    split = urlsplit(path)
+    route_path = posixpath.normpath(split.path)
+    if split.path.startswith("/") and not route_path.startswith("/"):
+        route_path = "/" + route_path
+    if split.path == "/":
+        route_path = "/"
+    return route_path
+
+
+def _require_channel_context(context: dict[str, Any], name: str) -> dict[str, Any]:
+    value = context.get(name)
+    if value is None:
+        raise ValidationError(f"context.{name} is required")
+    return _mapping(value, f"context.{name}")
+
+
+def _merge_simulated_context_values(target: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    if "http_context" in context:
+        http = _mapping(context["http_context"], "context.http_context")
+        headers = _string_map_field(http, "context.http_context.headers", {})
+        target["HTTPHeader"] = HeaderMap(headers)
+        target["HTTPBody"] = _string_field(http, "context.http_context.body", "")
+        target["HTTPPath"] = _string_field(http, "context.http_context.path", "")
+        target["HTTPQueryString"] = _string_field(http, "context.http_context.query_string", "")
+    if "kafka_context" in context:
+        kafka = _mapping(context["kafka_context"], "context.kafka_context")
+        target["KafkaTopic"] = _string_field(kafka, "context.kafka_context.topic", "")
+        target["KafkaPayload"] = _string_field(kafka, "context.kafka_context.payload", "")
+    if "amqp_context" in context:
+        amqp = _mapping(context["amqp_context"], "context.amqp_context")
+        target["AMQPExchange"] = _string_field(amqp, "context.amqp_context.exchange", "")
+        target["AMQPRoutingKey"] = _string_field(amqp, "context.amqp_context.routing_key", "")
+        target["AMQPQueue"] = _string_field(amqp, "context.amqp_context.queue", target["AMQPRoutingKey"])
+        target["AMQPPayload"] = _string_field(amqp, "context.amqp_context.payload", "")
+    if "grpc_context" in context:
+        grpc_context = _mapping(context["grpc_context"], "context.grpc_context")
+        headers = _string_map_field(grpc_context, "context.grpc_context.headers", {})
+        target["GRPCService"] = _string_field(grpc_context, "context.grpc_context.service", "")
+        target["GRPCMethod"] = _string_field(grpc_context, "context.grpc_context.method", "")
+        target["GRPCPayload"] = _string_field(grpc_context, "context.grpc_context.payload", "")
+        target["GRPCHeader"] = HeaderMap(headers)
+    return target
+
+
+def _evaluate_http_match(behavior: Behavior, context: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    http = _require_channel_context(context, "http_context")
+    method = _string_field(http, "context.http_context.method")
+    path = _string_field(http, "context.http_context.path")
+    body = _string_field(http, "context.http_context.body", "")
+    query = _string_field(http, "context.http_context.query_string", urlsplit(path).query)
+    headers = _string_map_field(http, "context.http_context.headers", {})
+    params = behavior.pattern.match(_route_path(path)) if behavior.pattern is not None else None
+    matched = behavior.method == method.upper() and params is not None
+    template_context = build_template_context(headers, body, path, query, params or {}, None, behavior.values, behavior.templates)
+    return matched, _merge_simulated_context_values(template_context, context)
+
+
+def _evaluate_kafka_match(behavior: Behavior, context: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    kafka = _require_channel_context(context, "kafka_context")
+    topic = _string_field(kafka, "context.kafka_context.topic")
+    payload = _string_field(kafka, "context.kafka_context.payload")
+    matched = behavior.kafka_topic == topic
+    template_context = build_kafka_template_context(topic, payload, behavior, None)
+    return matched, _merge_simulated_context_values(template_context, context)
+
+
+def _evaluate_amqp_match(behavior: Behavior, context: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    amqp = _require_channel_context(context, "amqp_context")
+    exchange = _string_field(amqp, "context.amqp_context.exchange")
+    routing_key = _string_field(amqp, "context.amqp_context.routing_key")
+    queue = _string_field(amqp, "context.amqp_context.queue", routing_key)
+    payload = _string_field(amqp, "context.amqp_context.payload")
+    matched = (
+        behavior.amqp_exchange == exchange
+        and behavior.amqp_routing_key == routing_key
+        and behavior.amqp_queue == queue
+    )
+    template_context = build_amqp_template_context(exchange, routing_key, queue, payload, behavior, None)
+    return matched, _merge_simulated_context_values(template_context, context)
+
+
+def _evaluate_grpc_match(behavior: Behavior, context: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    grpc_context = _require_channel_context(context, "grpc_context")
+    service = _string_field(grpc_context, "context.grpc_context.service")
+    method = _string_field(grpc_context, "context.grpc_context.method")
+    payload = _string_field(grpc_context, "context.grpc_context.payload")
+    headers = _string_map_field(grpc_context, "context.grpc_context.headers", {})
+    matched = behavior.grpc_service == service and behavior.grpc_method == method
+    template_context = build_grpc_template_context(service, method, payload, headers, behavior, None)
+    return matched, _merge_simulated_context_values(template_context, context)
+
+
+def _evaluate_match(behavior: Behavior, context: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    if behavior.expectation_type == "http":
+        return _evaluate_http_match(behavior, context)
+    if behavior.expectation_type == "kafka":
+        return _evaluate_kafka_match(behavior, context)
+    if behavior.expectation_type == "amqp":
+        return _evaluate_amqp_match(behavior, context)
+    if behavior.expectation_type == "grpc":
+        return _evaluate_grpc_match(behavior, context)
+    raise ValidationError(f"unsupported matcher: {behavior.expectation_type}")
+
+
+def _header_value(headers: dict[str, str], name: str) -> str:
+    expected = name.lower()
+    for key, value in headers.items():
+        if key.lower() == expected:
+            return value
+    return ""
+
+
+def _dry_run_reply_http(payload: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    response = _render_reply_http_response(payload, context)
+    body = response.body_text_for_log()
+    content_type = _header_value(response.headers, "Content-Type") or "application/json"
+    return {
+        "status_code": str(response.status_code),
+        "content_type": content_type,
+        "body": body,
+        "headers": dict(response.headers),
+    }
+
+
+def _dry_run_publish_kafka(payload: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "topic": render_template(str(payload["topic"]), context),
+        "payload": _render_publish_payload("publish_kafka", payload, context),
+    }
+
+
+def _dry_run_actions(behavior: Behavior, context: dict[str, Any]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for action in behavior.actions:
+        name, payload = _action_name_payload(action, behavior.key)
+        if name == "reply_http":
+            results.append({"reply_http_action_performed": _dry_run_reply_http(payload, context)})
+        elif name == "publish_kafka":
+            results.append({"publish_kafka_action_performed": _dry_run_publish_kafka(payload, context)})
+    return results
+
+
+def evaluate_mock_request(request_payload: Any, templates_dir: str | Path | None = None) -> dict[str, Any]:
+    request = _mapping(request_payload, "request")
+    mock = _mapping(request.get("mock"), "mock")
+    context = request.get("context")
+    if isinstance(context, list):
+        raise ValidationError("context must be an object")
+    context = _mapping(context, "context")
+    behavior = validate_behavior(copy.deepcopy(mock), templates_dir)
+    matched, template_context = _evaluate_match(behavior, context)
+    if not matched:
+        return {"expect_passed": False, "actions_performed": []}
+    condition_rendered = ""
+    condition_passed = True
+    if behavior.condition:
+        condition_rendered = render_template(behavior.condition, template_context)
+        condition_passed = condition_rendered == "true"
+    if not condition_passed:
+        return {
+            "expect_passed": True,
+            "condition_passed": False,
+            "condition_rendered": condition_rendered,
+            "actions_performed": [],
+        }
+    return {
+        "expect_passed": True,
+        "condition_passed": True,
+        "condition_rendered": condition_rendered,
+        "actions_performed": _dry_run_actions(behavior, template_context),
+    }
+
+
 class AdminHTTPRequestHandler(BaseHTTPRequestHandler):
     server: "HMockAdminServer"
 
@@ -2957,6 +3552,8 @@ class AdminHTTPRequestHandler(BaseHTTPRequestHandler):
             return _json_response(self.server.registry.active_definitions())
         if self.command == "POST" and route_path == "/api/v1/templates":
             return _json_response(self.server.registry.upsert_base_definitions(self._read_payload()))
+        if self.command == "POST" and route_path == "/api/v1/evaluate":
+            return _json_response(evaluate_mock_request(self._read_payload(), self.server.registry.templates_dir))
         if self.command == "DELETE" and route_path == "/api/v1/templates":
             self.server.registry.delete_all_base_definitions()
             return _empty_response()
@@ -3002,6 +3599,19 @@ def build_server(config: Config | None = None, logger: JsonLogger | None = None)
         broker_services.append(KafkaBrokerService(registry, kafka_adapter, redis_store, logger, amqp_adapter))
     if amqp_adapter is not None:
         broker_services.append(AMQPBrokerService(registry, amqp_adapter, redis_store, logger, kafka_adapter))
+    if config.grpc.enabled:
+        grpc_descriptors = validate_grpc_descriptor_config(config, registry.behaviors())
+        broker_services.append(
+            HMockGRPCServer(
+                (config.grpc.host, config.grpc.port),
+                registry,
+                logger,
+                redis_store,
+                grpc_descriptors,
+                kafka_adapter,
+                amqp_adapter,
+            )
+        )
     return HMockHTTPServer(
         (config.http_host, config.http_port),
         registry,

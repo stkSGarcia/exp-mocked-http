@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Server Configuration",
+    "tags": ["grpc enablement", "cleartext http2", "listener settings"]
+  },
+  {
+    "label": "Descriptor Handling",
+    "tags": ["protobuf descriptors", "startup validation", "path resolution"]
+  },
+  {
+    "label": "Behavior Matching",
+    "tags": ["service method", "first match", "grpc metadata"]
+  },
+  {
+    "label": "Reply Rendering",
+    "tags": ["response framing", "json encoding", "metadata headers"]
+  }
+]
