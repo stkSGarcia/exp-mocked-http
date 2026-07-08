@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Restart Durable Templates",
+    "tags": ["api persistence", "startup loading", "stored mocks"]
+  },
+  {
+    "label": "Filesystem Merge Semantics",
+    "tags": ["source merging", "duplicate precedence", "active set"]
+  },
+  {
+    "label": "Reload Visibility",
+    "tags": ["bounded reload", "mutation visibility", "request matching"]
+  }
+]

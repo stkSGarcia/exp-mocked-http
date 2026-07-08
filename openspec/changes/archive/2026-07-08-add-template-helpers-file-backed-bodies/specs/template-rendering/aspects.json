@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Structured Data Helpers",
+    "tags": ["jsonpath lookup", "gjson traversal", "xml path"]
+  },
+  {
+    "label": "Match And Digest Helpers",
+    "tags": ["regex captures", "hmac digest", "html escaping"]
+  },
+  {
+    "label": "Deterministic Utilities",
+    "tags": ["uuid v5", "last index", "helper registration"]
+  },
+  {
+    "label": "Error And Empty Semantics",
+    "tags": ["empty input", "no match", "invalid json"]
+  }
+]

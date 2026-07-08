@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Named Set Replacement",
+    "tags": ["set upsert", "full replacement", "set validation"]
+  },
+  {
+    "label": "Set Isolation",
+    "tags": ["named groups", "base separation", "set boundaries"]
+  },
+  {
+    "label": "Set Deletion And Reload",
+    "tags": ["set deletion", "isolated removal", "set reload"]
+  }
+]

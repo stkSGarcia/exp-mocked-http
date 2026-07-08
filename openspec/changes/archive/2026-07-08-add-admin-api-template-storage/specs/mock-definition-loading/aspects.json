@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Combined Definition Sources",
+    "tags": ["filesystem mocks", "persisted definitions", "loader composition"]
+  },
+  {
+    "label": "Ordering And Overrides",
+    "tags": ["load ordering", "key overrides", "winner selection"]
+  },
+  {
+    "label": "Persisted Definition Validation",
+    "tags": ["schema validation", "invalid storage", "activation safety"]
+  }
+]

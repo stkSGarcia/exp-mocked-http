@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Named Templates",
+    "tags": ["template invocation", "registered fragments", "missing template"]
+  },
+  {
+    "label": "Nested Render Context",
+    "tags": ["root context", "values context", "arbitrary context"]
+  },
+  {
+    "label": "Shared Request Context",
+    "tags": ["header access", "body access", "query access"]
+  },
+  {
+    "label": "Behavior Values Context",
+    "tags": ["dot values", "merged values", "render scope"]
+  }
+]

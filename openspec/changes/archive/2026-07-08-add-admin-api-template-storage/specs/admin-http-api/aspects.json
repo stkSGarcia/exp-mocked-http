@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Admin Listener Configuration",
+    "tags": ["admin listener", "environment defaults", "server disablement"]
+  },
+  {
+    "label": "Template Management Endpoints",
+    "tags": ["template listing", "mock upsert", "delete endpoints"]
+  },
+  {
+    "label": "Validation And Error Responses",
+    "tags": ["bad request", "validation errors", "missing templates"]
+  }
+]

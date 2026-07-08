@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["env configuration", "default settings", "bind options"]
+  },
+  {
+    "label": "YAML Discovery",
+    "tags": ["recursive discovery", "yaml extensions", "deterministic loading"]
+  },
+  {
+    "label": "Schema Validation",
+    "tags": ["behavior schema", "required keys", "action constraints"]
+  },
+  {
+    "label": "Behavior Merge",
+    "tags": ["load ordering", "duplicate replacement", "override warnings"]
+  }
+]

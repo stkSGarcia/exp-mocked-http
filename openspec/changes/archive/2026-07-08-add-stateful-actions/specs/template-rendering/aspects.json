@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Redis Template Access",
+    "tags": ["redisdo function", "condition templates", "response templates"]
+  },
+  {
+    "label": "Redis Command Families",
+    "tags": ["string commands", "list commands", "hash commands"]
+  },
+  {
+    "label": "Redis Key Operations",
+    "tags": ["key commands", "unsupported commands", "render failures"]
+  },
+  {
+    "label": "Redis Result Formatting",
+    "tags": ["string results", "empty results", "array delimiter"]
+  }
+]

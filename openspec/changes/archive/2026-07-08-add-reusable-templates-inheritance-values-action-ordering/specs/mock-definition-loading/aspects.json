@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Definition Kinds",
+    "tags": ["template kind", "abstract kind", "behavior kind"]
+  },
+  {
+    "label": "Inheritance Resolution",
+    "tags": ["parent lookup", "cycle rejection", "missing parent"]
+  },
+  {
+    "label": "Values Merging",
+    "tags": ["values maps", "child override", "inherited data"]
+  },
+  {
+    "label": "Schema Field Rules",
+    "tags": ["allowed fields", "kind validation", "reply limits"]
+  }
+]

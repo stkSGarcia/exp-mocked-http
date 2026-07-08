@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Ordered Execution",
+    "tags": ["ascending order", "default zero", "negative order"]
+  },
+  {
+    "label": "Stable Ordering",
+    "tags": ["equal order", "declared sequence", "relative stability"]
+  },
+  {
+    "label": "Inherited Action Sorting",
+    "tags": ["parent actions", "child actions", "combined sorting"]
+  },
+  {
+    "label": "Mixed Action Semantics",
+    "tags": ["redis action", "send http", "reply action"]
+  }
+]

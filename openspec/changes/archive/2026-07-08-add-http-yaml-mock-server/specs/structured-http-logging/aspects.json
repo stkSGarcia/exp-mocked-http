@@ -1,0 +1,18 @@
+[
+  {
+    "label": "JSON Log Format",
+    "tags": ["json logs", "structured entries", "log validity"]
+  },
+  {
+    "label": "Level Filtering",
+    "tags": ["log severity", "info suppression", "configured levels"]
+  },
+  {
+    "label": "Request Response Fields",
+    "tags": ["request telemetry", "response telemetry", "http metadata"]
+  },
+  {
+    "label": "Warning Events",
+    "tags": ["duplicate warnings", "override log", "warning records"]
+  }
+]

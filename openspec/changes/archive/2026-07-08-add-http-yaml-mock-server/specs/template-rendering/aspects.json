@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Request Context",
+    "tags": ["header access", "body access", "query context"]
+  },
+  {
+    "label": "Template Parsing",
+    "tags": ["delimiter syntax", "source normalization", "trim handling"]
+  },
+  {
+    "label": "Control Flow",
+    "tags": ["conditional rendering", "range iteration", "local assignment"]
+  },
+  {
+    "label": "Function Library",
+    "tags": ["builtin functions", "extended helpers", "uuid generation"]
+  }
+]

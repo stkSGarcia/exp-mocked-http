@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Body File Resolution",
+    "tags": ["template relative", "path resolution", "root confinement"]
+  },
+  {
+    "label": "Load-Time Snapshot",
+    "tags": ["file snapshot", "stable contents", "configuration load"]
+  },
+  {
+    "label": "Invalid File Handling",
+    "tags": ["missing file", "outside path", "invalid behavior"]
+  }
+]

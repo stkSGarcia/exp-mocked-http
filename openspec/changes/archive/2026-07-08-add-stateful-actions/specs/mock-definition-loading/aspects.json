@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Redis Configuration",
+    "tags": ["redis defaults", "backend selection", "external url"]
+  },
+  {
+    "label": "Redis Action Validation",
+    "tags": ["command arrays", "string items", "invalid payloads"]
+  },
+  {
+    "label": "Outbound HTTP Validation",
+    "tags": ["send http", "required fields", "header maps"]
+  },
+  {
+    "label": "Outbound Body Files",
+    "tags": ["file snapshots", "template root", "path safety"]
+  }
+]

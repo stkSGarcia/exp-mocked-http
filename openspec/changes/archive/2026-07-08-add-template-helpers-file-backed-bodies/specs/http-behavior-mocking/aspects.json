@@ -1,0 +1,18 @@
+[
+  {
+    "label": "File-Backed Responses",
+    "tags": ["body from file", "loaded body", "response rendering"]
+  },
+  {
+    "label": "Template Context Sharing",
+    "tags": ["request context", "shared helpers", "file templates"]
+  },
+  {
+    "label": "Body Precedence",
+    "tags": ["inline priority", "empty fallback", "body selection"]
+  },
+  {
+    "label": "Header Templates",
+    "tags": ["templated headers", "header values", "reply context"]
+  }
+]

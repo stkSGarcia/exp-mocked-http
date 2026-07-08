@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Redis Action Execution",
+    "tags": ["rendered commands", "array order", "state mutations"]
+  },
+  {
+    "label": "Outbound Request Rendering",
+    "tags": ["rendered url", "rendered headers", "rendered body"]
+  },
+  {
+    "label": "Outbound Failure Isolation",
+    "tags": ["failure isolation", "inbound response", "side effects"]
+  },
+  {
+    "label": "Mixed Action Ordering",
+    "tags": ["declared order", "stateful actions", "reply sequencing"]
+  }
+]

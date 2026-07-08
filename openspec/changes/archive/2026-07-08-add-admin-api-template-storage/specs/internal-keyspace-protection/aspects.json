@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Reserved Key Blocking",
+    "tags": ["internal keyspace", "redis guard", "storage protection"]
+  },
+  {
+    "label": "Pre Execution Failure",
+    "tags": ["render failure", "command prevention", "mutation blocking"]
+  }
+]

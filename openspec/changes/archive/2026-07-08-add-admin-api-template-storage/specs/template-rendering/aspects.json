@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Redis Template Availability",
+    "tags": ["redisdo contexts", "response templating", "action rendering"]
+  },
+  {
+    "label": "Internal Key Refusal",
+    "tags": ["protected keys", "redis refusal", "backend isolation"]
+  },
+  {
+    "label": "Redis Command Behavior",
+    "tags": ["hash commands", "unsupported commands", "execution errors"]
+  }
+]

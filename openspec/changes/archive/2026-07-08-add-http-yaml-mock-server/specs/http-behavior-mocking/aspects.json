@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Server Entry Point",
+    "tags": ["entry script", "uv startup", "runtime binding"]
+  },
+  {
+    "label": "Request Matching",
+    "tags": ["method routing", "path matching", "query exclusion"]
+  },
+  {
+    "label": "Route Parameters",
+    "tags": ["named segments", "capture context", "segment boundaries"]
+  },
+  {
+    "label": "Response Execution",
+    "tags": ["action order", "sleep delays", "reply defaults"]
+  }
+]
