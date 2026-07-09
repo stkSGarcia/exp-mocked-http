@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["amqp env", "connection url", "disabled default"]
+  },
+  {
+    "label": "Mock Schema Validation",
+    "tags": ["exchange routing", "queue default", "payload validation"]
+  },
+  {
+    "label": "Resource And Recovery",
+    "tags": ["broker setup", "queue binding", "reconnect recovery"]
+  },
+  {
+    "label": "Message Handling",
+    "tags": ["amqp context", "ordered behaviors", "amqp publish"]
+  }
+]

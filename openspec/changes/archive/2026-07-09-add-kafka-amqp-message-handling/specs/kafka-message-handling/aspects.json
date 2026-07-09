@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["kafka env", "broker overrides", "sasl tls"]
+  },
+  {
+    "label": "Mock Schema Validation",
+    "tags": ["topic requirement", "publish schema", "payload source"]
+  },
+  {
+    "label": "Message Matching",
+    "tags": ["topic matching", "template context", "multi match"]
+  },
+  {
+    "label": "Publish Execution",
+    "tags": ["kafka publish", "file payload", "rendered message"]
+  }
+]
