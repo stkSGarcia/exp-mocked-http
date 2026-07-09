@@ -1,0 +1,6 @@
+[
+  {
+    "label": "AMQP Evaluation Matching",
+    "tags": ["queue fallback", "routing key", "simulated amqp"]
+  }
+]

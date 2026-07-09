@@ -1,0 +1,6 @@
+[
+  {
+    "label": "gRPC Schema Validation",
+    "tags": ["grpc expectation", "reply payload", "matcher compatibility"]
+  }
+]

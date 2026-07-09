@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Evaluation Endpoint",
+    "tags": ["dry run api", "single mock", "side effect free"]
+  },
+  {
+    "label": "Request Validation",
+    "tags": ["bad request", "required matcher", "context object"]
+  },
+  {
+    "label": "Match And Condition Flow",
+    "tags": ["match short circuit", "condition output", "empty actions"]
+  },
+  {
+    "label": "Action Result Rendering",
+    "tags": ["ordered actions", "http result", "kafka result"]
+  }
+]

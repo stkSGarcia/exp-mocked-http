@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["grpc listener", "cleartext http2", "environment toggles"]
+  },
+  {
+    "label": "Descriptor Loading",
+    "tags": ["protobuf descriptors", "startup validation", "template relative paths"]
+  },
+  {
+    "label": "Request Matching",
+    "tags": ["service method pair", "first match", "grpc metadata"]
+  },
+  {
+    "label": "Response Encoding",
+    "tags": ["framed protobuf", "json conversion", "grpc headers"]
+  }
+]

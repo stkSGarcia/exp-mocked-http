@@ -1,0 +1,10 @@
+[
+  {
+    "label": "gRPC Template Variables",
+    "tags": ["grpc context", "metadata lookup", "payload variables"]
+  },
+  {
+    "label": "Evaluation Template Context",
+    "tags": ["merged contexts", "simulated request", "ordered rendering"]
+  }
+]
