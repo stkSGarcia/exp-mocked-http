@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Redis Template Contexts",
+    "tags": ["redisdo function", "condition templates", "header rendering"]
+  },
+  {
+    "label": "Redis Command Set",
+    "tags": ["string commands", "list commands", "hash commands"]
+  },
+  {
+    "label": "Key Operations",
+    "tags": ["key commands", "unsupported command", "render errors"]
+  },
+  {
+    "label": "Return Formatting",
+    "tags": ["string results", "empty results", "array delimiter"]
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "label": "File-Backed Replies",
+    "tags": ["file bodies", "body precedence", "reply rendering"]
+  },
+  {
+    "label": "Templated Headers",
+    "tags": ["header templates", "request context", "shared functions"]
+  }
+]

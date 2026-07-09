@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Reserved Redis Keyspace",
+    "tags": ["internal keys", "redis blocking", "storage protection"]
+  },
+  {
+    "label": "Render Error Handling",
+    "tags": ["blocked commands", "render failures", "command prevention"]
+  },
+  {
+    "label": "Redis Function Continuity",
+    "tags": ["noninternal keys", "template contexts", "redisdo support"]
+  }
+]

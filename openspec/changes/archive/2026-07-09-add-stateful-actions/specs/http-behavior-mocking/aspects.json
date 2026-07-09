@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Redis Action Execution",
+    "tags": ["redis actions", "command templates", "ordered commands"]
+  },
+  {
+    "label": "Outbound HTTP Actions",
+    "tags": ["send http", "rendered request", "file body"]
+  },
+  {
+    "label": "Failure Isolation",
+    "tags": ["side effects", "inbound response", "failure handling"]
+  },
+  {
+    "label": "Mixed Action Ordering",
+    "tags": ["action order", "sleep replies", "combined actions"]
+  }
+]

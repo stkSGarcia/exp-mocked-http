@@ -1,0 +1,11 @@
+[
+  "spec:mock-definition-loading/add-stateful-actions",
+  "spec:http-behavior-mocking/add-stateful-actions",
+  "spec:http-behavior-mocking/add-reusable-templates-inheritance-values-action-ordering",
+  "spec:mock-definition-loading/add-reusable-templates-inheritance-values-action-ordering",
+  "spec:mock-definition-loading/add-http-yaml-mock-server",
+  "spec:template-rendering/add-reusable-templates-inheritance-values-action-ordering",
+  "spec:template-rendering/add-stateful-actions",
+  "spec:http-behavior-mocking/add-template-helpers-file-backed-bodies",
+  "spec:structured-http-logging/add-http-yaml-mock-server"
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Admin Server Configuration",
+    "tags": ["admin listener", "environment defaults", "server disable"]
+  },
+  {
+    "label": "Template Collection API",
+    "tags": ["template listing", "mock upsert", "base deletion"]
+  },
+  {
+    "label": "Template Set API",
+    "tags": ["named sets", "set replacement", "set removal"]
+  },
+  {
+    "label": "Mutation Visibility",
+    "tags": ["reload window", "active mocks", "request consistency"]
+  }
+]

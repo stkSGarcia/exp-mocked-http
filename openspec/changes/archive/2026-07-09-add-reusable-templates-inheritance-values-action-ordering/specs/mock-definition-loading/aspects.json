@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Reusable Templates",
+    "tags": ["template definitions", "template registry", "matching exclusion"]
+  },
+  {
+    "label": "Abstract Behaviors",
+    "tags": ["abstract behavior", "reusable bases", "direct match"]
+  },
+  {
+    "label": "Behavior Inheritance",
+    "tags": ["extend resolution", "field merging", "cycle detection"]
+  },
+  {
+    "label": "Definition Validation",
+    "tags": ["valid kinds", "allowed fields", "values map"]
+  }
+]

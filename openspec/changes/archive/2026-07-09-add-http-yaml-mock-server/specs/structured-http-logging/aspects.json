@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Log Format",
+    "tags": ["json logs", "structured entries", "valid json"]
+  },
+  {
+    "label": "Level Filtering",
+    "tags": ["level filtering", "info suppression", "configured levels"]
+  },
+  {
+    "label": "Request Response Logging",
+    "tags": ["request logging", "response fields", "unmatched logs"]
+  },
+  {
+    "label": "Duplicate Key Warnings",
+    "tags": ["warning logs", "duplicate keys", "override events"]
+  }
+]

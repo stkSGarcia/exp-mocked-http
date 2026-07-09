@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Named Template Invocation",
+    "tags": ["named templates", "root context", "missing template"]
+  },
+  {
+    "label": "Values Context",
+    "tags": ["values context", "merged values", "behavior values"]
+  },
+  {
+    "label": "Shared Render Context",
+    "tags": ["request fields", "response headers", "outbound fields"]
+  }
+]

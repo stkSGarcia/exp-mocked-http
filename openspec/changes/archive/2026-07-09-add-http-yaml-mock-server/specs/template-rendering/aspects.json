@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Request Context",
+    "tags": ["header access", "body context", "query context"]
+  },
+  {
+    "label": "Template Parsing",
+    "tags": ["source normalization", "template syntax", "strict variables"]
+  },
+  {
+    "label": "Control Flow",
+    "tags": ["pipeline rendering", "conditional blocks", "range iteration"]
+  },
+  {
+    "label": "Function Library",
+    "tags": ["builtin functions", "extended functions", "uuid generation"]
+  }
+]

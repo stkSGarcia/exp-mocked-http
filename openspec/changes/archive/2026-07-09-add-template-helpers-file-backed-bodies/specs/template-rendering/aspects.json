@@ -1,0 +1,18 @@
+[
+  {
+    "label": "JSON Helpers",
+    "tags": ["jsonpath lookup", "gjson paths", "invalid json"]
+  },
+  {
+    "label": "XML Helper",
+    "tags": ["xpath lookup", "xml text", "empty matches"]
+  },
+  {
+    "label": "Identity And Crypto Helpers",
+    "tags": ["uuid v5", "hmac sha256", "hex digest"]
+  },
+  {
+    "label": "Regex And Escaping Helpers",
+    "tags": ["regex captures", "last index", "html escape"]
+  }
+]

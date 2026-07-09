@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Server Entry Point",
+    "tags": ["uv startup", "host binding", "server entrypoint"]
+  },
+  {
+    "label": "Request Matching",
+    "tags": ["method matching", "path routing", "path params"]
+  },
+  {
+    "label": "Behavior Selection",
+    "tags": ["condition routing", "load order", "render failure"]
+  },
+  {
+    "label": "Response Execution",
+    "tags": ["action execution", "http replies", "not found"]
+  }
+]

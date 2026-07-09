@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Persistent Base Loading",
+    "tags": ["api persistence", "restart recovery", "base mocks"]
+  },
+  {
+    "label": "Template Set Isolation",
+    "tags": ["isolated groups", "set keys", "independent storage"]
+  },
+  {
+    "label": "Active Mock Merge",
+    "tags": ["filesystem merge", "duplicate precedence", "loaded order"]
+  },
+  {
+    "label": "Persisted Validation",
+    "tags": ["schema validation", "invalid records", "serve eligibility"]
+  }
+]

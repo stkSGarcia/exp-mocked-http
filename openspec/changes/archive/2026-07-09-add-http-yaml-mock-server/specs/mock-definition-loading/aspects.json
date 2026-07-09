@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Runtime Configuration",
+    "tags": ["environment config", "template directory", "log filtering"]
+  },
+  {
+    "label": "YAML Discovery",
+    "tags": ["recursive discovery", "yaml files", "mock stream"]
+  },
+  {
+    "label": "Behavior Validation",
+    "tags": ["schema validation", "required key", "reply limit"]
+  },
+  {
+    "label": "Ordered Merge",
+    "tags": ["behavior merge", "duplicate replacement", "override warning"]
+  }
+]
