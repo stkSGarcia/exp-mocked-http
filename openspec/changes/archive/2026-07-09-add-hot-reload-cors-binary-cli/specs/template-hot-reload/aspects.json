@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Hot Reload Configuration",
+    "tags": ["reload toggle", "templates env", "default enabled"]
+  },
+  {
+    "label": "Filesystem Change Detection",
+    "tags": ["file creation", "file edits", "file deletion"]
+  },
+  {
+    "label": "Loaded Snapshot Mode",
+    "tags": ["reload disabled", "snapshot behavior", "reload boundary"]
+  },
+  {
+    "label": "Admin Mutation Reload",
+    "tags": ["admin updates", "persisted templates", "eventual reload"]
+  }
+]

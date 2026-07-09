@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Template Upload Workflow",
+    "tags": ["cli push", "yaml upload", "recursive loading"]
+  },
+  {
+    "label": "Template Set Deletion",
+    "tags": ["cli delete", "set removal", "no content"]
+  },
+  {
+    "label": "Command Options",
+    "tags": ["flag aliases", "default url", "set key"]
+  }
+]

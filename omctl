@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+from hmock import omctl_main
+
+
+if __name__ == "__main__":
+    raise SystemExit(omctl_main())

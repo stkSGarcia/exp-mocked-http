@@ -1,0 +1,18 @@
+[
+  {
+    "label": "Binary File Validation",
+    "tags": ["path confinement", "missing files", "load rejection"]
+  },
+  {
+    "label": "Response Byte Snapshots",
+    "tags": ["stable bytes", "no rendering", "binary responses"]
+  },
+  {
+    "label": "Response Headers",
+    "tags": ["content length", "content disposition", "body precedence"]
+  },
+  {
+    "label": "Outbound Binary Requests",
+    "tags": ["multipart upload", "raw body", "file field"]
+  }
+]

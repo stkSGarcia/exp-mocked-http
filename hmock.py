@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import base64
 import copy
 import dataclasses
@@ -24,7 +25,7 @@ from fnmatch import fnmatch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, unquote, urlsplit
+from urllib.parse import quote, quote_plus, unquote, urlsplit
 
 
 class HMockError(Exception):
@@ -54,6 +55,8 @@ class Config:
     admin_http_enabled: bool = True
     admin_http_port: int = 9998
     admin_http_host: str = "0.0.0.0"
+    templates_dir_hot_reload: bool = True
+    cors_enabled: bool = False
 
 
 def _env_bool(value: str | None, default: bool) -> bool:
@@ -74,6 +77,8 @@ def load_config(env: dict[str, str] | None = None) -> Config:
         admin_http_enabled=_env_bool(env.get("HM_ADMIN_HTTP_ENABLED"), True),
         admin_http_port=int(env.get("HM_ADMIN_HTTP_PORT", "9998")),
         admin_http_host=env.get("HM_ADMIN_HTTP_HOST", "0.0.0.0"),
+        templates_dir_hot_reload=_env_bool(env.get("HM_TEMPLATES_DIR_HOT_RELOAD"), True),
+        cors_enabled=_env_bool(env.get("HM_CORS_ENABLED"), False),
     )
 
 
@@ -613,7 +618,7 @@ def parse_duration(value: str) -> float:
     return amount * factors[unit]
 
 
-def _resolve_body_file(templates_dir: str | Path, body_from_file: str, field_name: str = "reply_http.body_from_file") -> str:
+def _resolve_body_path(templates_dir: str | Path, body_from_file: str, field_name: str) -> Path:
     root = Path(templates_dir).resolve()
     path = (root / body_from_file).resolve()
     try:
@@ -622,7 +627,15 @@ def _resolve_body_file(templates_dir: str | Path, body_from_file: str, field_nam
         raise ValidationError(f"{field_name} must stay within templates directory") from exc
     if not path.is_file():
         raise ValidationError(f"{field_name} not found: {body_from_file}")
-    return path.read_text()
+    return path
+
+
+def _resolve_body_file(templates_dir: str | Path, body_from_file: str, field_name: str = "reply_http.body_from_file") -> str:
+    return _resolve_body_path(templates_dir, body_from_file, field_name).read_text()
+
+
+def _resolve_binary_body_file(templates_dir: str | Path, body_from_file: str, field_name: str) -> bytes:
+    return _resolve_body_path(templates_dir, body_from_file, field_name).read_bytes()
 
 
 def _validate_headers_mapping(headers: Any, field_name: str) -> None:
@@ -717,12 +730,25 @@ def _validate_actions(
             if "status_code" not in payload or not isinstance(payload["status_code"], int):
                 raise ValidationError(f"behavior {key} reply_http.status_code is required")
             _validate_headers_mapping(payload.get("headers", {}), f"behavior {key} reply_http.headers")
+            binary_file_name = payload.get("binary_file_name")
+            if binary_file_name is not None and not isinstance(binary_file_name, str):
+                raise ValidationError(f"behavior {key} reply_http.binary_file_name must be a string")
             body_from_file = payload.get("body_from_file")
             if body_from_file is not None:
                 if not isinstance(body_from_file, str) or not body_from_file:
                     raise ValidationError(f"behavior {key} reply_http.body_from_file must be a non-empty string")
                 if templates_dir is not None:
                     payload["body_from_file_content"] = _resolve_body_file(templates_dir, body_from_file)
+            body_from_binary_file = payload.get("body_from_binary_file")
+            if body_from_binary_file is not None:
+                if not isinstance(body_from_binary_file, str) or not body_from_binary_file:
+                    raise ValidationError(f"behavior {key} reply_http.body_from_binary_file must be a non-empty string")
+                if templates_dir is not None:
+                    payload["body_from_binary_file_content"] = _resolve_binary_body_file(
+                        templates_dir,
+                        body_from_binary_file,
+                        "reply_http.body_from_binary_file",
+                    )
         elif name == "sleep":
             if not isinstance(payload, dict):
                 raise ValidationError(f"behavior {key} action {name} payload must be a mapping")
@@ -745,6 +771,9 @@ def _validate_actions(
             _validate_headers_mapping(payload.get("headers", {}), f"behavior {key} send_http.headers")
             if "body" in payload and payload["body"] is not None and not isinstance(payload["body"], str):
                 raise ValidationError(f"behavior {key} send_http.body must be a string")
+            binary_file_name = payload.get("binary_file_name")
+            if binary_file_name is not None and not isinstance(binary_file_name, str):
+                raise ValidationError(f"behavior {key} send_http.binary_file_name must be a string")
             body_from_file = payload.get("body_from_file")
             if body_from_file is not None:
                 if not isinstance(body_from_file, str) or not body_from_file:
@@ -754,6 +783,16 @@ def _validate_actions(
                         templates_dir,
                         body_from_file,
                         "send_http.body_from_file",
+                    )
+            body_from_binary_file = payload.get("body_from_binary_file")
+            if body_from_binary_file is not None:
+                if not isinstance(body_from_binary_file, str) or not body_from_binary_file:
+                    raise ValidationError(f"behavior {key} send_http.body_from_binary_file must be a non-empty string")
+                if templates_dir is not None:
+                    payload["send_http_body_from_binary_file_content"] = _resolve_binary_body_file(
+                        templates_dir,
+                        body_from_binary_file,
+                        "send_http.body_from_binary_file",
                     )
         else:
             raise ValidationError(f"behavior {key} action {name} is not supported")
@@ -1056,6 +1095,22 @@ def load_all_definition_records(
     return filesystem_records + accepted
 
 
+FilesystemSignature = tuple[tuple[str, int, int], ...]
+
+
+def filesystem_definition_signature(templates_dir: str | Path) -> FilesystemSignature:
+    signature: list[tuple[str, int, int]] = []
+    root = Path(templates_dir).resolve()
+    for path in discover_yaml_files(root):
+        stat = path.stat()
+        try:
+            name = str(path.resolve().relative_to(root))
+        except ValueError:
+            name = str(path.resolve())
+        signature.append((name, stat.st_mtime_ns, stat.st_size))
+    return tuple(signature)
+
+
 @dataclasses.dataclass
 class HMockRuntimeState:
     config: Config
@@ -1063,9 +1118,11 @@ class HMockRuntimeState:
     redis_store: RedisStore
     behaviors: list[Behavior] = dataclasses.field(default_factory=list)
     definitions: list[dict[str, Any]] = dataclasses.field(default_factory=list)
+    _filesystem_signature: FilesystemSignature = dataclasses.field(default_factory=tuple)
     _lock: threading.RLock = dataclasses.field(default_factory=threading.RLock)
 
     def reload(self, *, skip_invalid_persisted: bool = False) -> None:
+        filesystem_signature = filesystem_definition_signature(self.config.templates_dir)
         records = load_all_definition_records(
             self.config,
             self.redis_store,
@@ -1076,6 +1133,16 @@ class HMockRuntimeState:
         with self._lock:
             self.behaviors = behaviors
             self.definitions = definitions
+            self._filesystem_signature = filesystem_signature
+
+    def reload_if_filesystem_changed(self) -> None:
+        if not self.config.templates_dir_hot_reload:
+            return
+        filesystem_signature = filesystem_definition_signature(self.config.templates_dir)
+        with self._lock:
+            if filesystem_signature == self._filesystem_signature:
+                return
+        self.reload(skip_invalid_persisted=True)
 
     def get_behaviors(self) -> list[Behavior]:
         with self._lock:
@@ -1804,7 +1871,17 @@ class RequestInfo:
 class ResponseInfo:
     status_code: int
     headers: dict[str, str]
-    body: str
+    body: str | bytes
+
+
+def _response_body_bytes(response: ResponseInfo) -> bytes:
+    return response.body if isinstance(response.body, bytes) else response.body.encode()
+
+
+def _response_body_log_value(response: ResponseInfo) -> str:
+    if isinstance(response.body, bytes):
+        return f"<binary {len(response.body)} bytes>"
+    return response.body
 
 
 def find_behavior(
@@ -1838,6 +1915,30 @@ def find_behavior(
     return None, {}
 
 
+def _quote_header_value(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _pop_header_case_insensitive(headers: dict[str, str], key: str, default: str) -> str:
+    for existing in list(headers):
+        if existing.lower() == key.lower():
+            return headers.pop(existing)
+    return default
+
+
+def _multipart_file_body(filename: str, content_type: str, content: bytes) -> tuple[bytes, str]:
+    boundary = f"----hmock-{uuid.uuid4().hex}"
+    disposition = f'Content-Disposition: form-data; name="file"; filename="{_quote_header_value(filename)}"'
+    head = (
+        f"--{boundary}\r\n"
+        f"{disposition}\r\n"
+        f"Content-Type: {content_type}\r\n"
+        "\r\n"
+    ).encode()
+    tail = f"\r\n--{boundary}--\r\n".encode()
+    return head + content + tail, boundary
+
+
 def _send_http(payload: dict[str, Any], context: dict[str, Any], logger: JsonLogger | None = None) -> None:
     url = render_template(str(payload["url"]), context)
     method = render_template(str(payload["method"]), context).upper()
@@ -1846,10 +1947,20 @@ def _send_http(payload: dict[str, Any], context: dict[str, Any], logger: JsonLog
         for key, value in (payload.get("headers") or {}).items()
     }
     body_source = payload.get("body")
+    binary_source = payload.get("send_http_body_from_binary_file_content")
     if body_source is None or body_source == "":
         body_source = payload.get("send_http_body_from_file_content")
-    body = render_template(str(body_source), context) if body_source is not None else None
-    data = body.encode() if body is not None else None
+    if (body_source is None or body_source == "") and binary_source is not None:
+        if method == "POST":
+            part_content_type = _pop_header_case_insensitive(headers, "Content-Type", "application/octet-stream")
+            filename = payload.get("binary_file_name") or Path(str(payload.get("body_from_binary_file", "file"))).name
+            data, boundary = _multipart_file_body(str(filename), part_content_type, binary_source)
+            headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+        else:
+            data = binary_source
+    else:
+        body = render_template(str(body_source), context) if body_source is not None else None
+        data = body.encode() if body is not None else None
     request = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=3) as response:
@@ -1889,16 +2000,27 @@ def execute_behavior(
             _send_http(payload, context, logger)
         elif name == "reply_http":
             body_source = payload.get("body")
-            if body_source is None or body_source == "":
+            binary_source = payload.get("body_from_binary_file_content")
+            body_is_binary = False
+            if (body_source is None or body_source == "") and binary_source is not None:
+                body = binary_source
+                body_is_binary = True
+            elif body_source is None or body_source == "":
                 body_source = payload.get("body_from_file_content", "")
-            body = render_template(str(body_source), context)
+                body = render_template(str(body_source), context)
+            else:
+                body = render_template(str(body_source), context)
             headers = {
                 str(key): render_template(str(value), context)
                 for key, value in (payload.get("headers") or {}).items()
             }
             if not any(key.lower() == "content-type" for key in headers):
                 headers["Content-Type"] = "application/json"
-            headers["Content-Length"] = str(len(body.encode()))
+            body_length = len(body) if isinstance(body, bytes) else len(body.encode())
+            headers["Content-Length"] = str(body_length)
+            if body_is_binary and payload.get("binary_file_name"):
+                filename = _quote_header_value(str(payload["binary_file_name"]))
+                headers["Content-Disposition"] = f'inline; filename="{filename}"'
             response = ResponseInfo(int(payload["status_code"]), headers, body)
     return response or ResponseInfo(204, {"Content-Length": "0"}, "")
 
@@ -1930,6 +2052,28 @@ def _empty_response(status_code: int) -> ResponseInfo:
 
 def _error_response(status_code: int, message: str) -> ResponseInfo:
     return _json_response(status_code, {"error": message})
+
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Credentials": "true",
+}
+
+
+def _add_header_if_absent(headers: dict[str, str], key: str, value: str) -> None:
+    if not any(existing.lower() == key.lower() for existing in headers):
+        headers[key] = value
+
+
+def apply_cors(response: ResponseInfo, enabled: bool) -> ResponseInfo:
+    if not enabled:
+        return response
+    headers = dict(response.headers)
+    for key, value in CORS_HEADERS.items():
+        _add_header_if_absent(headers, key, value)
+    return ResponseInfo(response.status_code, headers, response.body)
 
 
 def _normalize_definition_array(value: Any) -> list[dict[str, Any]]:
@@ -2003,7 +2147,7 @@ class AdminHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_header(key, value)
         self.end_headers()
         if response.body:
-            self.wfile.write(response.body.encode())
+            self.wfile.write(_response_body_bytes(response))
 
     def _route(self) -> ResponseInfo:
         path = urlsplit(self.path).path
@@ -2031,10 +2175,13 @@ class AdminHTTPRequestHandler(BaseHTTPRequestHandler):
     def _read_definitions(self) -> list[dict[str, Any]]:
         length = int(self.headers.get("Content-Length", "0") or "0")
         raw_body = self.rfile.read(length).decode() if length else ""
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
         try:
             parsed = json.loads(raw_body)
         except json.JSONDecodeError as exc:
-            raise ValidationError("request body must be valid JSON") from exc
+            if content_type not in {"application/yaml", "application/x-yaml", "text/yaml"}:
+                raise ValidationError("request body must be valid JSON") from exc
+            parsed = parse_yaml_subset(raw_body)
         return _normalize_definition_array(parsed)
 
     def _post_templates(self) -> ResponseInfo:
@@ -2145,6 +2292,9 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         self._handle(send_body=False)
 
+    def do_OPTIONS(self) -> None:
+        self._handle()
+
     def _handle(self, send_body: bool = True) -> None:
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length).decode() if length else ""
@@ -2163,23 +2313,25 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             headers={key: value for key, value in self.headers.items()},
             body=body,
         )
-        behavior, params = find_behavior(
-            self.server.runtime_state.get_behaviors(),
-            request,
-            self.server.runtime_state.redis_store,
-        )
         try:
-            response = (
-                execute_behavior(
+            self.server.runtime_state.reload_if_filesystem_changed()
+            behavior, params = find_behavior(
+                self.server.runtime_state.get_behaviors(),
+                request,
+                self.server.runtime_state.redis_store,
+            )
+            if behavior:
+                response = execute_behavior(
                     behavior,
                     request,
                     params,
                     self.server.runtime_state.redis_store,
                     self.server.hm_logger,
                 )
-                if behavior
-                else not_found_response()
-            )
+            elif self.command == "OPTIONS" and self.server.runtime_state.config.cors_enabled:
+                response = _empty_response(200)
+            else:
+                response = not_found_response()
         except TemplateError as exc:
             self.server.hm_logger.error("template render error", error=str(exc), http_path=request.path)
             response = ResponseInfo(
@@ -2187,12 +2339,16 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
                 {"Content-Type": "text/plain", "Content-Length": "21"},
                 "template render error",
             )
+        except HMockError as exc:
+            self.server.hm_logger.error("request handling error", error=str(exc), http_path=request.path)
+            response = _error_response(500, str(exc))
+        response = apply_cors(response, self.server.runtime_state.config.cors_enabled)
         self.send_response(response.status_code)
         for key, value in response.headers.items():
             self.send_header(key, value)
         self.end_headers()
         if send_body:
-            self.wfile.write(response.body.encode())
+            self.wfile.write(_response_body_bytes(response))
         self.server.hm_logger.info(
             "http request",
             http_path=request.path,
@@ -2205,7 +2361,7 @@ class MockHTTPRequestHandler(BaseHTTPRequestHandler):
             http_res={
                 "status_code": response.status_code,
                 "headers": response.headers,
-                "body": response.body,
+                "body": _response_body_log_value(response),
             },
         )
 
@@ -2226,7 +2382,7 @@ class HMockHTTPServer(ThreadingHTTPServer):
             if logger is None:
                 logger = JsonLogger("error")
             self.runtime_state = HMockRuntimeState(
-                Config(),
+                Config(templates_dir_hot_reload=False),
                 logger,
                 redis_store or MemoryRedisStore(),
                 behaviors=list(behaviors),
@@ -2253,6 +2409,82 @@ def build_admin_server(
     logger = logger or JsonLogger(config.log_level)
     state = runtime_state or HMockRuntimeState.from_config(config, logger)
     return HMockAdminHTTPServer((config.admin_http_host, config.admin_http_port), state)
+
+
+def _admin_url(base_url: str, path: str) -> str:
+    return base_url.rstrip("/") + path
+
+
+def _load_cli_definitions(directory: str | Path) -> list[dict[str, Any]]:
+    definitions: list[dict[str, Any]] = []
+    for path in discover_yaml_files(directory):
+        for raw in load_mock_file(path):
+            if not isinstance(raw, dict):
+                raise ValidationError("definition must be a mapping")
+            definitions.append(copy.deepcopy(raw))
+    return definitions
+
+
+def _omctl_request(url: str, method: str, body: bytes | None = None, headers: dict[str, str] | None = None) -> int:
+    request = urllib.request.Request(url, data=body, method=method, headers=headers or {})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        response.read()
+        return response.status
+
+
+def _omctl_push(args: argparse.Namespace) -> int:
+    definitions = _load_cli_definitions(args.directory)
+    body = json.dumps(definitions, separators=(",", ":")).encode()
+    path = (
+        f"/api/v1/template_sets/{quote(args.set_key, safe='')}"
+        if args.set_key
+        else "/api/v1/templates"
+    )
+    status = _omctl_request(
+        _admin_url(args.url, path),
+        "POST",
+        body,
+        {"Content-Type": "application/yaml"},
+    )
+    return 0 if 200 <= status < 300 else 1
+
+
+def _omctl_delete(args: argparse.Namespace) -> int:
+    status = _omctl_request(
+        _admin_url(args.url, f"/api/v1/template_sets/{quote(args.set_key, safe='')}"),
+        "DELETE",
+    )
+    return 0 if status == 204 else 1
+
+
+def build_omctl_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="omctl")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    push = subparsers.add_parser("push")
+    push.add_argument("-d", "--directory", default="./demo_templates")
+    push.add_argument("-u", "--url", default="http://localhost:9998")
+    push.add_argument("-k", "--set-key", dest="set_key")
+    push.set_defaults(func=_omctl_push)
+
+    delete = subparsers.add_parser("delete")
+    delete.add_argument("-u", "--url", default="http://localhost:9998")
+    delete.add_argument("-k", "--set-key", dest="set_key", required=True)
+    delete.set_defaults(func=_omctl_delete)
+    return parser
+
+
+def omctl_main(argv: list[str] | None = None) -> int:
+    parser = build_omctl_parser()
+    args = parser.parse_args(argv)
+    try:
+        return int(args.func(args))
+    except HMockError as exc:
+        parser.exit(1, f"omctl: {exc}\n")
+    except urllib.error.HTTPError as exc:
+        parser.exit(1, f"omctl: HTTP {exc.code}\n")
+    except urllib.error.URLError as exc:
+        parser.exit(1, f"omctl: {exc.reason}\n")
 
 
 def main() -> None:

@@ -1,0 +1,18 @@
+[
+  {
+    "label": "CORS Configuration",
+    "tags": ["cors toggle", "env default", "runtime setting"]
+  },
+  {
+    "label": "Global Response Headers",
+    "tags": ["allow origin", "allow methods", "credentials header"]
+  },
+  {
+    "label": "Header Precedence",
+    "tags": ["mock override", "case insensitive", "header preservation"]
+  },
+  {
+    "label": "Preflight Fallback",
+    "tags": ["options request", "preflight response", "normal matching"]
+  }
+]
